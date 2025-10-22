@@ -1,4 +1,153 @@
-# Proyecto ETL Distribuido - Sistema de 3 Máquinas
+# 🚀 ProyectoETL - Sistema de Gestión de Proyectos
+
+Sistema completo de ETL (Extract, Transform, Load) con Data Warehouse y Dashboard Web interactivo.
+
+## ⚡ Inicio Rápido
+
+```bash
+# 1. Configurar todo (solo la primera vez)
+./setup_local.sh
+
+# 2. Iniciar el dashboard
+./iniciar_dashboard.sh
+
+# 3. Abrir en el navegador: http://localhost:8080
+
+# 4. Detener cuando termines
+./detener_dashboard.sh
+```
+
+**[📖 Ver Guía de Inicio Rápido Completa →](INICIO_RAPIDO.md)**
+
+---
+
+## 📚 Documentación
+
+| Documento | Descripción |
+|-----------|-------------|
+| **[INICIO_RAPIDO.md](INICIO_RAPIDO.md)** | ⚡ Guía rápida de 5 minutos |
+| **[README_COMPLETO.md](README_COMPLETO.md)** | 📖 Documentación completa del proyecto |
+| **[GUIA_PRUEBA_LOCAL.md](GUIA_PRUEBA_LOCAL.md)** | 🔧 Guía detallada de configuración |
+| **[GUIA_DESPLIEGUE_3_MAQUINAS.md](GUIA_DESPLIEGUE_3_MAQUINAS.md)** | 🌐 Configuración distribuida |
+
+---
+
+## 🎯 ¿Qué es este proyecto?
+
+Un sistema ETL completo que incluye:
+
+- **📊 Base de Datos Origen** - Sistema transaccional (OLTP)
+- **⚙️ Proceso ETL** - Extracción, transformación y carga automatizada
+- **🏢 Data Warehouse** - Modelo dimensional para análisis
+- **📈 Dashboard Web** - Interfaz interactiva para visualización y control
+
+---
+
+## 🔧 Requisitos
+
+- Python 3.8+
+- MySQL 5.7+ o MariaDB 10.3+
+- Navegador web moderno
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+ProyectoETL/
+├── 01_GestionProyectos/    # BD Origen
+├── 02_ETL/                  # Proceso ETL
+├── 03_Dashboard/            # Dashboard Web
+├── 04_Datawarehouse/        # Data Warehouse
+├── setup_local.sh           # Configuración automática ⚡
+├── iniciar_dashboard.sh     # Iniciar sistema
+├── detener_dashboard.sh     # Detener sistema
+└── verificar_sistema.sh     # Verificar estado
+```
+
+---
+
+## 🎓 Características
+
+✅ ETL automatizado con Python  
+✅ Modelo dimensional (esquema estrella)  
+✅ Cálculo de KPIs y métricas  
+✅ Dashboard web interactivo  
+✅ API REST con Flask  
+✅ Generación de datos de prueba  
+✅ Scripts de automatización  
+✅ Documentación completa  
+
+---
+
+## 📊 Vista Previa del Dashboard
+
+El dashboard permite:
+
+- 🔍 Monitorear conexiones en tiempo real
+- 📊 Ver datos de origen y datawarehouse
+- ⚙️ Ejecutar el proceso ETL con un click
+- 📈 Visualizar métricas y KPIs
+- 🗑️ Gestionar datos de prueba
+
+---
+
+## 🚀 Empezar Ahora
+
+### Opción 1: Configuración Automática (Recomendado)
+
+```bash
+./setup_local.sh
+./iniciar_dashboard.sh
+```
+
+Abre tu navegador en `http://localhost:8080`
+
+### Opción 2: Verificar Primero
+
+```bash
+./verificar_sistema.sh  # Ver estado del sistema
+./setup_local.sh        # Si es necesario
+./iniciar_dashboard.sh  # Iniciar
+```
+
+---
+
+## 📖 Aprende Más
+
+- [Inicio Rápido](INICIO_RAPIDO.md) - Comienza en 5 minutos
+- [Documentación Completa](README_COMPLETO.md) - Toda la información
+- [Guía de Prueba Local](GUIA_PRUEBA_LOCAL.md) - Instrucciones detalladas
+
+---
+
+## 🐛 Solución de Problemas
+
+```bash
+# Verificar estado del sistema
+./verificar_sistema.sh
+
+# Reinstalar si hay problemas
+./detener_dashboard.sh
+rm -rf venv
+./setup_local.sh
+```
+
+---
+
+## 📄 Licencia
+
+Proyecto educativo para demostración de conceptos ETL y Data Warehouse.
+
+---
+
+## 🤝 Contribuciones
+
+Este es un proyecto educativo. Siéntete libre de usarlo para aprender.
+
+---
+
+**⭐ Si te resulta útil, dale una estrella al repositorio!** Distribuido - Sistema de 3 Máquinas
 
 Este proyecto implementa un sistema ETL (Extract, Transform, Load) distribuido que opera en 3 máquinas independientes para procesar datos de gestión de proyectos.
 

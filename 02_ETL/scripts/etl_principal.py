@@ -102,7 +102,7 @@ class ETLProyectos:
                 WHERE activo = 1
             """, self.engine_origen)
             
-            # Extraer proyectos
+            # Extraer proyectos (solo completados o cancelados para el datawarehouse)
             self.df_proyectos = pd.read_sql("""
                 SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente,
                        est.nombre_estado
@@ -110,9 +110,10 @@ class ETLProyectos:
                 LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
                 LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
                 LEFT JOIN Estado est ON p.id_estado = est.id_estado
+                WHERE p.id_estado IN (3, 4)  -- 3=Completado, 4=Cancelado
             """, self.engine_origen)
             
-            # Extraer tareas
+            # Extraer tareas (solo de proyectos completados o cancelados)
             self.df_tareas = pd.read_sql("""
                 SELECT t.*, p.nombre as nombre_proyecto, e.nombre as nombre_empleado,
                        est.nombre_estado
@@ -120,6 +121,7 @@ class ETLProyectos:
                 LEFT JOIN Proyecto p ON t.id_proyecto = p.id_proyecto
                 LEFT JOIN Empleado e ON t.id_empleado = e.id_empleado
                 LEFT JOIN Estado est ON t.id_estado = est.id_estado
+                WHERE p.id_estado IN (3, 4)  -- Solo tareas de proyectos completados o cancelados
             """, self.engine_origen)
             
             # Validar extracciones
@@ -406,9 +408,12 @@ class ETLProyectos:
         
         for col_fecha, col_id in zip(columnas_fecha, columnas_id):
             if col_fecha in df_resultado.columns:
+                # Convertir fechas a IDs, manteniendo NULL para fechas vacías
                 df_resultado[col_id] = df_resultado[col_fecha].apply(
                     lambda fecha: obtener_id_tiempo(fecha.date() if pd.notna(fecha) else None, self.dim_tiempo)
                 )
+                # Asegurar que los NULL se mantengan como None en vez de 0.0
+                df_resultado[col_id] = df_resultado[col_id].where(pd.notna(df_resultado[col_id]), None)
             else:
                 df_resultado[col_id] = None
         

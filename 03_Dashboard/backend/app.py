@@ -7,7 +7,8 @@ import sys
 import os
 import subprocess
 import traceback
-from datetime import datetime
+from datetime import datetime, date
+from decimal import Decimal
 import json
 
 app = Flask(__name__)
@@ -229,13 +230,62 @@ def datos_datawarehouse():
             'proyectos_a_tiempo': metricas_row[3] if metricas_row[3] else 0
         }
         
+        # Obtener detalle de proyectos en el DW
+        # Como DimProyecto puede no tener datos, obtenemos nombres directamente del origen
+        conn_origen = get_connection('origen')
+        cursor_origen = conn_origen.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                hp.id_proyecto,
+                hp.presupuesto,
+                hp.costo_real,
+                hp.duracion_planificada,
+                hp.duracion_real,
+                hp.cumplimiento_tiempo,
+                hp.cumplimiento_presupuesto,
+                hp.tareas_total,
+                hp.tareas_completadas,
+                hp.tareas_canceladas
+            FROM HechoProyecto hp
+            ORDER BY hp.id_proyecto
+            LIMIT 50
+        """)
+        
+        proyectos_dw = []
+        for row in cursor.fetchall():
+            id_proyecto = row[0]
+            
+            # Obtener nombre del proyecto desde la base de datos origen
+            cursor_origen.execute("SELECT nombre FROM Proyecto WHERE id_proyecto = %s", (id_proyecto,))
+            nombre_row = cursor_origen.fetchone()
+            nombre_proyecto = nombre_row[0] if nombre_row else f"Proyecto {id_proyecto}"
+            
+            proyectos_dw.append({
+                'id': id_proyecto,
+                'nombre': nombre_proyecto,
+                'presupuesto': float(row[1]) if row[1] else 0,
+                'costo_real': float(row[2]) if row[2] else 0,
+                'duracion_plan': row[3],
+                'duracion_real': row[4],
+                'cumplimiento_tiempo': row[5],
+                'cumplimiento_presupuesto': row[6],
+                'tareas_total': row[7],
+                'tareas_completadas': row[8],
+                'tareas_canceladas': row[9]
+            })
+        
+        cursor_origen.close()
+        conn_origen.close()
+        
         cursor.close()
         conn.close()
         
         return jsonify({
             'status': 'success',
             'estadisticas': stats,
-            'metricas': metricas
+            'metricas': metricas,
+            'proyectos': proyectos_dw
         })
         
     except Exception as e:
@@ -294,29 +344,36 @@ def insertar_datos():
             'error': str(e)
         }), 500
 
-@app.route('/api/ejecutar-etl', methods=['POST'])
+@app.route('/ejecutar-etl', methods=['POST'])
 def ejecutar_etl():
     """Ejecutar proceso ETL"""
     try:
-        # Importar y ejecutar el ETL mejorado
+        # Importar el ETL principal
         import sys
         import os
+        from pathlib import Path
         
-        # Agregar el directorio actual al path para importar el ETL
-        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if current_dir not in sys.path:
-            sys.path.insert(0, current_dir)
+        # Configurar paths
+        base_dir = Path(__file__).parent.parent.parent
+        etl_dir = base_dir / '02_ETL'
+        etl_scripts_dir = etl_dir / 'scripts'
+        etl_config_dir = etl_dir / 'config'
         
-        # Importar el ETL simplificado
-        from etl_simple import ejecutar_etl as run_etl
+        # Agregar al path
+        sys.path.insert(0, str(etl_scripts_dir))
+        sys.path.insert(0, str(etl_config_dir))
+        
+        # Importar el ETL
+        from etl_principal import ETLProyectos
         
         # Ejecutar ETL
-        success = run_etl()
+        etl = ETLProyectos('local')
+        success = etl.ejecutar_etl_completo()
         
         if success:
             # Obtener estadísticas del datawarehouse
             try:
-                conn = get_connection()
+                conn = get_connection('destino')
                 cursor = conn.cursor()
                 
                 # Contar registros en tablas principales
@@ -332,29 +389,30 @@ def ejecutar_etl():
                 result = cursor.fetchone()
                 dim_clientes = result[0] if result else 0
                 
+                cursor.execute("SELECT COUNT(*) FROM DimTiempo")
+                result = cursor.fetchone()
+                dim_tiempo = result[0] if result else 0
+                
                 cursor.close()
                 conn.close()
                 
                 return jsonify({
                     'success': True,
                     'message': 'ETL ejecutado exitosamente',
-                    'data': {
-                        'registros_procesados': fact_proyectos + fact_tareas,
-                        'fact_proyectos': fact_proyectos,
-                        'fact_tareas': fact_tareas,
-                        'dim_clientes': dim_clientes,
-                        'tablas_actualizadas': ['DimCliente', 'DimEmpleado', 'DimProyecto', 'DimTiempo', 'HechoProyecto', 'HechoTarea']
-                    }
+                    'registros_procesados': {
+                        'HechoProyecto': fact_proyectos,
+                        'HechoTarea': fact_tareas,
+                        'DimCliente': dim_clientes,
+                        'DimTiempo': dim_tiempo
+                    },
+                    'total': fact_proyectos + fact_tareas + dim_clientes + dim_tiempo
                 })
                 
             except Exception as db_error:
                 return jsonify({
                     'success': True,
                     'message': 'ETL ejecutado, pero no se pudieron obtener estadísticas',
-                    'data': {
-                        'registros_procesados': 'N/A',
-                        'error_estadisticas': str(db_error)
-                    }
+                    'error_estadisticas': str(db_error)
                 })
         else:
             return jsonify({
@@ -363,9 +421,97 @@ def ejecutar_etl():
             }), 500
         
     except Exception as e:
+        import traceback
         return jsonify({
             'success': False,
-            'message': f'Error ejecutando ETL: {str(e)}'
+            'message': f'Error ejecutando ETL: {str(e)}',
+            'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/datos-origen/todas-tablas', methods=['GET'])
+def obtener_todas_tablas_origen():
+    """Obtiene datos de todas las tablas de la base de datos origen"""
+    try:
+        conn = get_connection('origen')
+        cursor = conn.cursor()
+        
+        # Definir el orden y configuración de las tablas
+        tablas_config = [
+            {'nombre': 'Estado', 'limite': 10},
+            {'nombre': 'Cliente', 'limite': 10},
+            {'nombre': 'Empleado', 'limite': 10},
+            {'nombre': 'Equipo', 'limite': 10},
+            {'nombre': 'Proyecto', 'limite': 15},
+            {'nombre': 'MiembroEquipo', 'limite': 15},
+            {'nombre': 'Tarea', 'limite': 15}
+        ]
+        
+        resultado = []
+        
+        for tabla_config in tablas_config:
+            tabla = tabla_config['nombre']
+            limite = tabla_config['limite']
+            
+            try:
+                # Obtener el total de registros
+                cursor.execute(f"SELECT COUNT(*) FROM {tabla}")
+                total = cursor.fetchone()[0]
+                
+                # Obtener nombres de columnas
+                cursor.execute(f"DESCRIBE {tabla}")
+                columnas_info = cursor.fetchall()
+                columnas = [col[0] for col in columnas_info]
+                
+                # Obtener datos (limitados)
+                cursor.execute(f"SELECT * FROM {tabla} ORDER BY {columnas[0]} DESC LIMIT {limite}")
+                filas = cursor.fetchall()
+                
+                # Convertir a diccionarios
+                datos = []
+                for fila in filas:
+                    fila_dict = {}
+                    for i, valor in enumerate(fila):
+                        # Convertir tipos especiales a string para JSON
+                        if isinstance(valor, (date, datetime)):
+                            fila_dict[columnas[i]] = valor.strftime('%Y-%m-%d')
+                        elif isinstance(valor, Decimal):
+                            fila_dict[columnas[i]] = float(valor)
+                        else:
+                            fila_dict[columnas[i]] = valor
+                    datos.append(fila_dict)
+                
+                resultado.append({
+                    'tabla': tabla,
+                    'total_registros': total,
+                    'registros_mostrados': len(datos),
+                    'columnas': columnas,
+                    'datos': datos
+                })
+                
+            except Exception as e:
+                resultado.append({
+                    'tabla': tabla,
+                    'error': str(e),
+                    'total_registros': 0,
+                    'registros_mostrados': 0,
+                    'columnas': [],
+                    'datos': []
+                })
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'tablas': resultado
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo datos: {str(e)}',
+            'traceback': traceback.format_exc()
         }), 500
 
 @app.route('/limpiar-datos', methods=['DELETE'])
@@ -407,6 +553,227 @@ def limpiar_datos():
         return jsonify({
             'status': 'error',
             'error': str(e)
+        }), 500
+
+@app.route('/generar-datos', methods=['POST'])
+def generar_datos():
+    """Generar datos de prueba con cantidades personalizables"""
+    try:
+        from faker import Faker
+        import random
+        from datetime import timedelta, date
+        
+        # Obtener parámetros del request
+        data = request.get_json()
+        num_clientes = data.get('clientes', 10)
+        num_empleados = data.get('empleados', 20)
+        num_equipos = data.get('equipos', 5)
+        num_proyectos = data.get('proyectos', 50)
+        
+        fake = Faker("es_MX")
+        
+        conn = get_connection('origen')
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        # Contadores
+        clientes_creados = empleados_creados = equipos_creados = 0
+        proyectos_creados = tareas_creadas = asignaciones_creadas = 0
+        
+        # 1. Insertar Clientes
+        sectores = ["tecnología", "finanzas", "salud", "educación", "retail", "manufactura", "servicios", "telecomunicaciones"]
+        for _ in range(num_clientes):
+            nombre_cli = fake.company()[:100]
+            sector_cli = random.choice(sectores)[:50]
+            contacto_cli = fake.name()[:100]
+            tel_cli = fake.phone_number()[:20]
+            email_cli = fake.company_email()[:100]
+            direccion_cli = fake.address().replace('\n', ', ')[:200]
+            cur.execute(
+                "INSERT INTO cliente (nombre, sector, contacto, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
+                (nombre_cli, sector_cli, contacto_cli, tel_cli, email_cli, direccion_cli)
+            )
+            clientes_creados += 1
+        
+        # 2. Insertar Empleados
+        puestos = ["Desarrollador", "Analista", "QA", "Gerente de Proyecto", "Diseñador", "DevOps", "Arquitecto", "Líder Técnico"]
+        departamentos = ["Desarrollo", "Calidad", "Infraestructura", "Gestión de Proyectos", "UX/UI", "Análisis"]
+        for _ in range(num_empleados):
+            nombre_emp = fake.name()[:100]
+            puesto_emp = random.choice(puestos)
+            depto_emp = random.choice(departamentos)[:50]
+            # Salarios realistas según puesto
+            salarios_base = {
+                "Desarrollador": (35000, 65000),
+                "Analista": (30000, 55000),
+                "QA": (28000, 50000),
+                "Gerente de Proyecto": (55000, 95000),
+                "Diseñador": (32000, 58000),
+                "DevOps": (40000, 75000),
+                "Arquitecto": (60000, 110000),
+                "Líder Técnico": (50000, 85000)
+            }
+            rango = salarios_base.get(puesto_emp, (30000, 60000))
+            salario = round(random.uniform(rango[0], rango[1]), 2)
+            fecha_ing = fake.date_between(start_date="-3650d", end_date="-180d")  # Entre 10 años y 6 meses atrás
+            
+            cur.execute(
+                "INSERT INTO empleado (nombre, puesto, departamento, salario_base, fecha_ingreso) VALUES (%s, %s, %s, %s, %s)",
+                (nombre_emp, puesto_emp, depto_emp, salario, fecha_ing)
+            )
+            empleados_creados += 1
+        
+        # 3. Insertar Equipos
+        # Obtener el último número de equipo existente
+        cur.execute("SELECT COUNT(*) FROM equipo")
+        equipos_existentes = cur.fetchone()[0]
+        inicio_equipo = equipos_existentes + 1
+        
+        for i in range(inicio_equipo, inicio_equipo + num_equipos):
+            nombre_eq = f"Equipo {i}"
+            desc_eq = fake.catch_phrase()[:200]
+            cur.execute(
+                "INSERT INTO equipo (nombre_equipo, descripcion) VALUES (%s, %s)",
+                (nombre_eq, desc_eq)
+            )
+            equipos_creados += 1
+        
+        # 4. Verificar/Insertar Estados
+        cur.execute("SELECT COUNT(*) FROM estado")
+        if cur.fetchone()[0] == 0:
+            estados = ["Pendiente", "En Progreso", "Completado", "Cancelado"]
+            for estado in estados:
+                cur.execute("INSERT INTO estado (nombre_estado) VALUES (%s)", (estado,))
+        
+        # 5. Insertar MiembroEquipo
+        cur.execute("SELECT id_empleado FROM empleado")
+        id_empleados = [row[0] for row in cur.fetchall()]
+        cur.execute("SELECT id_equipo FROM equipo")
+        id_equipos = [row[0] for row in cur.fetchall()]
+        
+        roles = ["Developer", "Analista", "QA", "Líder de Equipo", "Scrum Master"]
+        for id_eq in id_equipos:
+            miembros = random.sample(id_empleados, k=min(random.randint(3, 6), len(id_empleados)))
+            for id_emp in miembros:
+                inicio = fake.date_between(start_date="-720d", end_date="-180d")
+                fin = None if random.random() < 0.5 else fake.date_between(start_date=inicio, end_date="+180d")
+                rol = random.choice(roles)
+                cur.execute(
+                    "INSERT INTO miembroequipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, rol_miembro) VALUES (%s, %s, %s, %s, %s)",
+                    (id_eq, id_emp, inicio, fin, rol)
+                )
+        
+        # 6. Generar Proyectos con estados aleatorios (el ETL filtrará los necesarios)
+        cur.execute("SELECT id_cliente FROM cliente")
+        CLIENTES = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT id_empleado FROM empleado")
+        EMPLEADOS = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT id_equipo FROM equipo")
+        EQUIPOS = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT id_estado FROM estado")
+        TODOS_ESTADOS = [r[0] for r in cur.fetchall()]
+        
+        for _ in range(num_proyectos):
+            id_cliente = random.choice(CLIENTES)
+            id_gerente = random.choice(EMPLEADOS)
+            # 60% Completado/Cancelado, 40% otros estados (para tener variedad)
+            if random.random() < 0.6:
+                cur.execute("SELECT id_estado FROM estado WHERE nombre_estado IN ('Completado','Cancelado')")
+                estados_finalizados = [r[0] for r in cur.fetchall()]
+                id_estado_proj = random.choice(estados_finalizados) if estados_finalizados else random.choice(TODOS_ESTADOS)
+            else:
+                id_estado_proj = random.choice(TODOS_ESTADOS)
+            
+            # Nombres de proyectos más realistas
+            prefijos_proyecto = [
+                "Sistema de", "Plataforma de", "Aplicación para", "Portal de", "Migración a",
+                "Implementación de", "Desarrollo de", "Integración de", "Optimización de", "Renovación de"
+            ]
+            sufijos_proyecto = [
+                "gestión de inventarios", "recursos humanos", "ventas en línea", "servicios al cliente",
+                "análisis de datos", "facturación electrónica", "seguimiento de proyectos", "control de calidad",
+                "administración de contenidos", "comercio electrónico", "reportería ejecutiva", "procesos automatizados"
+            ]
+            nombre_proj = f"{random.choice(prefijos_proyecto)} {random.choice(sufijos_proyecto)}"[:150]
+            desc_proj = fake.paragraph(nb_sentences=2)[:500]  # Descripción más completa
+            fecha_inicio = fake.date_between(start_date="-540d", end_date="-180d")
+            duracion_plan_dias = random.randint(45, 150)
+            fecha_fin_plan = fecha_inicio + timedelta(days=duracion_plan_dias)
+            delta_fin = random.randint(-5, 20)
+            fecha_fin_real = fecha_fin_plan + timedelta(days=delta_fin)
+            presupuesto = round(random.uniform(25000, 90000), 2)
+            costo_real = round(presupuesto * random.uniform(0.9, 1.2), 2)
+            
+            cur.execute(
+                "INSERT INTO proyecto (id_cliente, nombre, descripcion, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado, id_empleado_gerente) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (id_cliente, nombre_proj, desc_proj, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado_proj, id_gerente)
+            )
+            id_proyecto = cur.lastrowid
+            proyectos_creados += 1
+            
+            # Generar de 8 a 12 tareas para este proyecto con nombres realistas
+            tareas_nombres = [
+                "Análisis de requerimientos", "Diseño de arquitectura", "Configuración de base de datos",
+                "Desarrollo de módulo principal", "Implementación de API REST", "Diseño de interfaz de usuario",
+                "Desarrollo del frontend", "Integración de servicios externos", "Pruebas unitarias",
+                "Pruebas de integración", "Documentación técnica", "Capacitación de usuarios",
+                "Migración de datos", "Optimización de rendimiento", "Implementación de seguridad",
+                "Deploy a producción", "Monitoreo y ajustes", "Revisión de código"
+            ]
+            tareas_seleccionadas = random.sample(tareas_nombres, k=random.randint(8, 12))
+            
+            for nombre_tarea in tareas_seleccionadas:
+                t_inicio_plan = fake.date_between(start_date=fecha_inicio, end_date=(fecha_fin_plan - timedelta(days=15)))
+                duracion_plan_t = random.randint(5, 20)
+                t_fin_plan = t_inicio_plan + timedelta(days=duracion_plan_t)
+                # Fecha de inicio real puede ser null si la tarea no ha comenzado
+                t_inicio_real = t_inicio_plan if random.random() > 0.1 else None
+                t_fin_real = t_fin_plan + timedelta(days=random.randint(-3, 10))
+                horas_plan = random.randint(16, 120)
+                horas_reales = max(1, int(horas_plan * random.uniform(0.8, 1.3)))
+                # Estado de la tarea: mismo estado que el proyecto
+                id_estado_tarea = id_estado_proj
+                descripcion_tarea = fake.sentence(nb_words=8)[:200]
+                
+                cur.execute(
+                    "INSERT INTO tarea (id_proyecto, nombre_tarea, descripcion, fecha_inicio_plan, fecha_fin_plan, fecha_inicio_real, fecha_fin_real, horas_plan, horas_reales, id_estado) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (id_proyecto, nombre_tarea, descripcion_tarea, t_inicio_plan, t_fin_plan, t_inicio_real, t_fin_real, horas_plan, horas_reales, id_estado_tarea)
+                )
+                id_tarea = cur.lastrowid
+                tareas_creadas += 1
+                
+                id_equipo = random.choice(EQUIPOS)
+                cur.execute(
+                    "INSERT INTO tareaequipohist (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion) VALUES (%s,%s,%s,%s)",
+                    (id_tarea, id_equipo, t_inicio_plan, t_fin_real)
+                )
+                asignaciones_creadas += 1
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Datos generados exitosamente',
+            'stats': {
+                'clientes': clientes_creados,
+                'empleados': empleados_creados,
+                'equipos': equipos_creados,
+                'proyectos': proyectos_creados,
+                'tareas': tareas_creadas,
+                'asignaciones': asignaciones_creadas
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }), 500
 
 if __name__ == '__main__':

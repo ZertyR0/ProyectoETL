@@ -126,7 +126,7 @@ CREATE TABLE HechoProyecto (
   costo_real             DECIMAL(12,2) DEFAULT 0,
   variacion_costos       DECIMAL(12,2) DEFAULT 0,  -- costo_real - presupuesto
   cumplimiento_presupuesto TINYINT(1) DEFAULT 0,
-  porcentaje_sobrecosto  DECIMAL(5,2) DEFAULT 0,
+  porcentaje_sobrecosto  DECIMAL(10,2) DEFAULT 0,
   
   -- Métricas de trabajo
   tareas_total           INT DEFAULT 0,
@@ -196,7 +196,7 @@ CREATE TABLE HechoTarea (
   
   -- Métricas financieras
   costo_estimado          DECIMAL(10,2) DEFAULT 0,
-  costo_real_tarea        DECIMAL(10,2) DEFAULT 0,
+  costo_real              DECIMAL(10,2) DEFAULT 0,
   variacion_costo         DECIMAL(10,2) DEFAULT 0,
   
   -- Métricas de calidad
@@ -205,7 +205,7 @@ CREATE TABLE HechoTarea (
   cambios_alcance         INT DEFAULT 0,
   
   -- Estado y progreso
-  porcentaje_completado   DECIMAL(5,2) DEFAULT 0,
+  progreso_porcentaje     DECIMAL(5,2) DEFAULT 0,
   complejidad_estimada    INT DEFAULT 1, -- 1-5
   complejidad_real        INT DEFAULT 1, -- 1-5
   
@@ -257,7 +257,7 @@ ALTER TABLE HechoTarea
 -- Vista resumen de proyectos
 CREATE VIEW v_resumen_proyectos AS
 SELECT 
-    p.id_proyecto,
+    hp.id_proyecto,
     dp.nombre_proyecto,
     dc.nombre as cliente,
     de.nombre as gerente,

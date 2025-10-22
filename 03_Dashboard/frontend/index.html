@@ -3,49 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETL Dashboard - Sistema Distribuido</title>
+    <title>ETL Dashboard - Sistema de Gestión de Proyectos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="styles.css" rel="stylesheet">
+    <link href="styles.css?v=3" rel="stylesheet">
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-database me-2"></i>
-                ETL Dashboard
+<body class="dashboard-body">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-database"></i>
+            <h4>ETL<br>Dashboard</h4>
+            <p class="sidebar-subtitle">Sistema de Gestión de<br>Proyectos</p>
+        </div>
+        
+        <div class="sidebar-menu">
+            <a href="#" class="menu-item active" onclick="showSection('dashboard')">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <span class="navbar-text" id="connection-status">
-                            <i class="fas fa-circle text-warning"></i> Verificando conexión...
-                        </span>
-                    </li>
-                </ul>
+            <a href="#" class="menu-item" onclick="showSection('datos-origen')">
+                <i class="fas fa-database"></i>
+                <span>Datos Origen</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('control-etl')">
+                <i class="fas fa-cogs"></i>
+                <span>Control ETL</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('datawarehouse')">
+                <i class="fas fa-warehouse"></i>
+                <span>DataWarehouse</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('analisis')">
+                <i class="fas fa-chart-line"></i>
+                <span>Análisis</span>
+            </a>
+        </div>
+        
+        <div class="sistema-status">
+            <h6>Estado del Sistema</h6>
+            <div class="status-item">
+                <span class="status-indicator"></span>
+                <span>Base Origen</span>
+            </div>
+            <div class="status-item">
+                <span class="status-indicator"></span>
+                <span>DataWarehouse</span>
+            </div>
+            <div class="status-item">
+                <span class="status-indicator"></span>
+                <span>Proceso ETL</span>
             </div>
         </div>
-    </nav>
+    </div>
 
-    <div class="container mt-4">
-        <!-- Header con estadísticas -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="display-4 text-center mb-4">
-                    <i class="fas fa-cogs text-primary"></i>
-                    Sistema ETL Distribuido
-                </h1>
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-header">
+            <h2 id="section-title">Dashboard Principal</h2>
+            <div id="connection-status-top">
+                <i class="fas fa-circle text-warning"></i> Verificando...
             </div>
         </div>
 
-        <!-- Status Cards -->
-        <div class="row mb-4">
+        <!-- SECCIÓN: DASHBOARD -->
+        <div id="section-dashboard" class="content-section">
+        <!-- Alert informativo sobre filtros ETL -->
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <h5 class="alert-heading">
+                <i class="fas fa-filter me-2"></i>
+                Filtros del Datawarehouse
+            </h5>
+            <p class="mb-2">
+                <strong>El datawarehouse solo contiene proyectos históricos (finalizados):</strong>
+            </p>
+            <ul class="mb-0">
+                <li>✅ <strong>Proyectos Completados</strong> - Finalizados exitosamente</li>
+                <li>✅ <strong>Proyectos Cancelados</strong> - Finalizados pero cancelados</li>
+                <li>❌ Proyectos en Progreso, Pendientes o en Pausa - NO se incluyen</li>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Metric Cards Row -->
+        <div class="metrics-grid">
+            <div class="metric-card metric-blue">
+                <div class="metric-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 id="total-proyectos-origen">0</h3>
+                    <p>Proyectos en Origen</p>
+                </div>
+            </div>
+            
+            <div class="metric-card metric-green">
+                <div class="metric-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 id="total-proyectos-dw">0</h3>
+                    <p>Proyectos en DW</p>
+                </div>
+            </div>
+            
+            <div class="metric-card metric-yellow">
+                <div class="metric-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 id="total-tareas">0</h3>
+                    <p>Total de Tareas</p>
+                </div>
+            </div>
+            
+            <div class="metric-card metric-red">
+                <div class="metric-icon">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 id="estado-etl">OK</h3>
+                    <p>Estado ETL</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Status Details -->
+        <div class="row mt-4">
             <div class="col-md-6">
-                <div class="card border-info">
-                    <div class="card-header bg-info text-white">
+                <div class="card">
+                    <div class="card-header">
                         <i class="fas fa-server me-2"></i>
                         Base de Datos Origen
                     </div>
@@ -59,8 +146,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card border-success">
-                    <div class="card-header bg-success text-white">
+                <div class="card">
+                    <div class="card-header">
                         <i class="fas fa-warehouse me-2"></i>
                         Datawarehouse
                     </div>
@@ -86,11 +173,11 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <button class="btn btn-primary w-100 btn-lg" onclick="insertarDatos()">
+                                <button class="btn btn-primary w-100 btn-lg" data-bs-toggle="modal" data-bs-target="#generarDatosModal">
                                     <i class="fas fa-plus-circle me-2"></i>
-                                    Insertar Datos
+                                    Generar Datos
                                 </button>
-                                <small class="text-muted d-block mt-1">Generar datos de prueba en BD origen</small>
+                                <small class="text-muted d-block mt-1">Crear datos de prueba personalizados</small>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <button class="btn btn-warning w-100 btn-lg" onclick="ejecutarETL()" id="btn-etl">
@@ -130,36 +217,23 @@
             </div>
         </div>
 
-        <!-- Datos de origen -->
+        <!-- Datos de origen - Todas las tablas -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <i class="fas fa-table me-2"></i>
-                        Datos de Origen (Últimos Proyectos)
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fas fa-database me-2"></i>
+                            Base de Datos Origen - Vista Previa de Todas las Tablas
+                        </span>
+                        <button class="btn btn-sm btn-light" onclick="cargarTodasTablasOrigen()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nombre</th>
-                                        <th>Cliente</th>
-                                        <th>Fecha Inicio</th>
-                                        <th>Presupuesto</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabla-origen">
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted">
-                                            <i class="fas fa-spinner fa-spin me-2"></i>
-                                            Cargando datos...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div class="card-body" id="todas-tablas-origen-container">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            Cargando datos...
                         </div>
                     </div>
                 </div>
@@ -170,9 +244,14 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        Métricas del Datawarehouse
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Métricas del Datawarehouse (Solo Proyectos Finalizados)
+                        </span>
+                        <button class="btn btn-sm btn-light" onclick="cargarMetricas()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="row" id="metricas-container">
@@ -181,7 +260,284 @@
                                 Cargando métricas...
                             </div>
                         </div>
+                        
+                        <!-- Tabla de proyectos en el DW -->
+                        <div class="mt-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-list me-2"></i>
+                                Proyectos en el Datawarehouse
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Proyecto</th>
+                                            <th>Estado</th>
+                                            <th>Tiempo</th>
+                                            <th>Dur. Plan</th>
+                                            <th>Dur. Real</th>
+                                            <th>Presup.</th>
+                                            <th>Presupuesto</th>
+                                            <th>Costo Real</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-datawarehouse">
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                                Cargando proyectos del datawarehouse...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        </div>
+        <!-- FIN SECCIÓN DASHBOARD -->
+
+        <!-- SECCIÓN: DATOS ORIGEN -->
+        <div id="section-datos-origen" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-database me-2"></i>
+                            Base de Datos Origen - Proyectos Recientes
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Cliente</th>
+                                            <th>Fecha Inicio</th>
+                                            <th>Presupuesto</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-origen-completa">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="spinner-border text-info" role="status"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN DATOS ORIGEN -->
+
+        <!-- SECCIÓN: CONTROL ETL -->
+        <div id="section-control-etl" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            <i class="fas fa-cogs me-2"></i>
+                            Panel de Control ETL
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <button class="btn btn-primary w-100 btn-lg" data-bs-toggle="modal" data-bs-target="#generarDatosModal">
+                                        <i class="fas fa-plus-circle me-2"></i>
+                                        Generar Datos
+                                    </button>
+                                    <small class="text-muted d-block mt-1">Crear datos de prueba personalizados</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <button class="btn btn-warning w-100 btn-lg" onclick="ejecutarETL()" id="btn-etl">
+                                        <i class="fas fa-sync-alt me-2"></i>
+                                        Ejecutar ETL
+                                    </button>
+                                    <small class="text-muted d-block mt-1">Transformar y cargar datos</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <button class="btn btn-danger w-100 btn-lg" onclick="limpiarDatos()">
+                                        <i class="fas fa-trash me-2"></i>
+                                        Limpiar Datos
+                                    </button>
+                                    <small class="text-muted d-block mt-1">Eliminar todos los datos</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <i class="fas fa-terminal me-2"></i>
+                            Logs de Ejecución
+                        </div>
+                        <div class="card-body">
+                            <div id="logs" class="bg-dark text-light p-3 rounded" style="height: 400px; overflow-y: auto; font-family: monospace;">
+                                <div class="text-success">[SYSTEM] Dashboard ETL iniciado</div>
+                                <div class="text-info">[INFO] Conectando con API backend...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN CONTROL ETL -->
+
+        <!-- SECCIÓN: DATAWAREHOUSE -->
+        <div id="section-datawarehouse" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="fas fa-warehouse me-2"></i>
+                            Proyectos en el Datawarehouse
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Proyecto</th>
+                                            <th>Estado</th>
+                                            <th>Cumplimiento Tiempo</th>
+                                            <th>Duración Plan</th>
+                                            <th>Duración Real</th>
+                                            <th>Cumplimiento Presup.</th>
+                                            <th>Presupuesto</th>
+                                            <th>Costo Real</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-datawarehouse-completa">
+                                        <tr>
+                                            <td colspan="9" class="text-center">
+                                                <div class="spinner-border text-success" role="status"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN DATAWAREHOUSE -->
+
+        <!-- SECCIÓN: ANÁLISIS -->
+        <div id="section-analisis" class="content-section" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Métricas Generales
+                        </div>
+                        <div class="card-body" id="metricas-analisis">
+                            <div class="text-center">
+                                <div class="spinner-border text-info" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Análisis de Desempeño
+                        </div>
+                        <div class="card-body" id="analisis-desempeno">
+                            <div class="text-center">
+                                <div class="spinner-border text-warning" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN ANÁLISIS -->
+        
+    </div>
+
+    <!-- Modal para Generar Datos -->
+    <div class="modal fade" id="generarDatosModal" tabindex="-1" aria-labelledby="generarDatosModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="generarDatosModalLabel">
+                        <i class="fas fa-database me-2"></i>
+                        Generar Datos de Prueba
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-4">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Configura la cantidad de registros que deseas generar en la base de datos origen.
+                    </p>
+                    
+                    <div class="mb-3">
+                        <label for="num-clientes" class="form-label">
+                            <i class="fas fa-building text-primary me-2"></i>
+                            <strong>Clientes</strong>
+                        </label>
+                        <input type="number" class="form-control" id="num-clientes" value="10" min="1" max="100">
+                        <small class="text-muted">Empresas o personas que contratan proyectos</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="num-empleados" class="form-label">
+                            <i class="fas fa-users text-success me-2"></i>
+                            <strong>Empleados</strong>
+                        </label>
+                        <input type="number" class="form-control" id="num-empleados" value="20" min="1" max="100">
+                        <small class="text-muted">Personal que trabaja en los proyectos</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="num-equipos" class="form-label">
+                            <i class="fas fa-users-cog text-warning me-2"></i>
+                            <strong>Equipos</strong>
+                        </label>
+                        <input type="number" class="form-control" id="num-equipos" value="5" min="1" max="20">
+                        <small class="text-muted">Grupos de trabajo</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="num-proyectos" class="form-label">
+                            <i class="fas fa-project-diagram text-danger me-2"></i>
+                            <strong>Proyectos</strong>
+                        </label>
+                        <input type="number" class="form-control" id="num-proyectos" value="50" min="1" max="200">
+                        <small class="text-muted">Proyectos completados o cancelados (con 8-12 tareas cada uno)</small>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Nota:</strong> Los proyectos generados serán solo <strong>Completados</strong> o <strong>Cancelados</strong> para ser compatibles con el DataWarehouse.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="generarDatosPersonalizados()">
+                        <i class="fas fa-magic me-2"></i>
+                        Generar Datos
+                    </button>
                 </div>
             </div>
         </div>
@@ -191,6 +547,6 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>

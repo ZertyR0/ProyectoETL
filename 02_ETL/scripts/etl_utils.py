@@ -175,6 +175,9 @@ def crear_dimension_tiempo(fecha_inicio: date, fecha_fin: date) -> pd.DataFrame:
         'numero_semana': fechas.isocalendar().week
     })
     
+    # Agregar ID único para cada fecha
+    dim_tiempo['id_tiempo'] = range(1, len(dim_tiempo) + 1)
+    
     # Marcar feriados comunes (simplificado)
     dim_tiempo['es_feriado'] = 0
     feriados_fijos = [
@@ -235,6 +238,8 @@ def generar_metricas_proyecto(df_proyecto: pd.DataFrame, df_tareas: pd.DataFrame
         'id_tarea': 'tareas_total',
         'horas_plan': 'horas_estimadas_total',
         'horas_reales': 'horas_reales_total',
+        'costo_estimado': 'costo_estimado_tareas',
+        'costo_real': 'costo_real_tareas',
         'id_estado': 'tareas_completadas'
     })
     
@@ -254,10 +259,15 @@ def generar_metricas_proyecto(df_proyecto: pd.DataFrame, df_tareas: pd.DataFrame
     
     # Rellenar valores nulos
     columnas_numericas = ['tareas_total', 'tareas_completadas', 'tareas_canceladas', 'tareas_pendientes',
-                         'horas_estimadas_total', 'horas_reales_total']
+                         'horas_estimadas_total', 'horas_reales_total', 'costo_estimado_tareas', 'costo_real_tareas']
     for col in columnas_numericas:
         if col in resultado.columns:
-            resultado[col] = resultado[col].fillna(0).astype(int)
+            resultado[col] = resultado[col].fillna(0)
+    
+    # IMPORTANTE: NO sobrescribir costo_real del proyecto
+    # El costo_real del proyecto viene de la tabla Proyecto y es el valor correcto
+    # El costo_real_tareas es solo la suma de costos de tareas individuales
+    # Mantener el costo_real original del proyecto
     
     logger.info(f"✅ Métricas generadas para {len(resultado)} proyectos")
     return resultado
