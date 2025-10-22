@@ -132,26 +132,64 @@ export ETL_DB_DESTINO=dw_proyectos_hist
 
 ### Configuración Distribuida (3 Máquinas)
 
+> **📖 Para guía completa:** Ver `GUIA_DESPLIEGUE_3_MAQUINAS.md`
+
 #### Máquina 1: Base de Datos Origen
 ```bash
 # IP: 172.26.163.200
-# Contiene: gestionproyectos_hist
+# Función: Almacena datos operacionales
+# Base de datos: gestionproyectos_hist
 # Usuario: etl_user / etl_password_123
+# Puerto: 3306
+
+# Configuración:
+sudo apt install mysql-server
+mysql -u root -p < 01_GestionProyectos/scripts/crear_bd_origen.sql
+python 01_GestionProyectos/scripts/generar_datos.py
 ```
 
-#### Máquina 2: Proceso ETL + Dashboard
+#### Máquina 2: Procesamiento ETL + Dashboard
 ```bash
 # IP: 172.26.163.201 (esta máquina)
-# Ejecuta: ETL + Dashboard
-# Se conecta a máquinas 1 y 3
+# Función: Ejecuta ETL y sirve dashboard web
+# Servicios: Python ETL + Flask API + Frontend
+# Puertos: 5001 (API), 8000 (Web)
+
+# Variables de ambiente:
+export ETL_AMBIENTE=distribuido
+export ETL_HOST_ORIGEN=172.26.163.200
+export ETL_HOST_DESTINO=172.26.164.100
+export ETL_USER_ORIGEN=etl_user
+export ETL_PASSWORD_ORIGEN=etl_password_123
+export ETL_USER_DESTINO=etl_user
+export ETL_PASSWORD_DESTINO=etl_password_123
+
+# Ejecución:
+python 02_ETL/scripts/etl_principal.py
+python 03_Dashboard/backend/app.py
 ```
 
 #### Máquina 3: Datawarehouse
 ```bash
 # IP: 172.26.164.100
-# Contiene: dw_proyectos_hist
+# Función: Almacén de datos para análisis
+# Base de datos: dw_proyectos_hist
 # Usuario: etl_user / etl_password_123
+# Puerto: 3306
+
+# Configuración:
+sudo apt install mysql-server
+mysql -u root -p < 04_Datawarehouse/scripts/crear_datawarehouse.sql
 ```
+
+#### Flujo de Datos Distribuido:
+```
+[Máq.1: BD Origen] ➜ [Máq.2: ETL Process] ➜ [Máq.3: Datawarehouse]
+    172.26.163.200          172.26.163.201         172.26.164.100
+         ↑                        ↓                       ↓
+   • Datos operac.          • Transform data         • Business Intel.
+   • Gestión proyectos      • Dashboard web          • Analytics
+   • MySQL Server           • API control            • Reports
 
 ## 📋 Componentes Principales
 

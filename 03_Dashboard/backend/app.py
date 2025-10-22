@@ -13,19 +13,48 @@ import json
 app = Flask(__name__)
 CORS(app)  # Permitir requests desde Angular
 
-# Configuración de la base de datos (LOCAL)
-DB_CONFIG = {
-    'host_origen': 'localhost',
-    'port_origen': 3306,
-    'user_origen': 'root',
-    'password_origen': '',
-    'host_destino': 'localhost',
-    'port_destino': 3306,
-    'user_destino': 'root',
-    'password_destino': '',
-    'db_origen': 'gestionproyectos_hist',
-    'db_destino': 'dw_proyectos_hist'
-}
+# Agregar path para importar configuración ETL
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '02_ETL', 'config'))
+
+try:
+    from config_conexion import get_config
+    # Obtener configuración según ambiente
+    AMBIENTE = os.getenv('ETL_AMBIENTE', 'local')
+    config = get_config(AMBIENTE)
+    
+    # Configuración unificada usando el sistema de configuración ETL
+    DB_CONFIG = {
+        'host_origen': config['host_origen'],
+        'port_origen': config['port_origen'],
+        'user_origen': config['user_origen'],
+        'password_origen': config['password_origen'],
+        'host_destino': config['host_destino'],
+        'port_destino': config['port_destino'],
+        'user_destino': config['user_destino'],
+        'password_destino': config['password_destino'],
+        'db_origen': config['database_origen'],
+        'db_destino': config['database_destino']
+    }
+    
+    print(f"🚀 Dashboard configurado para ambiente: {AMBIENTE}")
+    print(f"📊 BD Origen: {config['host_origen']}:{config['port_origen']}")
+    print(f"🏢 BD Destino: {config['host_destino']}:{config['port_destino']}")
+    
+except ImportError:
+    # Fallback a configuración local si no se puede importar
+    print("⚠️ No se pudo importar configuración ETL, usando configuración local")
+    DB_CONFIG = {
+        'host_origen': 'localhost',
+        'port_origen': 3306,
+        'user_origen': 'root',
+        'password_origen': '',
+        'host_destino': 'localhost',
+        'port_destino': 3306,
+        'user_destino': 'root',
+        'password_destino': '',
+        'db_origen': 'gestionproyectos_hist',
+        'db_destino': 'dw_proyectos_hist'
+    }
 
 def get_connection(db_type='origen'):
     """Obtener conexión a la base de datos"""
