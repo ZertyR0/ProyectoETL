@@ -1,6 +1,256 @@
-# ProyectoETL
+# Proyecto ETL Distribuido - Sistema de 3 Máquinas
 
-Sistema completo de ETL (Extract, Transform, Load) para gestión de proyectos con Data Warehouse.
+Este proyecto implementa un sistema ETL (Extract, Transform, Load) distribuido que opera en 3 máquinas independientes para procesar datos de gestión de proyectos.
+
+## 🏗️ Arquitectura del Sistema
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   MÁQUINA 1     │────▶│   MÁQUINA 2     │────▶│   MÁQUINA 3     │
+│ GestionProyectos│     │      ETL        │     │  Datawarehouse  │
+│                 │     │                 │     │                 │
+│ ┌─────────────┐ │     │ ┌─────────────┐ │     │ ┌─────────────┐ │
+│ │ MySQL       │ │     │ │ Python ETL  │ │     │ │ MySQL       │ │
+│ │ BD Origen   │ │     │ │ Procesador  │ │     │ │ BD Destino  │ │
+│ └─────────────┘ │     │ └─────────────┘ │     │ └─────────────┘ │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+      📊 Datos              ⚙️ Transformar           🏗️ Datawarehouse
+```
+
+## 📁 Estructura del Proyecto
+
+```
+ProyectoETL/
+├── README.md                           # Este archivo
+├── README_CONFIGURACION.md             # Guía detallada de configuración
+├── requirements.txt                    # Dependencias Python
+│
+├── GestionProyectos/                   # 📊 MÁQUINA 1
+│   ├── config_conexion.py             # Configuración de conexiones
+│   └── setup_servidor_bd.py           # Configurador automático BD origen
+│
+├── ETL/                               # ⚙️ MÁQUINA 2
+│   ├── etl_distribuido.py             # ETL principal para 3 máquinas
+│   ├── etl_principal.py               # ETL original (mejorado)
+│   ├── etl_remoto_portable.py         # ETL portable simplificado
+│   ├── servidor_etl_simple.py         # Servidor HTTP para ETL
+│   ├── setup_etl.py                   # Configurador automático ETL
+│   ├── setup_local.py                 # 🧪 Setup para pruebas locales
+│   ├── api_backend.py                 # 🌐 API Flask para dashboard
+│   └── web-dashboard/                 # 📊 Dashboard Web
+│       ├── index.html                 # Interface principal
+│       └── dashboard.js               # Lógica del dashboard
+│
+└── Datawarehouse/                     # 🏗️ MÁQUINA 3
+    ├── generacion_datos.py            # Generador de datos de prueba
+    ├── script_creacion_db.sql         # Script creación BD origen
+    ├── script_datawarehouse.sql       # Script creación datawarehouse
+    └── setup_datawarehouse.py         # Configurador automático DW
+```
+
+## 🚀 Configuración Rápida
+
+### 🧪 Opción 1: Prueba Local (Recomendada para desarrollo)
+
+**Una sola máquina - Todo local:**
+```bash
+cd ETL
+python3 setup_local.py
+```
+Este comando:
+- ✅ Instala dependencias automáticamente
+- ✅ Configura bases de datos locales
+- ✅ Genera datos de prueba
+- ✅ Ejecuta ETL de prueba
+- ✅ Inicia dashboard web en http://localhost:5000
+- ✅ Abre interfaz visual en navegador
+
+### 🏗️ Opción 2: Configuración Distribuida (3 máquinas)
+
+**Máquina 1 (GestionProyectos):**
+```bash
+cd GestionProyectos
+python3 setup_servidor_bd.py
+```
+
+**Máquina 2 (ETL):**
+```bash
+cd ETL
+python3 setup_etl.py
+```
+
+**Máquina 3 (Datawarehouse):**
+```bash
+cd Datawarehouse
+python3 setup_datawarehouse.py
+```
+
+### 📖 Opción 3: Configuración Manual
+
+Ver [README_CONFIGURACION.md](README_CONFIGURACION.md) para pasos detallados.
+
+## ⚡ Ejecución del ETL
+
+### 🧪 Modo Local (Desarrollo):
+```bash
+cd ETL
+python3 setup_local.py    # Setup completo con dashboard
+# O componentes individuales:
+python3 api_backend.py    # Solo API backend
+python3 etl_principal.py  # Solo ETL
+```
+
+### 🏗️ Modo Distribuido (Producción):
+```bash
+# Desde la Máquina ETL (Máquina 2):
+python3 etl_distribuido.py    # ETL distribuido
+python3 etl_remoto_portable.py # ETL portable alternativo
+```
+
+### 🌐 Dashboard Web:
+- **Local:** http://localhost:5000 (se abre automáticamente)
+- **API Endpoints:** http://localhost:5000/api/status
+- **Dashboard:** Abrir `ETL/web-dashboard/index.html` en navegador
+
+### 📡 Via HTTP (opcional):
+```bash
+# Iniciar servidor ETL
+python3 servidor_etl_simple.py
+
+# Ejecutar ETL remotamente
+curl -X POST http://IP_MAQUINA_2:8081/ejecutar-etl
+```
+
+## 🔧 Configuración de Red
+
+### IPs de Ejemplo:
+- **Máquina 1:** `192.168.1.100` (GestionProyectos)
+- **Máquina 2:** `192.168.1.101` (ETL)
+- **Máquina 3:** `192.168.1.102` (Datawarehouse)
+
+### Puertos:
+- **3306/TCP:** MySQL (Máquinas 1 y 3)
+- **8081/TCP:** Servidor ETL HTTP (Máquina 2, opcional)
+
+### Usuarios BD:
+- **Usuario:** `etl_user`
+- **Password:** `etl_password_123`
+
+## 📊 Bases de Datos
+
+### Base Origen (Máquina 1): `gestionproyectos_hist`
+- **Cliente:** Información de clientes
+- **Empleado:** Datos de empleados
+- **Equipo:** Equipos de trabajo
+- **Estado:** Estados de proyectos/tareas
+- **Proyecto:** Proyectos con fechas y costos
+- **Tarea:** Tareas individuales de proyectos
+- **TareaEquipoHist:** Historial de asignaciones
+
+### Datawarehouse (Máquina 3): `dw_proyectos_hist`
+- **DimCliente, DimEmpleado, DimEquipo:** Dimensiones
+- **DimProyecto:** Dimensión de proyectos
+- **DimTiempo:** Dimensión temporal
+- **HechoProyecto:** Métricas de proyectos
+- **HechoTarea:** Métricas de tareas
+
+## 🔍 Verificación del Sistema
+
+### Comprobar Conectividad:
+```bash
+# Desde Máquina 2 hacia Máquina 1
+telnet 192.168.1.100 3306
+
+# Desde Máquina 2 hacia Máquina 3
+telnet 192.168.1.102 3306
+```
+
+### Verificar Datos:
+```sql
+-- En origen (Máquina 1)
+SELECT COUNT(*) FROM gestionproyectos_hist.Proyecto;
+
+-- En destino (Máquina 3)
+SELECT COUNT(*) FROM dw_proyectos_hist.HechoProyecto;
+```
+
+## 📋 Requisitos
+
+### Software:
+- **Python 3.6+** (Máquina 2)
+- **MySQL/XAMPP** (Máquinas 1 y 3)
+
+### Dependencias Python:
+```bash
+# Instalación automática en setup_local.py, o manual:
+pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors faker
+```
+
+### Red:
+- Conectividad TCP entre las 3 máquinas
+- Puertos MySQL (3306) abiertos
+- Permisos de firewall configurados
+
+## 🛠️ Solución de Problemas
+
+### Error de Conexión:
+1. Verificar que MySQL esté funcionando
+2. Comprobar conectividad de red
+3. Revisar configuración de firewall
+4. Verificar usuarios y permisos MySQL
+
+### Sin Datos en Origen:
+1. Ejecutar `generacion_datos.py` en Máquina 1
+2. Verificar que hay proyectos cerrados
+3. Comprobar estructura de base de datos
+
+### ETL Falla:
+1. Verificar conectividad a ambas máquinas
+2. Comprobar permisos de usuario `etl_user`
+3. Revisar logs de error en consola
+4. Verificar estructura del datawarehouse
+
+## 🎯 Características del Dashboard Web
+
+### 📊 Interface Visual Completa:
+- **Dashboard Principal:** Métricas en tiempo real y gráficos
+- **Datos Origen:** Visualización de tablas de la BD transaccional
+- **Control ETL:** Ejecución visual del ETL con logs en tiempo real
+- **DataWarehouse:** Exploración de dimensiones y hechos
+- **Análisis:** Reportes y gráficos de cumplimiento
+
+### 🎮 Controles Interactivos:
+- ✅ **Generar Datos:** Botón para crear datos de prueba
+- ✅ **Ejecutar ETL:** Control visual con barra de progreso
+- ✅ **Visualizar Resultados:** Tablas dinámicas y gráficos
+- ✅ **Monitoreo:** Estado de conexiones en tiempo real
+- ✅ **Logs ETL:** Console log de la ejecución ETL
+
+### 📱 Responsive Design:
+- Interface adaptable a desktop y móvil
+- Navegación por tabs y secciones
+- Gráficos interactivos con Chart.js
+- Bootstrap 5 para styling moderno
+
+## 🔒 Seguridad
+
+- Cambiar passwords por defecto en producción
+- Usar VPN para conexiones entre máquinas
+- Configurar firewall restrictivo
+- Monitorear conexiones MySQL
+- Realizar backups regulares
+
+## 📚 Documentación Adicional
+
+- [README_CONFIGURACION.md](README_CONFIGURACION.md) - Guía detallada de configuración
+- Comentarios en código fuente para lógica específica
+- Scripts de configuración automática incluidos
+
+---
+
+**Versión:** 1.0  
+**Autor:** Sistema ETL Distribuido  
+**Fecha:** Octubre 2025
 
 ## 📋 Descripción
 

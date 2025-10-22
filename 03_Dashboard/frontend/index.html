@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETL Dashboard - Sistema Distribuido</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-database me-2"></i>
+                ETL Dashboard
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="navbar-text" id="connection-status">
+                            <i class="fas fa-circle text-warning"></i> Verificando conexión...
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header con estadísticas -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-4 text-center mb-4">
+                    <i class="fas fa-cogs text-primary"></i>
+                    Sistema ETL Distribuido
+                </h1>
+            </div>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-server me-2"></i>
+                        Base de Datos Origen
+                    </div>
+                    <div class="card-body" id="origen-status">
+                        <div class="text-center">
+                            <div class="spinner-border text-info" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-warehouse me-2"></i>
+                        Datawarehouse
+                    </div>
+                    <div class="card-body" id="destino-status">
+                        <div class="text-center">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-control me-2"></i>
+                        Panel de Control ETL
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-primary w-100 btn-lg" onclick="insertarDatos()">
+                                    <i class="fas fa-plus-circle me-2"></i>
+                                    Insertar Datos
+                                </button>
+                                <small class="text-muted d-block mt-1">Generar datos de prueba en BD origen</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-warning w-100 btn-lg" onclick="ejecutarETL()" id="btn-etl">
+                                    <i class="fas fa-sync-alt me-2"></i>
+                                    Ejecutar ETL
+                                </button>
+                                <small class="text-muted d-block mt-1">Transformar y cargar datos</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-danger w-100 btn-lg" onclick="limpiarDatos()">
+                                    <i class="fas fa-trash me-2"></i>
+                                    Limpiar Datos
+                                </button>
+                                <small class="text-muted d-block mt-1">Eliminar todos los datos</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs y resultados -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-terminal me-2"></i>
+                        Logs de Ejecución
+                    </div>
+                    <div class="card-body">
+                        <div id="logs" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto; font-family: monospace;">
+                            <div class="text-success">[SYSTEM] Dashboard ETL iniciado</div>
+                            <div class="text-info">[INFO] Conectando con API backend...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos de origen -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-table me-2"></i>
+                        Datos de Origen (Últimos Proyectos)
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre</th>
+                                        <th>Cliente</th>
+                                        <th>Fecha Inicio</th>
+                                        <th>Presupuesto</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-origen">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>
+                                            Cargando datos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Métricas del datawarehouse -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Métricas del Datawarehouse
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="metricas-container">
+                            <div class="col-12 text-center text-muted">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                Cargando métricas...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

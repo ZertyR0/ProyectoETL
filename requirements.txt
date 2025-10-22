@@ -1,3 +1,22 @@
-pandas>=1.5.0
-sqlalchemy>=1.4.0
-mysql-connector-python>=8.0.0
+# Dependencias principales del Sistema ETL Distribuido
+# ===================================================
+
+# Core dependencies
+pandas==2.1.4
+numpy==1.25.2
+sqlalchemy==2.0.23
+
+# Database connectors
+mysql-connector-python==8.2.0
+
+# Web API dependencies
+flask==3.0.0
+flask-cors==4.0.0
+
+# Data generation
+faker==20.1.0
+
+# Utilities
+python-dotenv==1.0.0
+openpyxl==3.1.2
+psutil==5.9.6
