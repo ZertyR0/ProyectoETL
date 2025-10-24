@@ -1,0 +1,13 @@
+# Dependencias del Módulo 1: Base de Datos de Gestión (Origen)
+
+# Conexión a MySQL
+mysql-connector-python==9.4.0
+
+# Generación de datos de prueba
+Faker==37.11.0
+
+# Manejo de variables de entorno
+python-dotenv==1.0.0
+
+# Utilidades
+colorama==0.4.6

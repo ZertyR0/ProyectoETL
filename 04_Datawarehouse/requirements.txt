@@ -1,0 +1,17 @@
+# Dependencias del Módulo 3: Data Warehouse
+
+# Conexión a MySQL
+mysql-connector-python==9.4.0
+
+# Procesamiento de datos
+pandas==2.2.0
+numpy==1.26.0
+
+# ORM y conexiones
+sqlalchemy==2.0.44
+
+# Manejo de variables de entorno
+python-dotenv==1.0.0
+
+# Utilidades
+colorama==0.4.6

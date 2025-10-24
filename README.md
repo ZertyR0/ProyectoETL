@@ -2,26 +2,534 @@
 
 Sistema completo de ETL (Extract, Transform, Load) con Data Warehouse y Dashboard Web interactivo.
 
+## 📦 Proyecto Modular - 3 Módulos Independientes
+
+Este proyecto está estructurado en **3 módulos completamente independientes** que pueden ser:
+- ✅ Enviados por separado
+- ✅ Instalados independientemente  
+- ✅ Desplegados en máquinas diferentes
+- ✅ Mantenidos de forma aislada
+
+### Los 3 Módulos:
+
+| Módulo | Carpeta | Descripción | Independiente |
+|--------|---------|-------------|---------------|
+| **1** | `01_GestionProyectos/` | Base de Datos Transaccional (OLTP) | ✅ Sí |
+| **2** | `03_Dashboard/` | Dashboard Web (Frontend + Backend Flask) | ⚠️  Requiere Módulos 1 y 3 |
+| **3** | `04_Datawarehouse/` | Data Warehouse + ETL | ⚠️  Requiere Módulo 1 |
+
+### 📖 Documentación de Módulos:
+
+- **[RESUMEN_MODULAR.md](RESUMEN_MODULAR.md)** - ⭐ Empieza aquí: Resumen ejecutivo
+- **[GUIA_MODULOS_INDEPENDIENTES.md](GUIA_MODULOS_INDEPENDIENTES.md)** - Guía completa de uso
+- **[VERIFICACION_MODULOS.md](VERIFICACION_MODULOS.md)** - Checklist de independencia
+- **[INDICE_MODULAR.md](INDICE_MODULAR.md)** - Índice completo de documentación
+
+---
+
 ## ⚡ Inicio Rápido
 
+# Sistema ETL de Gestión de Proyectos con Seguridad Avanzada
+
+## 🎯 Descripción del Proyecto
+
+Sistema completo de **ETL (Extract, Transform, Load)** para gestión de proyectos históricos con implementación de seguridad mediante **Stored Procedures** y **Triggers**, incluyendo un **Dashboard Web** interactivo para monitoreo y análisis.
+
+### Características Principales
+
+- ✅ **Seguridad por Diseño**: Todo el acceso a datos mediante stored procedures
+- ✅ **Trazabilidad Completa**: Sistema de auditoría con triggers automáticos
+- ✅ **ETL Robusto**: Transformación y carga de datos con validaciones
+- ✅ **Dashboard Interactivo**: Visualización en tiempo real con gráficos
+- ✅ **Multi-entorno**: Configuración para desarrollo y producción
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+ProyectoETL/
+│
+├── 01_GestionProyectos/        # Base de datos origen
+│   ├── scripts/                 # Scripts SQL y Python
+│   │   ├── crear_bd_origen.sql
+│   │   ├── generar_datos.py
+│   │   ├── procedimientos_seguros.sql
+│   │   └── generar_datos_seguro.py
+│   └── datos/                   # Datos generados
+│
+├── 02_ETL/                      # Proceso ETL
+│   ├── config/                  # Configuraciones
+│   │   └── config_conexion.py
+│   └── scripts/                 # Scripts ETL
+│       ├── etl_principal.py
+│       ├── etl_principal_seguro.py
+│       ├── etl_utils.py
+│       └── procedimientos_etl.sql
+│
+├── 03_Dashboard/               # Dashboard Web
+│   ├── backend/                # API Flask
+│   │   ├── app.py
+│   │   └── requirements.txt
+│   └── frontend/               # Interfaz HTML/CSS/JS
+│       ├── index.html
+│       ├── app.js
+│       └── styles.css
+│
+├── 04_Datawarehouse/           # Data Warehouse destino
+│   └── scripts/                # Scripts SQL
+│       ├── crear_datawarehouse.sql
+│       ├── procedimientos_seguros_dw.sql
+│       └── consultas_analisis.sql
+│
+└── docs/                       # Documentación completa
+    ├── guias/                  # Guías de usuario
+    ├── configuracion/          # Documentación técnica
+    ├── analisis/               # Análisis y mejoras
+    ├── seguridad/              # Documentación de seguridad
+    └── resumen/                # Resúmenes ejecutivos
+```
+
+---
+
+## 🚀 Inicio Rápido
+
+### Pre-requisitos
+
+- Python 3.8+
+- MySQL 8.0+
+- pip (gestor de paquetes Python)
+
+### Instalación Rápida
+
 ```bash
-# 1. Configurar todo (solo la primera vez)
+# 1. Clonar el repositorio
+git clone <repository-url>
+cd ProyectoETL
+
+# 2. Instalar dependencias
+pip install -r requirements.txt
+
+# 3. Configurar base de datos
 ./setup_local.sh
 
-# 2. Iniciar el dashboard
+# 4. Iniciar el dashboard
 ./iniciar_dashboard.sh
-
-# 3. Abrir en el navegador: http://localhost:8080
-
-# 4. Detener cuando termines
-./detener_dashboard.sh
 ```
+
+### Acceso al Dashboard
+
+Después de iniciar, accede a:
+- **Frontend**: http://localhost:8080/index.html
+- **Backend API**: http://localhost:5001
+
+---
+
+## 📚 Documentación
+
+### Guías Principales
+
+| Documento | Descripción | Ubicación |
+|-----------|-------------|-----------|
+| **Inicio Rápido** | Guía para empezar en 5 minutos | [docs/guias/INICIO_RAPIDO.md](docs/guias/INICIO_RAPIDO.md) |
+| **Guía Local** | Instalación y prueba local | [docs/guias/GUIA_PRUEBA_LOCAL.md](docs/guias/GUIA_PRUEBA_LOCAL.md) |
+| **Guía Distribuida** | Despliegue en 3 máquinas | [docs/guias/GUIA_DESPLIEGUE_3_MAQUINAS.md](docs/guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) |
+| **Ejemplos de Uso** | Casos prácticos | [docs/guias/EJEMPLOS_USO.md](docs/guias/EJEMPLOS_USO.md) |
+| **Guía de Datos** | Estructura de datos origen | [docs/guias/GUIA_DATOS_ORIGEN.md](docs/guias/GUIA_DATOS_ORIGEN.md) |
+
+### Documentación Técnica
+
+| Categoría | Documentos | Ubicación |
+|-----------|-----------|-----------|
+| **Configuración** | README completo, configuración avanzada | [docs/configuracion/](docs/configuracion/) |
+| **Análisis** | Consistencia BD, correcciones, filtros | [docs/analisis/](docs/analisis/) |
+| **Resumen** | Resumen de archivos e implementación | [docs/resumen/](docs/resumen/) |
+
+### Documentación por Componente
+
+- **01_GestionProyectos**: [01_GestionProyectos/README.md](01_GestionProyectos/README.md)
+- **02_ETL**: [02_ETL/README.md](02_ETL/README.md)
+- **03_Dashboard**: [03_Dashboard/README.md](03_Dashboard/README.md)
+- **04_Datawarehouse**: [04_Datawarehouse/README.md](04_Datawarehouse/README.md)
+
+---
+
+## 🔐 Seguridad
+
+El sistema implementa múltiples capas de seguridad:
+
+1. **Stored Procedures**: Todo el acceso a datos es mediante procedures
+2. **Triggers de Auditoría**: Registro automático de todas las operaciones
+3. **Validación de Datos**: Validaciones antes de insertar/actualizar
+4. **Control de Acceso**: Permisos granulares por tabla y operación
+5. **Trazabilidad**: Logs completos de todas las transacciones
+
+### Scripts de Seguridad
+
+- `01_GestionProyectos/scripts/procedimientos_seguros.sql` - Procedures BD origen
+- `02_ETL/scripts/procedimientos_etl.sql` - Procedures para ETL
+- `04_Datawarehouse/scripts/procedimientos_seguros_dw.sql` - Procedures DW
+- `verificar_trazabilidad_seguro.py` - Verificación de auditoría
+
+---
+
+## 📊 Funcionalidades del Dashboard
+
+### Visualizaciones Disponibles
+
+- 📈 **Estadísticas Generales**: Total de proyectos, empleados, tareas
+- 📊 **Gráficos Interactivos**: 
+  - Distribución de proyectos por estado
+  - Asignación de empleados por departamento
+  - Evolución temporal de proyectos
+- 🔄 **Operaciones ETL**: Ejecución y monitoreo en tiempo real
+- 🗄️ **Gestión de Datos**: Generación y limpieza de datos de prueba
+
+### Operaciones Disponibles
+
+- ✅ Visualizar datos de origen y Data Warehouse
+- ✅ Ejecutar proceso ETL manualmente
+- ✅ Generar datos de prueba
+- ✅ Limpiar bases de datos
+- ✅ Monitorear estado del sistema
+
+---
+
+## 🛠️ Scripts de Utilidad
+
+### Scripts de Instalación
+
+| Script | Descripción | Uso |
+|--------|-------------|-----|
+| `setup_local.sh` | Configuración completa local | `./setup_local.sh` |
+| `setup_proyecto.py` | Instalación automatizada Python | `python setup_proyecto.py` |
+| `instalar_sistema_seguro.sh` | Instalación con seguridad | `./instalar_sistema_seguro.sh` |
+
+### Scripts de Operación
+
+| Script | Descripción | Uso |
+|--------|-------------|-----|
+| `iniciar_dashboard.sh` | Iniciar backend y frontend | `./iniciar_dashboard.sh` |
+| `detener_dashboard.sh` | Detener todos los servicios | `./detener_dashboard.sh` |
+| `verificar_sistema.sh` | Verificar estado del sistema | `./verificar_sistema.sh` |
+| `configurar_distribuido.sh` | Configurar ambiente distribuido | `./configurar_distribuido.sh` |
+
+### Scripts de Validación
+
+| Script | Descripción | Uso |
+|--------|-------------|-----|
+| `validar_consistencia.py` | Validar consistencia de datos | `python validar_consistencia.py` |
+| `verificar_distribuido.py` | Verificar configuración distribuida | `python verificar_distribuido.py` |
+| `verificar_trazabilidad_seguro.py` | Verificar auditoría | `python verificar_trazabilidad_seguro.py` |
+
+---
+
+## 📋 Flujo de Trabajo Típico
+
+### 1. Instalación Inicial
+
+```bash
+# Instalar sistema completo
+./setup_local.sh
+
+# O usar el instalador Python
+python setup_proyecto.py
+```
+
+### 2. Generar Datos de Prueba
+
+```bash
+# Opción A: Usar script directo
+cd 01_GestionProyectos/scripts
+python generar_datos_seguro.py
+
+# Opción B: Desde el dashboard
+# Acceder a http://localhost:8080 y usar "Generar Datos"
+```
+
+### 3. Ejecutar ETL
+
+```bash
+# Opción A: Script directo
+cd 02_ETL/scripts
+python etl_principal_seguro.py
+
+# Opción B: Desde el dashboard
+# Usar el botón "Ejecutar ETL"
+```
+
+### 4. Analizar Resultados
+
+```bash
+# Ver dashboard
+http://localhost:8080/index.html
+
+# O ejecutar consultas SQL directamente
+mysql -u root -p < 04_Datawarehouse/scripts/consultas_analisis.sql
+```
+
+### 5. Verificar Trazabilidad
+
+```bash
+# Verificar auditoría
+python verificar_trazabilidad_seguro.py
+```
+
+---
+
+## 🔧 Configuración
+
+### Configuración de Base de Datos
+
+Editar: `02_ETL/config/config_conexion.py`
+
+```python
+ORIGEN_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'tu_password',
+    'database': 'gestionproyectos_hist'
+}
+
+DESTINO_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'tu_password',
+    'database': 'dw_proyectos_hist'
+}
+```
+
+### Configuración del Dashboard
+
+Editar: `03_Dashboard/frontend/app.js`
+
+```javascript
+const API_BASE_URL = 'http://localhost:5001';
+```
+
+---
+
+## 📝 Mantenimiento
+
+### Limpieza de Datos
+
+```bash
+# Desde el dashboard: Usar botón "Limpiar Datos"
+
+# O desde terminal
+mysql -u root -p gestionproyectos_hist -e "
+CALL LimpiarProyectos();
+CALL LimpiarEmpleados();
+CALL LimpiarClientes();
+"
+```
+
+### Actualización de Dependencias
+
+```bash
+pip install -r requirements.txt --upgrade
+```
+
+### Backup de Base de Datos
+
+```bash
+# Backup BD Origen
+mysqldump -u root -p gestionproyectos_hist > backup_origen.sql
+
+# Backup Data Warehouse
+mysqldump -u root -p dw_proyectos_hist > backup_dw.sql
+```
+
+---
+
+## 🐛 Solución de Problemas
+
+### El Dashboard no Inicia
+
+```bash
+# Verificar que los puertos estén libres
+lsof -i :5001  # Backend
+lsof -i :8080  # Frontend
+
+# Si están ocupados, matar procesos
+lsof -ti:5001 | xargs kill -9
+lsof -ti:8080 | xargs kill -9
+
+# Reiniciar dashboard
+./iniciar_dashboard.sh
+```
+
+### Error de Conexión a MySQL
+
+```bash
+# Verificar que MySQL esté corriendo
+mysql -u root -p
+
+# Verificar configuración
+cat 02_ETL/config/config_conexion.py
+```
+
+### ETL Falla
+
+```bash
+# Verificar logs
+tail -f /tmp/backend_flask.log
+
+# Verificar datos de origen
+python validar_consistencia.py
+```
+
+---
+
+## 📈 Métricas del Sistema
+
+### Base de Datos Origen
+
+- Proyectos históricos con múltiples versiones
+- Empleados con roles y departamentos
+- Clientes con información de contacto
+- Tareas con asignaciones y estados
+
+### Data Warehouse
+
+- Dimensiones: Proyectos, Empleados, Clientes, Tiempo
+- Hechos: Proyectos, Tareas
+- Agregaciones y métricas calculadas
+
+### Dashboard
+
+- Visualizaciones en tiempo real
+- Gráficos interactivos con Chart.js
+- API RESTful con Flask
+- Frontend responsivo con Bootstrap
+
+---
+
+## 🤝 Contribución
+
+Para contribuir al proyecto:
+
+1. Fork del repositorio
+2. Crear rama de feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit de cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
+
+---
+
+## 📞 Soporte
+
+Para reportar problemas o solicitar ayuda:
+
+1. Revisar la documentación en [docs/](docs/)
+2. Consultar ejemplos en [docs/guias/EJEMPLOS_USO.md](docs/guias/EJEMPLOS_USO.md)
+3. Verificar logs del sistema
+4. Contactar al equipo de desarrollo
+
+---
+
+## 🎓 Recursos Adicionales
+
+### Tutoriales
+
+- [Guía de Inicio Rápido](docs/guias/INICIO_RAPIDO.md) - 5 minutos
+- [Guía de Prueba Local](docs/guias/GUIA_PRUEBA_LOCAL.md) - 15 minutos
+- [Guía de Despliegue Distribuido](docs/guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) - 30 minutos
+
+### Referencias
+
+- [Resumen de Implementación](docs/resumen/RESUMEN_IMPLEMENTACION.md)
+- [Análisis de Consistencia](docs/analisis/ANALISIS_CONSISTENCIA_BD.md)
+- [Filtros ETL](docs/analisis/FILTROS_ETL_DATAWAREHOUSE.md)
+
+---
+
+## ✨ Últimas Actualizaciones
+
+- ✅ Sistema de seguridad con stored procedures
+- ✅ Dashboard web completo
+- ✅ Documentación reorganizada
+- ✅ Scripts de instalación automatizados
+- ✅ Sistema de trazabilidad completo
+
+---
+
+## 📄 Licencia
+
+Este proyecto es parte de un sistema académico/empresarial de gestión de proyectos.
+
+---
+
+**¡Gracias por usar nuestro Sistema ETL de Gestión de Proyectos!** 🚀
 
 **[📖 Ver Guía de Inicio Rápido Completa →](INICIO_RAPIDO.md)**
 
 ---
 
-## 📚 Documentación
+## � Instalación por Módulos
+
+### Opción 1: Instalación de Todos los Módulos (Local)
+
+```bash
+# Módulo 1: Base de Datos
+cd 01_GestionProyectos
+./setup_bd_origen.sh
+
+# Módulo 3: Data Warehouse (requiere Módulo 1)
+cd ../04_Datawarehouse
+./setup_dw.sh
+python etl/etl_principal.py  # Cargar datos
+
+# Módulo 2: Dashboard (requiere Módulos 1 y 3)
+cd ../03_Dashboard
+./setup_dashboard.sh
+./iniciar_dashboard.sh
+```
+
+Acceder al dashboard: **http://localhost:8080/index.html**
+
+### Opción 2: Instalación Individual
+
+#### Solo Módulo 1 (BD Origen):
+```bash
+cd 01_GestionProyectos
+./setup_bd_origen.sh
+```
+Ver: **[01_GestionProyectos/INSTALACION.md](01_GestionProyectos/INSTALACION.md)**
+
+#### Solo Módulo 2 (Dashboard):
+```bash
+cd 03_Dashboard
+./setup_dashboard.sh
+# Configurar .env con IPs de Módulos 1 y 3
+./iniciar_dashboard.sh
+```
+Ver: **[03_Dashboard/INSTALACION.md](03_Dashboard/INSTALACION.md)**
+
+#### Solo Módulo 3 (Data Warehouse):
+```bash
+cd 04_Datawarehouse
+./setup_dw.sh
+# Configurar .env con IP de Módulo 1
+python etl/etl_principal.py
+```
+Ver: **[04_Datawarehouse/INSTALACION.md](04_Datawarehouse/INSTALACION.md)**
+
+### Opción 3: Empaquetar para Envío
+
+```bash
+# Crear ZIPs de cada módulo
+./empaquetar_modulos.sh
+
+# Se crean en: modulos_empaquetados/
+# - Modulo1_BD_Origen.zip
+# - Modulo2_Dashboard.zip
+# - Modulo3_DataWarehouse.zip
+```
+
+---
+
+## �📚 Documentación
 
 | Documento | Descripción |
 |-----------|-------------|

@@ -68,14 +68,14 @@ CREATE TABLE DimProyecto (
   id_proyecto       INT PRIMARY KEY,
   nombre_proyecto   VARCHAR(150) NOT NULL,
   descripcion       TEXT,
-  fecha_inicio_plan DATE,
+  fecha_inicio      DATE,
   fecha_fin_plan    DATE,
   presupuesto_plan  DECIMAL(12,2) DEFAULT 0,
   prioridad         VARCHAR(20),
   fecha_carga       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   
-  INDEX idx_dim_proyecto_fechas (fecha_inicio_plan, fecha_fin_plan),
+  INDEX idx_dim_proyecto_fechas (fecha_inicio, fecha_fin_plan),
   INDEX idx_dim_proyecto_prioridad (prioridad)
 ) ENGINE=InnoDB;
 

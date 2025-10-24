@@ -249,7 +249,10 @@ class ETLProyectos:
             'id_proyecto', 'nombre', 'descripcion', 'fecha_inicio', 
             'fecha_fin_plan', 'presupuesto', 'prioridad'
         ]].copy()
-        self.dim_proyecto.rename(columns={'nombre': 'nombre_proyecto', 'presupuesto': 'presupuesto_plan'}, inplace=True)
+        self.dim_proyecto.rename(columns={
+            'nombre': 'nombre_proyecto', 
+            'presupuesto': 'presupuesto_plan'
+        }, inplace=True)
     
     def preparar_hechos(self):
         """Preparar tablas de hechos con métricas calculadas"""

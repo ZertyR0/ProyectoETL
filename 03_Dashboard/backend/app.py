@@ -590,7 +590,7 @@ def generar_datos():
             email_cli = fake.company_email()[:100]
             direccion_cli = fake.address().replace('\n', ', ')[:200]
             cur.execute(
-                "INSERT INTO cliente (nombre, sector, contacto, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
+                "INSERT INTO Cliente (nombre, sector, contacto, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
                 (nombre_cli, sector_cli, contacto_cli, tel_cli, email_cli, direccion_cli)
             )
             clientes_creados += 1
@@ -618,14 +618,14 @@ def generar_datos():
             fecha_ing = fake.date_between(start_date="-3650d", end_date="-180d")  # Entre 10 años y 6 meses atrás
             
             cur.execute(
-                "INSERT INTO empleado (nombre, puesto, departamento, salario_base, fecha_ingreso) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO Empleado (nombre, puesto, departamento, salario_base, fecha_ingreso) VALUES (%s, %s, %s, %s, %s)",
                 (nombre_emp, puesto_emp, depto_emp, salario, fecha_ing)
             )
             empleados_creados += 1
         
         # 3. Insertar Equipos
         # Obtener el último número de equipo existente
-        cur.execute("SELECT COUNT(*) FROM equipo")
+        cur.execute("SELECT COUNT(*) FROM Equipo")
         equipos_existentes = cur.fetchone()[0]
         inicio_equipo = equipos_existentes + 1
         
@@ -633,22 +633,22 @@ def generar_datos():
             nombre_eq = f"Equipo {i}"
             desc_eq = fake.catch_phrase()[:200]
             cur.execute(
-                "INSERT INTO equipo (nombre_equipo, descripcion) VALUES (%s, %s)",
+                "INSERT INTO Equipo (nombre_equipo, descripcion) VALUES (%s, %s)",
                 (nombre_eq, desc_eq)
             )
             equipos_creados += 1
         
         # 4. Verificar/Insertar Estados
-        cur.execute("SELECT COUNT(*) FROM estado")
+        cur.execute("SELECT COUNT(*) FROM Estado")
         if cur.fetchone()[0] == 0:
             estados = ["Pendiente", "En Progreso", "Completado", "Cancelado"]
             for estado in estados:
-                cur.execute("INSERT INTO estado (nombre_estado) VALUES (%s)", (estado,))
+                cur.execute("INSERT INTO Estado (nombre_estado) VALUES (%s)", (estado,))
         
         # 5. Insertar MiembroEquipo
-        cur.execute("SELECT id_empleado FROM empleado")
+        cur.execute("SELECT id_empleado FROM Empleado")
         id_empleados = [row[0] for row in cur.fetchall()]
-        cur.execute("SELECT id_equipo FROM equipo")
+        cur.execute("SELECT id_equipo FROM Equipo")
         id_equipos = [row[0] for row in cur.fetchall()]
         
         roles = ["Developer", "Analista", "QA", "Líder de Equipo", "Scrum Master"]
@@ -659,18 +659,18 @@ def generar_datos():
                 fin = None if random.random() < 0.5 else fake.date_between(start_date=inicio, end_date="+180d")
                 rol = random.choice(roles)
                 cur.execute(
-                    "INSERT INTO miembroequipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, rol_miembro) VALUES (%s, %s, %s, %s, %s)",
+                    "INSERT INTO MiembroEquipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, rol_miembro) VALUES (%s, %s, %s, %s, %s)",
                     (id_eq, id_emp, inicio, fin, rol)
                 )
         
         # 6. Generar Proyectos con estados aleatorios (el ETL filtrará los necesarios)
-        cur.execute("SELECT id_cliente FROM cliente")
+        cur.execute("SELECT id_cliente FROM Cliente")
         CLIENTES = [r[0] for r in cur.fetchall()]
-        cur.execute("SELECT id_empleado FROM empleado")
+        cur.execute("SELECT id_empleado FROM Empleado")
         EMPLEADOS = [r[0] for r in cur.fetchall()]
-        cur.execute("SELECT id_equipo FROM equipo")
+        cur.execute("SELECT id_equipo FROM Equipo")
         EQUIPOS = [r[0] for r in cur.fetchall()]
-        cur.execute("SELECT id_estado FROM estado")
+        cur.execute("SELECT id_estado FROM Estado")
         TODOS_ESTADOS = [r[0] for r in cur.fetchall()]
         
         for _ in range(num_proyectos):
@@ -678,7 +678,7 @@ def generar_datos():
             id_gerente = random.choice(EMPLEADOS)
             # 60% Completado/Cancelado, 40% otros estados (para tener variedad)
             if random.random() < 0.6:
-                cur.execute("SELECT id_estado FROM estado WHERE nombre_estado IN ('Completado','Cancelado')")
+                cur.execute("SELECT id_estado FROM Estado WHERE nombre_estado IN ('Completado','Cancelado')")
                 estados_finalizados = [r[0] for r in cur.fetchall()]
                 id_estado_proj = random.choice(estados_finalizados) if estados_finalizados else random.choice(TODOS_ESTADOS)
             else:
@@ -705,7 +705,7 @@ def generar_datos():
             costo_real = round(presupuesto * random.uniform(0.9, 1.2), 2)
             
             cur.execute(
-                "INSERT INTO proyecto (id_cliente, nombre, descripcion, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado, id_empleado_gerente) "
+                "INSERT INTO Proyecto (id_cliente, nombre, descripcion, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado, id_empleado_gerente) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (id_cliente, nombre_proj, desc_proj, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado_proj, id_gerente)
             )
@@ -737,7 +737,7 @@ def generar_datos():
                 descripcion_tarea = fake.sentence(nb_words=8)[:200]
                 
                 cur.execute(
-                    "INSERT INTO tarea (id_proyecto, nombre_tarea, descripcion, fecha_inicio_plan, fecha_fin_plan, fecha_inicio_real, fecha_fin_real, horas_plan, horas_reales, id_estado) "
+                    "INSERT INTO Tarea (id_proyecto, nombre_tarea, descripcion, fecha_inicio_plan, fecha_fin_plan, fecha_inicio_real, fecha_fin_real, horas_plan, horas_reales, id_estado) "
                     "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                     (id_proyecto, nombre_tarea, descripcion_tarea, t_inicio_plan, t_fin_plan, t_inicio_real, t_fin_real, horas_plan, horas_reales, id_estado_tarea)
                 )
@@ -746,7 +746,7 @@ def generar_datos():
                 
                 id_equipo = random.choice(EQUIPOS)
                 cur.execute(
-                    "INSERT INTO tareaequipohist (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion) VALUES (%s,%s,%s,%s)",
+                    "INSERT INTO TareaEquipoHist (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion) VALUES (%s,%s,%s,%s)",
                     (id_tarea, id_equipo, t_inicio_plan, t_fin_real)
                 )
                 asignaciones_creadas += 1
