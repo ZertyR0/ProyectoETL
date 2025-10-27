@@ -532,7 +532,18 @@ function showSection(section) {
     });
     
     // Mostrar la sección seleccionada
-    document.getElementById(section).style.display = 'block';
+    document.getElementById(`section-${section}`).style.display = 'block';
+    
+    // Actualizar título
+    const titulos = {
+        'dashboard': 'Dashboard Principal',
+        'datos-origen': 'Base de Datos Origen',
+        'control-etl': 'Control ETL',
+        'datawarehouse': 'DataWarehouse',
+        'analisis': 'Análisis',
+        'trazabilidad': 'Búsqueda y Trazabilidad'
+    };
+    document.getElementById('section-title').textContent = titulos[section] || 'Dashboard';
     
     // Cargar datos según la sección
     if (section === 'datos-origen') {
@@ -541,6 +552,10 @@ function showSection(section) {
         cargarTablaDatawarehouseCompleta();
     } else if (section === 'analisis') {
         cargarAnalisis();
+    } else if (section === 'trazabilidad') {
+        // Limpiar formulario y resultados
+        document.getElementById('form-busqueda').reset();
+        document.getElementById('resultado-trazabilidad').style.display = 'none';
     }
 }
 
@@ -688,6 +703,192 @@ async function cargarTablaOrigenCompleta() {
     } catch (error) {
         addLog(`❌ Error cargando tabla origen: ${error.message}`, 'error');
     }
+}
+
+// Función de búsqueda de trazabilidad
+async function buscarTrazabilidad(event) {
+    event.preventDefault();
+    
+    const tipo = document.getElementById('busqueda-tipo').value;
+    const criterio = document.getElementById('busqueda-criterio').value;
+    const valor = document.getElementById('busqueda-valor').value;
+    
+    if (!tipo || !criterio || !valor) {
+        showToast('Por favor completa todos los campos', 'error');
+        return;
+    }
+    
+    try {
+        addLog(`🔍 Buscando ${tipo} por ${criterio}: ${valor}...`, 'info');
+        showToast('Buscando...', 'info');
+        
+        const resultado = await makeRequest('/buscar-trazabilidad', {
+            method: 'POST',
+            body: JSON.stringify({
+                tipo: tipo,
+                criterio: criterio,
+                valor: valor
+            })
+        });
+        
+        // Mostrar resultados
+        document.getElementById('resultado-trazabilidad').style.display = 'block';
+        
+        // Actualizar mensaje de alerta
+        const alertaDiv = document.getElementById('alerta-resultado');
+        let alertClass = 'alert-info';
+        let icon = '<i class="fas fa-info-circle me-2"></i>';
+        
+        if (resultado.encontrado_origen && resultado.encontrado_dw) {
+            alertClass = 'alert-success';
+            icon = '<i class="fas fa-check-circle me-2"></i>';
+        } else if (resultado.encontrado_origen && !resultado.encontrado_dw) {
+            alertClass = 'alert-warning';
+            icon = '<i class="fas fa-exclamation-triangle me-2"></i>';
+        } else {
+            alertClass = 'alert-danger';
+            icon = '<i class="fas fa-times-circle me-2"></i>';
+        }
+        
+        alertaDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+        alertaDiv.innerHTML = `
+            ${icon}
+            <strong>${resultado.mensaje}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Renderizar datos de BD Origen
+        const datosOrigenDiv = document.getElementById('datos-origen-resultado');
+        if (resultado.encontrado_origen && resultado.datos_origen) {
+            datosOrigenDiv.innerHTML = `
+                <div class="badge bg-success mb-3 fs-6">
+                    <i class="fas fa-check-circle me-1"></i>
+                    ENCONTRADO
+                </div>
+                ${renderizarDatos(resultado.datos_origen, tipo)}
+            `;
+        } else {
+            datosOrigenDiv.innerHTML = `
+                <div class="badge bg-danger mb-3 fs-6">
+                    <i class="fas fa-times-circle me-1"></i>
+                    NO ENCONTRADO
+                </div>
+                <p class="text-muted">No se encontró el registro en la base de datos origen.</p>
+            `;
+        }
+        
+        // Renderizar datos de DW
+        const datosDWDiv = document.getElementById('datos-dw-resultado');
+        if (resultado.encontrado_dw && resultado.datos_dw) {
+            datosDWDiv.innerHTML = `
+                <div class="badge bg-success mb-3 fs-6">
+                    <i class="fas fa-check-circle me-1"></i>
+                    ENCONTRADO
+                </div>
+                ${renderizarDatos(resultado.datos_dw, tipo, true)}
+            `;
+        } else {
+            datosDWDiv.innerHTML = `
+                <div class="badge bg-secondary mb-3 fs-6">
+                    <i class="fas fa-minus-circle me-1"></i>
+                    NO ENCONTRADO
+                </div>
+                <p class="text-muted">
+                    ${resultado.encontrado_origen ? 
+                        'El registro no está en el DataWarehouse. Esto es normal si el registro no está completado/cancelado o si no se ha ejecutado el ETL.' : 
+                        'No se puede buscar en el DataWarehouse si no existe en origen.'}
+                </p>
+            `;
+        }
+        
+        addLog(`✅ Búsqueda completada`, 'success');
+        
+        // Scroll hacia los resultados
+        document.getElementById('resultado-trazabilidad').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+    } catch (error) {
+        addLog(`❌ Error en búsqueda: ${error.message}`, 'error');
+        showToast(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Función auxiliar para renderizar datos en tabla HTML
+function renderizarDatos(datos, tipo, esDW = false) {
+    let html = '<div class="table-responsive"><table class="table table-sm table-bordered">';
+    
+    // Campos específicos por tipo
+    let camposRelevantes = [];
+    
+    if (tipo === 'proyecto') {
+        if (esDW) {
+            camposRelevantes = ['id_proyecto', 'nombre_proyecto', 'presupuesto', 'costo_real', 'duracion_planificada', 
+                              'duracion_real', 'cumplimiento_tiempo', 'cumplimiento_presupuesto', 'tareas_total', 
+                              'tareas_completadas', 'porcentaje_completado'];
+        } else {
+            camposRelevantes = ['id_proyecto', 'nombre', 'nombre_cliente', 'nombre_gerente', 'nombre_estado', 
+                              'fecha_inicio', 'fecha_fin_plan', 'fecha_fin_real', 'presupuesto', 'costo_real', 'prioridad'];
+        }
+    } else if (tipo === 'cliente') {
+        camposRelevantes = ['id_cliente', 'nombre', 'sector', 'contacto', 'telefono', 'email', 
+                           'direccion', 'fecha_registro', 'activo'];
+    } else if (tipo === 'empleado') {
+        camposRelevantes = ['id_empleado', 'nombre', 'puesto', 'departamento', 'salario_base', 
+                           'fecha_ingreso', 'activo'];
+    } else if (tipo === 'tarea') {
+        if (esDW) {
+            camposRelevantes = ['id_tarea', 'id_proyecto', 'id_empleado', 'duracion_planificada', 'duracion_real', 
+                              'horas_plan', 'horas_reales', 'costo_estimado', 'costo_real_tarea', 'progreso_porcentaje'];
+        } else {
+            camposRelevantes = ['id_tarea', 'nombre_tarea', 'nombre_proyecto', 'nombre_empleado', 'nombre_estado',
+                              'fecha_inicio_plan', 'fecha_fin_plan', 'fecha_fin_real', 'horas_plan', 'horas_reales', 
+                              'costo_estimado', 'costo_real', 'progreso_porcentaje'];
+        }
+    }
+    
+    // Si no hay campos relevantes definidos, mostrar todos
+    if (camposRelevantes.length === 0) {
+        camposRelevantes = Object.keys(datos);
+    }
+    
+    // Renderizar cada campo
+    for (let campo of camposRelevantes) {
+        if (datos.hasOwnProperty(campo)) {
+            let valor = datos[campo];
+            let valorFormateado = valor;
+            
+            // Formatear según tipo de dato
+            if (valor === null || valor === undefined) {
+                valorFormateado = '<span class="text-muted"><em>null</em></span>';
+            } else if (campo.toLowerCase().includes('presupuesto') || campo.toLowerCase().includes('costo') || campo.toLowerCase().includes('salario')) {
+                valorFormateado = formatCurrency(parseFloat(valor));
+            } else if (campo.toLowerCase().includes('fecha') || campo.toLowerCase().includes('timestamp')) {
+                valorFormateado = formatDate(valor);
+            } else if (campo.toLowerCase().includes('cumplimiento')) {
+                valorFormateado = valor === 1 || valor === '1' ? 
+                    '<span class="badge bg-success"><i class="fas fa-check"></i> Sí</span>' : 
+                    '<span class="badge bg-danger"><i class="fas fa-times"></i> No</span>';
+            } else if (campo.toLowerCase() === 'activo') {
+                valorFormateado = valor === 1 || valor === '1' ? 
+                    '<span class="badge bg-success">Activo</span>' : 
+                    '<span class="badge bg-secondary">Inactivo</span>';
+            } else if (typeof valor === 'number') {
+                valorFormateado = valor.toLocaleString('es-MX');
+            }
+            
+            // Convertir snake_case a Title Case
+            let nombreCampo = campo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            html += `
+                <tr>
+                    <td class="fw-bold bg-light" style="width: 35%;">${nombreCampo}</td>
+                    <td>${valorFormateado}</td>
+                </tr>
+            `;
+        }
+    }
+    
+    html += '</table></div>';
+    return html;
 }
 
 async function cargarTablaDatawarehouseCompleta() {

@@ -619,6 +619,242 @@ def generar_datos():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/buscar-trazabilidad', methods=['POST'])
+def buscar_trazabilidad():
+    """Buscar un registro en BD Origen y verificar si está en DataWarehouse"""
+    try:
+        data = request.get_json()
+        tipo = data.get('tipo')  # 'proyecto', 'cliente', 'empleado', 'tarea'
+        criterio = data.get('criterio')  # 'id' o 'nombre'
+        valor = data.get('valor')
+        
+        if not tipo or not criterio or not valor:
+            return jsonify({
+                'success': False,
+                'message': 'Faltan parámetros requeridos (tipo, criterio, valor)'
+            }), 400
+        
+        conn_origen = get_connection('origen')
+        cursor_origen = conn_origen.cursor(dictionary=True)
+        
+        conn_destino = get_connection('destino')
+        cursor_destino = conn_destino.cursor(dictionary=True)
+        
+        resultado = {
+            'success': True,
+            'tipo': tipo,
+            'encontrado_origen': False,
+            'encontrado_dw': False,
+            'datos_origen': None,
+            'datos_dw': None,
+            'mensaje': ''
+        }
+        
+        # PROYECTOS
+        if tipo == 'proyecto':
+            if criterio == 'id':
+                cursor_origen.execute("""
+                    SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente, 
+                           est.nombre_estado
+                    FROM Proyecto p
+                    LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
+                    LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
+                    LEFT JOIN Estado est ON p.id_estado = est.id_estado
+                    WHERE p.id_proyecto = %s
+                """, (valor,))
+            else:  # nombre
+                cursor_origen.execute("""
+                    SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente,
+                           est.nombre_estado
+                    FROM Proyecto p
+                    LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
+                    LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
+                    LEFT JOIN Estado est ON p.id_estado = est.id_estado
+                    WHERE p.nombre LIKE %s
+                """, (f'%{valor}%',))
+            
+            proyecto_origen = cursor_origen.fetchone()
+            
+            if proyecto_origen:
+                resultado['encontrado_origen'] = True
+                # Convertir tipos especiales
+                for key, val in proyecto_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        proyecto_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        proyecto_origen[key] = float(val)
+                resultado['datos_origen'] = proyecto_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("""
+                    SELECT hp.*, dp.nombre_proyecto
+                    FROM HechoProyecto hp
+                    LEFT JOIN DimProyecto dp ON hp.id_proyecto = dp.id_proyecto
+                    WHERE hp.id_proyecto = %s
+                """, (proyecto_origen['id_proyecto'],))
+                
+                proyecto_dw = cursor_destino.fetchone()
+                
+                if proyecto_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in proyecto_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            proyecto_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            proyecto_dw[key] = float(val)
+                    resultado['datos_dw'] = proyecto_dw
+                    resultado['mensaje'] = '✅ Proyecto encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = '⚠️ Proyecto encontrado en BD Origen pero NO en DataWarehouse (puede que no esté completado/cancelado)'
+            else:
+                resultado['mensaje'] = '❌ Proyecto no encontrado en BD Origen'
+        
+        # CLIENTES
+        elif tipo == 'cliente':
+            if criterio == 'id':
+                cursor_origen.execute("SELECT * FROM Cliente WHERE id_cliente = %s", (valor,))
+            else:
+                cursor_origen.execute("SELECT * FROM Cliente WHERE nombre LIKE %s", (f'%{valor}%',))
+            
+            cliente_origen = cursor_origen.fetchone()
+            
+            if cliente_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in cliente_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        cliente_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        cliente_origen[key] = float(val)
+                resultado['datos_origen'] = cliente_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("SELECT * FROM DimCliente WHERE id_cliente = %s", 
+                                      (cliente_origen['id_cliente'],))
+                cliente_dw = cursor_destino.fetchone()
+                
+                if cliente_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in cliente_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            cliente_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            cliente_dw[key] = float(val)
+                    resultado['datos_dw'] = cliente_dw
+                    resultado['mensaje'] = '✅ Cliente encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = '⚠️ Cliente encontrado en BD Origen pero NO en DataWarehouse'
+            else:
+                resultado['mensaje'] = '❌ Cliente no encontrado en BD Origen'
+        
+        # EMPLEADOS
+        elif tipo == 'empleado':
+            if criterio == 'id':
+                cursor_origen.execute("SELECT * FROM Empleado WHERE id_empleado = %s", (valor,))
+            else:
+                cursor_origen.execute("SELECT * FROM Empleado WHERE nombre LIKE %s", (f'%{valor}%',))
+            
+            empleado_origen = cursor_origen.fetchone()
+            
+            if empleado_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in empleado_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        empleado_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        empleado_origen[key] = float(val)
+                resultado['datos_origen'] = empleado_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("SELECT * FROM DimEmpleado WHERE id_empleado = %s",
+                                      (empleado_origen['id_empleado'],))
+                empleado_dw = cursor_destino.fetchone()
+                
+                if empleado_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in empleado_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            empleado_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            empleado_dw[key] = float(val)
+                    resultado['datos_dw'] = empleado_dw
+                    resultado['mensaje'] = '✅ Empleado encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = '⚠️ Empleado encontrado en BD Origen pero NO en DataWarehouse'
+            else:
+                resultado['mensaje'] = '❌ Empleado no encontrado en BD Origen'
+        
+        # TAREAS
+        elif tipo == 'tarea':
+            if criterio == 'id':
+                cursor_origen.execute("""
+                    SELECT t.*, p.nombre as nombre_proyecto, e.nombre as nombre_empleado,
+                           est.nombre_estado
+                    FROM Tarea t
+                    LEFT JOIN Proyecto p ON t.id_proyecto = p.id_proyecto
+                    LEFT JOIN Empleado e ON t.id_empleado = e.id_empleado
+                    LEFT JOIN Estado est ON t.id_estado = est.id_estado
+                    WHERE t.id_tarea = %s
+                """, (valor,))
+            else:
+                cursor_origen.execute("""
+                    SELECT t.*, p.nombre as nombre_proyecto, e.nombre as nombre_empleado,
+                           est.nombre_estado
+                    FROM Tarea t
+                    LEFT JOIN Proyecto p ON t.id_proyecto = p.id_proyecto
+                    LEFT JOIN Empleado e ON t.id_empleado = e.id_empleado
+                    LEFT JOIN Estado est ON t.id_estado = est.id_estado
+                    WHERE t.nombre_tarea LIKE %s
+                """, (f'%{valor}%',))
+            
+            tarea_origen = cursor_origen.fetchone()
+            
+            if tarea_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in tarea_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        tarea_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        tarea_origen[key] = float(val)
+                resultado['datos_origen'] = tarea_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("SELECT * FROM HechoTarea WHERE id_tarea = %s",
+                                      (tarea_origen['id_tarea'],))
+                tarea_dw = cursor_destino.fetchone()
+                
+                if tarea_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in tarea_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            tarea_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            tarea_dw[key] = float(val)
+                    resultado['datos_dw'] = tarea_dw
+                    resultado['mensaje'] = '✅ Tarea encontrada en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = '⚠️ Tarea encontrada en BD Origen pero NO en DataWarehouse'
+            else:
+                resultado['mensaje'] = '❌ Tarea no encontrada en BD Origen'
+        
+        else:
+            resultado['success'] = False
+            resultado['mensaje'] = f'❌ Tipo "{tipo}" no soportado'
+        
+        cursor_origen.close()
+        conn_origen.close()
+        cursor_destino.close()
+        conn_destino.close()
+        
+        return jsonify(resultado)
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': f'Error en búsqueda: {str(e)}',
+            'traceback': traceback.format_exc()
+        }), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
