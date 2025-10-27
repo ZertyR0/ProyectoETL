@@ -37,8 +37,14 @@ try:
         'db_destino': config['database_destino']
     }
     
+    # Agregar unix_socket si existe en la configuración
+    if 'unix_socket' in config:
+        DB_CONFIG['unix_socket'] = config['unix_socket']
+    
     print(f"🚀 Dashboard configurado para ambiente: {AMBIENTE}")
     print(f"📊 BD Origen: {config['host_origen']}:{config['port_origen']}")
+    if 'unix_socket' in config:
+        print(f"   Socket: {config['unix_socket']}")
     print(f"🏢 BD Destino: {config['host_destino']}:{config['port_destino']}")
     
 except ImportError:
@@ -60,13 +66,19 @@ except ImportError:
 def get_connection(db_type='origen'):
     """Obtener conexión a la base de datos"""
     if db_type == 'origen':
-        return mysql.connector.connect(
-            host=DB_CONFIG['host_origen'],
-            port=DB_CONFIG['port_origen'],
-            user=DB_CONFIG['user_origen'],
-            password=DB_CONFIG['password_origen'],
-            database=DB_CONFIG['db_origen']
-        )
+        connection_params = {
+            'user': DB_CONFIG['user_origen'],
+            'password': DB_CONFIG['password_origen'],
+            'database': DB_CONFIG['db_origen']
+        }
+        # Si hay unix_socket, usarlo en lugar de host/port
+        if 'unix_socket' in DB_CONFIG and DB_CONFIG['unix_socket']:
+            connection_params['unix_socket'] = DB_CONFIG['unix_socket']
+        else:
+            connection_params['host'] = DB_CONFIG['host_origen']
+            connection_params['port'] = DB_CONFIG['port_origen']
+        
+        return mysql.connector.connect(**connection_params)
     else:
         return mysql.connector.connect(
             host=DB_CONFIG['host_destino'],
@@ -79,7 +91,11 @@ def get_connection(db_type='origen'):
 def get_engine(db_type='origen'):
     """Obtener engine SQLAlchemy"""
     if db_type == 'origen':
-        url = f"mysql+mysqlconnector://{DB_CONFIG['user_origen']}:{DB_CONFIG['password_origen']}@{DB_CONFIG['host_origen']}:{DB_CONFIG['port_origen']}/{DB_CONFIG['db_origen']}"
+        # Si hay unix_socket, usar ese en lugar de host/port
+        if 'unix_socket' in DB_CONFIG and DB_CONFIG['unix_socket']:
+            url = f"mysql+mysqlconnector://{DB_CONFIG['user_origen']}:{DB_CONFIG['password_origen']}@/?unix_socket={DB_CONFIG['unix_socket']}&database={DB_CONFIG['db_origen']}"
+        else:
+            url = f"mysql+mysqlconnector://{DB_CONFIG['user_origen']}:{DB_CONFIG['password_origen']}@{DB_CONFIG['host_origen']}:{DB_CONFIG['port_origen']}/{DB_CONFIG['db_origen']}"
     else:
         url = f"mysql+mysqlconnector://{DB_CONFIG['user_destino']}:{DB_CONFIG['password_destino']}@{DB_CONFIG['host_destino']}:{DB_CONFIG['port_destino']}/{DB_CONFIG['db_destino']}"
     
@@ -557,215 +573,42 @@ def limpiar_datos():
 
 @app.route('/generar-datos', methods=['POST'])
 def generar_datos():
-    """Generar datos de prueba con cantidades personalizables"""
+    """Generar datos de prueba usando el generador final"""
     try:
-        from faker import Faker
-        import random
-        from datetime import timedelta, date
+        import sys
+        from pathlib import Path
+        
+        # Agregar el directorio de datos al path
+        datos_dir = Path(__file__).parent.parent.parent / '01_GestionProyectos' / 'datos'
+        sys.path.insert(0, str(datos_dir))
+        
+        # Importar el generador final
+        from generar_datos_final import GeneradorDatosFinal
         
         # Obtener parámetros del request
         data = request.get_json()
-        num_clientes = data.get('clientes', 10)
-        num_empleados = data.get('empleados', 20)
-        num_equipos = data.get('equipos', 5)
         num_proyectos = data.get('proyectos', 50)
         
-        fake = Faker("es_MX")
+        # Nota: El nuevo generador usa cantidades fijas internas
+        # Se puede extender para aceptar parámetros personalizados
         
-        conn = get_connection('origen')
-        conn.autocommit = True
-        cur = conn.cursor()
+        # Crear instancia del generador
+        generador = GeneradorDatosFinal()
         
-        # Contadores
-        clientes_creados = empleados_creados = equipos_creados = 0
-        proyectos_creados = tareas_creadas = asignaciones_creadas = 0
+        # Ejecutar la generación completa
+        exito = generador.ejecutar()
         
-        # 1. Insertar Clientes
-        sectores = ["tecnología", "finanzas", "salud", "educación", "retail", "manufactura", "servicios", "telecomunicaciones"]
-        for _ in range(num_clientes):
-            nombre_cli = fake.company()[:100]
-            sector_cli = random.choice(sectores)[:50]
-            contacto_cli = fake.name()[:100]
-            tel_cli = fake.phone_number()[:20]
-            email_cli = fake.company_email()[:100]
-            direccion_cli = fake.address().replace('\n', ', ')[:200]
-            cur.execute(
-                "INSERT INTO Cliente (nombre, sector, contacto, telefono, email, direccion) VALUES (%s, %s, %s, %s, %s, %s)",
-                (nombre_cli, sector_cli, contacto_cli, tel_cli, email_cli, direccion_cli)
-            )
-            clientes_creados += 1
-        
-        # 2. Insertar Empleados
-        puestos = ["Desarrollador", "Analista", "QA", "Gerente de Proyecto", "Diseñador", "DevOps", "Arquitecto", "Líder Técnico"]
-        departamentos = ["Desarrollo", "Calidad", "Infraestructura", "Gestión de Proyectos", "UX/UI", "Análisis"]
-        for _ in range(num_empleados):
-            nombre_emp = fake.name()[:100]
-            puesto_emp = random.choice(puestos)
-            depto_emp = random.choice(departamentos)[:50]
-            # Salarios realistas según puesto
-            salarios_base = {
-                "Desarrollador": (35000, 65000),
-                "Analista": (30000, 55000),
-                "QA": (28000, 50000),
-                "Gerente de Proyecto": (55000, 95000),
-                "Diseñador": (32000, 58000),
-                "DevOps": (40000, 75000),
-                "Arquitecto": (60000, 110000),
-                "Líder Técnico": (50000, 85000)
-            }
-            rango = salarios_base.get(puesto_emp, (30000, 60000))
-            salario = round(random.uniform(rango[0], rango[1]), 2)
-            fecha_ing = fake.date_between(start_date="-3650d", end_date="-180d")  # Entre 10 años y 6 meses atrás
-            
-            cur.execute(
-                "INSERT INTO Empleado (nombre, puesto, departamento, salario_base, fecha_ingreso) VALUES (%s, %s, %s, %s, %s)",
-                (nombre_emp, puesto_emp, depto_emp, salario, fecha_ing)
-            )
-            empleados_creados += 1
-        
-        # 3. Insertar Equipos
-        # Obtener el último número de equipo existente
-        cur.execute("SELECT COUNT(*) FROM Equipo")
-        equipos_existentes = cur.fetchone()[0]
-        inicio_equipo = equipos_existentes + 1
-        
-        for i in range(inicio_equipo, inicio_equipo + num_equipos):
-            nombre_eq = f"Equipo {i}"
-            desc_eq = fake.catch_phrase()[:200]
-            cur.execute(
-                "INSERT INTO Equipo (nombre_equipo, descripcion) VALUES (%s, %s)",
-                (nombre_eq, desc_eq)
-            )
-            equipos_creados += 1
-        
-        # 4. Verificar/Insertar Estados
-        cur.execute("SELECT COUNT(*) FROM Estado")
-        if cur.fetchone()[0] == 0:
-            estados = ["Pendiente", "En Progreso", "Completado", "Cancelado"]
-            for estado in estados:
-                cur.execute("INSERT INTO Estado (nombre_estado) VALUES (%s)", (estado,))
-        
-        # 5. Insertar MiembroEquipo
-        cur.execute("SELECT id_empleado FROM Empleado")
-        id_empleados = [row[0] for row in cur.fetchall()]
-        cur.execute("SELECT id_equipo FROM Equipo")
-        id_equipos = [row[0] for row in cur.fetchall()]
-        
-        roles = ["Developer", "Analista", "QA", "Líder de Equipo", "Scrum Master"]
-        for id_eq in id_equipos:
-            miembros = random.sample(id_empleados, k=min(random.randint(3, 6), len(id_empleados)))
-            for id_emp in miembros:
-                inicio = fake.date_between(start_date="-720d", end_date="-180d")
-                fin = None if random.random() < 0.5 else fake.date_between(start_date=inicio, end_date="+180d")
-                rol = random.choice(roles)
-                cur.execute(
-                    "INSERT INTO MiembroEquipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, rol_miembro) VALUES (%s, %s, %s, %s, %s)",
-                    (id_eq, id_emp, inicio, fin, rol)
-                )
-        
-        # 6. Generar Proyectos con estados aleatorios (el ETL filtrará los necesarios)
-        cur.execute("SELECT id_cliente FROM Cliente")
-        CLIENTES = [r[0] for r in cur.fetchall()]
-        cur.execute("SELECT id_empleado FROM Empleado")
-        EMPLEADOS = [r[0] for r in cur.fetchall()]
-        cur.execute("SELECT id_equipo FROM Equipo")
-        EQUIPOS = [r[0] for r in cur.fetchall()]
-        cur.execute("SELECT id_estado FROM Estado")
-        TODOS_ESTADOS = [r[0] for r in cur.fetchall()]
-        
-        for _ in range(num_proyectos):
-            id_cliente = random.choice(CLIENTES)
-            id_gerente = random.choice(EMPLEADOS)
-            # 60% Completado/Cancelado, 40% otros estados (para tener variedad)
-            if random.random() < 0.6:
-                cur.execute("SELECT id_estado FROM Estado WHERE nombre_estado IN ('Completado','Cancelado')")
-                estados_finalizados = [r[0] for r in cur.fetchall()]
-                id_estado_proj = random.choice(estados_finalizados) if estados_finalizados else random.choice(TODOS_ESTADOS)
-            else:
-                id_estado_proj = random.choice(TODOS_ESTADOS)
-            
-            # Nombres de proyectos más realistas
-            prefijos_proyecto = [
-                "Sistema de", "Plataforma de", "Aplicación para", "Portal de", "Migración a",
-                "Implementación de", "Desarrollo de", "Integración de", "Optimización de", "Renovación de"
-            ]
-            sufijos_proyecto = [
-                "gestión de inventarios", "recursos humanos", "ventas en línea", "servicios al cliente",
-                "análisis de datos", "facturación electrónica", "seguimiento de proyectos", "control de calidad",
-                "administración de contenidos", "comercio electrónico", "reportería ejecutiva", "procesos automatizados"
-            ]
-            nombre_proj = f"{random.choice(prefijos_proyecto)} {random.choice(sufijos_proyecto)}"[:150]
-            desc_proj = fake.paragraph(nb_sentences=2)[:500]  # Descripción más completa
-            fecha_inicio = fake.date_between(start_date="-540d", end_date="-180d")
-            duracion_plan_dias = random.randint(45, 150)
-            fecha_fin_plan = fecha_inicio + timedelta(days=duracion_plan_dias)
-            delta_fin = random.randint(-5, 20)
-            fecha_fin_real = fecha_fin_plan + timedelta(days=delta_fin)
-            presupuesto = round(random.uniform(25000, 90000), 2)
-            costo_real = round(presupuesto * random.uniform(0.9, 1.2), 2)
-            
-            cur.execute(
-                "INSERT INTO Proyecto (id_cliente, nombre, descripcion, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado, id_empleado_gerente) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (id_cliente, nombre_proj, desc_proj, fecha_inicio, fecha_fin_plan, fecha_fin_real, presupuesto, costo_real, id_estado_proj, id_gerente)
-            )
-            id_proyecto = cur.lastrowid
-            proyectos_creados += 1
-            
-            # Generar de 8 a 12 tareas para este proyecto con nombres realistas
-            tareas_nombres = [
-                "Análisis de requerimientos", "Diseño de arquitectura", "Configuración de base de datos",
-                "Desarrollo de módulo principal", "Implementación de API REST", "Diseño de interfaz de usuario",
-                "Desarrollo del frontend", "Integración de servicios externos", "Pruebas unitarias",
-                "Pruebas de integración", "Documentación técnica", "Capacitación de usuarios",
-                "Migración de datos", "Optimización de rendimiento", "Implementación de seguridad",
-                "Deploy a producción", "Monitoreo y ajustes", "Revisión de código"
-            ]
-            tareas_seleccionadas = random.sample(tareas_nombres, k=random.randint(8, 12))
-            
-            for nombre_tarea in tareas_seleccionadas:
-                t_inicio_plan = fake.date_between(start_date=fecha_inicio, end_date=(fecha_fin_plan - timedelta(days=15)))
-                duracion_plan_t = random.randint(5, 20)
-                t_fin_plan = t_inicio_plan + timedelta(days=duracion_plan_t)
-                # Fecha de inicio real puede ser null si la tarea no ha comenzado
-                t_inicio_real = t_inicio_plan if random.random() > 0.1 else None
-                t_fin_real = t_fin_plan + timedelta(days=random.randint(-3, 10))
-                horas_plan = random.randint(16, 120)
-                horas_reales = max(1, int(horas_plan * random.uniform(0.8, 1.3)))
-                # Estado de la tarea: mismo estado que el proyecto
-                id_estado_tarea = id_estado_proj
-                descripcion_tarea = fake.sentence(nb_words=8)[:200]
-                
-                cur.execute(
-                    "INSERT INTO Tarea (id_proyecto, nombre_tarea, descripcion, fecha_inicio_plan, fecha_fin_plan, fecha_inicio_real, fecha_fin_real, horas_plan, horas_reales, id_estado) "
-                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                    (id_proyecto, nombre_tarea, descripcion_tarea, t_inicio_plan, t_fin_plan, t_inicio_real, t_fin_real, horas_plan, horas_reales, id_estado_tarea)
-                )
-                id_tarea = cur.lastrowid
-                tareas_creadas += 1
-                
-                id_equipo = random.choice(EQUIPOS)
-                cur.execute(
-                    "INSERT INTO TareaEquipoHist (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion) VALUES (%s,%s,%s,%s)",
-                    (id_tarea, id_equipo, t_inicio_plan, t_fin_real)
-                )
-                asignaciones_creadas += 1
-        
-        cur.close()
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Datos generados exitosamente',
-            'stats': {
-                'clientes': clientes_creados,
-                'empleados': empleados_creados,
-                'equipos': equipos_creados,
-                'proyectos': proyectos_creados,
-                'tareas': tareas_creadas,
-                'asignaciones': asignaciones_creadas
-            }
-        })
+        if exito:
+            return jsonify({
+                'success': True,
+                'message': 'Datos generados exitosamente con el nuevo generador',
+                'stats': generador.stats
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Error durante la generación de datos'
+            }), 500
         
     except Exception as e:
         import traceback
@@ -775,6 +618,7 @@ def generar_datos():
             'error': str(e),
             'traceback': traceback.format_exc()
         }), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)

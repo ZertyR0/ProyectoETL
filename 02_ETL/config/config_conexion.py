@@ -16,11 +16,12 @@ CONFIG_LOCAL = {
     'user_origen': 'root',
     'password_origen': '',
     'database_origen': 'gestionproyectos_hist',
+    'unix_socket': '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock',
     
-    'host_destino': 'localhost',
+    'host_destino': '172.20.10.2',
     'port_destino': 3306,
-    'user_destino': 'root',
-    'password_destino': '',
+    'user_destino': 'etl_user',
+    'password_destino': 'etl_password_123',
     'database_destino': 'dw_proyectos_hist'
 }
 
@@ -29,14 +30,14 @@ CONFIG_LOCAL = {
 # =========================================================
 CONFIG_DISTRIBUIDO = {
     # Máquina 1: Base de datos origen
-    'host_origen': '172.26.163.200',
+    'host_origen': '172.20.10.3',
     'port_origen': 3306,
     'user_origen': 'etl_user',
     'password_origen': 'etl_password_123',
     'database_origen': 'gestionproyectos_hist',
     
     # Máquina 3: Datawarehouse
-    'host_destino': '172.26.164.100',
+    'host_destino': '172.20.10.2',
     'port_destino': 3306,
     'user_destino': 'etl_user',
     'password_destino': 'etl_password_123',
