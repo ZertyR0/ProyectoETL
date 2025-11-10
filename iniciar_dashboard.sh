@@ -1,98 +1,93 @@
 #!/bin/bash
+# ============================================================
+# Script para iniciar el Dashboard ETL en modo distribuido
+# ============================================================
 
-echo "🚀 Iniciando Dashboard ETL..."
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║              🚀 INICIANDO DASHBOARD ETL - MODO DISTRIBUIDO           ║"
+echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# Colores
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Configurar ambiente
+export ETL_AMBIENTE=distribuido
 
-# Verificar que el entorno virtual existe
-if [ ! -d "venv" ]; then
-    echo "❌ Entorno virtual no encontrado"
-    echo "Ejecuta primero: ./setup_local.sh"
-    exit 1
-fi
+# Directorio base
+BASEDIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$BASEDIR"
 
-# Activar entorno virtual
-source venv/bin/activate
+# Crear directorio de logs si no existe
+mkdir -p 03_Dashboard/logs
 
-# Verificar que las bases de datos existen
-echo "📊 Verificando bases de datos..."
-if ! mysql -u root -e "USE gestionproyectos_hist" &> /dev/null; then
-    echo "❌ Base de datos origen no existe. Ejecuta: ./setup_local.sh"
-    exit 1
-fi
+# Detener procesos previos
+echo "🛑 Deteniendo procesos previos..."
+pkill -f "python.*03_Dashboard/backend/app.py" 2>/dev/null
+pkill -f "python.*http.server 8080" 2>/dev/null
+sleep 2
 
-if ! mysql -u root -e "USE dw_proyectos_hist" &> /dev/null; then
-    echo "❌ Datawarehouse no existe. Ejecuta: ./setup_local.sh"
-    exit 1
-fi
-
-echo "✅ Bases de datos verificadas"
-echo ""
-
-# Iniciar backend en background
-echo "🔧 Iniciando backend API..."
-cd 03_Dashboard/backend
-python app.py > backend.log 2>&1 &
+# Iniciar backend
+echo "🔧 Iniciando Backend (Puerto 5001)..."
+/opt/anaconda3/bin/python 03_Dashboard/backend/app.py > 03_Dashboard/logs/backend.log 2>&1 &
 BACKEND_PID=$!
-cd ../..
+echo "   ✅ Backend iniciado (PID: $BACKEND_PID)"
 
-# Esperar a que el backend inicie
+# Esperar a que el backend esté listo
 sleep 3
 
 # Verificar que el backend está corriendo
-if ps -p $BACKEND_PID > /dev/null; then
-    echo -e "${GREEN}✅ Backend iniciado (PID: $BACKEND_PID)${NC}"
+if ps -p $BACKEND_PID > /dev/null 2>&1; then
+    echo "   ✅ Backend verificado y funcionando"
 else
-    echo "❌ Error iniciando el backend"
+    echo "   ❌ Error: Backend no está corriendo"
     exit 1
 fi
 
-# Iniciar servidor web para el frontend
-echo "🌐 Iniciando servidor web..."
-cd 03_Dashboard/frontend
-python3 -m http.server 8080 > frontend.log 2>&1 &
+# Iniciar frontend
+echo "🌐 Iniciando Frontend (Puerto 8080)..."
+cd "$BASEDIR/03_Dashboard/frontend"
+python3 -m http.server 8080 > "$BASEDIR/03_Dashboard/logs/frontend.log" 2>&1 &
 FRONTEND_PID=$!
-cd ../..
+cd "$BASEDIR"
+echo "   ✅ Frontend iniciado (PID: $FRONTEND_PID)"
 
-# Esperar a que el frontend inicie
 sleep 2
 
-if ps -p $FRONTEND_PID > /dev/null; then
-    echo -e "${GREEN}✅ Frontend iniciado (PID: $FRONTEND_PID)${NC}"
+# Verificar que el frontend está corriendo
+if ps -p $FRONTEND_PID > /dev/null 2>&1; then
+    echo "   ✅ Frontend verificado y funcionando"
 else
-    echo "❌ Error iniciando el frontend"
+    echo "   ❌ Error: Frontend no está corriendo"
     kill $BACKEND_PID 2>/dev/null
     exit 1
 fi
 
-echo ""
-echo "======================================================"
-echo "🎉 DASHBOARD ETL INICIADO"
-echo "======================================================"
-echo ""
-echo "📊 URLs disponibles:"
-echo -e "   Frontend: ${BLUE}http://localhost:8080${NC}"
-echo -e "   Backend:  ${BLUE}http://localhost:5001${NC}"
-echo ""
-echo "📝 Logs:"
-echo "   Backend:  03_Dashboard/backend/backend.log"
-echo "   Frontend: 03_Dashboard/frontend/frontend.log"
-echo ""
-echo "⚠️  Para detener el dashboard, ejecuta:"
-echo -e "   ${GREEN}kill $BACKEND_PID $FRONTEND_PID${NC}"
-echo ""
-echo "O guarda estos PIDs en un archivo:"
+# Guardar PIDs
 echo $BACKEND_PID > .dashboard.pid
 echo $FRONTEND_PID >> .dashboard.pid
-echo "   Guardados en .dashboard.pid"
+
 echo ""
-echo "======================================================"
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║                  ✅ DASHBOARD INICIADO CORRECTAMENTE                 ║"
+echo "╚══════════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "🌐 ACCEDE AL DASHBOARD EN:"
+echo "   http://localhost:8080"
+echo ""
+echo "📊 API BACKEND:"
+echo "   http://localhost:5001"
+echo ""
+echo "📝 LOGS:"
+echo "   Backend:  tail -f 03_Dashboard/logs/backend.log"
+echo "   Frontend: tail -f 03_Dashboard/logs/frontend.log"
+echo ""
+echo "🛑 PARA DETENER:"
+echo "   ./detener_dashboard.sh"
+echo "   O ejecuta: pkill -f 'python.*03_Dashboard'"
+echo ""
+echo "⚙️  CONFIGURACIÓN:"
+echo "   BD Origen: 172.20.10.3:3306 (gestionproyectos_hist)"
+echo "   DataWarehouse: 172.20.10.2:3306 (dw_proyectos_hist)"
 echo ""
 
 # Abrir navegador automáticamente (macOS)
-sleep 2
-open http://localhost:8080 2>/dev/null || echo "Abre manualmente: http://localhost:8080"
+sleep 1
+open http://localhost:8080 2>/dev/null || echo "💡 Abre manualmente: http://localhost:8080"

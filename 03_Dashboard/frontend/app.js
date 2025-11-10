@@ -311,9 +311,19 @@ async function cargarMetricas() {
         if (tbody) {
             if (dataDW && dataDW.proyectos && dataDW.proyectos.length > 0) {
                 tbody.innerHTML = dataDW.proyectos.map(p => {
-                    const estadoBadge = p.tareas_completadas === p.tareas_total ? 
-                        '<span class="badge bg-success">Completado</span>' : 
-                        '<span class="badge bg-warning">Cancelado</span>';
+                    // Determinar badge de estado según el estado real del proyecto
+                    let estadoBadge = '<span class="badge bg-secondary">Desconocido</span>';
+                    if (p.estado) {
+                        if (p.estado === 'Completado') {
+                            estadoBadge = '<span class="badge bg-success">Completado</span>';
+                        } else if (p.estado === 'Cancelado') {
+                            estadoBadge = '<span class="badge bg-warning">Cancelado</span>';
+                        } else if (p.estado === 'En Progreso') {
+                            estadoBadge = '<span class="badge bg-primary">En Progreso</span>';
+                        } else if (p.estado === 'Pendiente') {
+                            estadoBadge = '<span class="badge bg-info">Pendiente</span>';
+                        }
+                    }
                     
                     const cumplimientoTiempo = p.cumplimiento_tiempo === 1 ? 
                         '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
@@ -325,8 +335,8 @@ async function cargarMetricas() {
                     
                     return `
                         <tr>
-                            <td>${p.id}</td>
-                            <td><strong>${p.nombre || 'Sin nombre'}</strong></td>
+                            <td>${p.id_proyecto}</td>
+                            <td><strong>${p.nombre_proyecto || 'Sin nombre'}</strong></td>
                             <td>${estadoBadge}</td>
                             <td>${cumplimientoTiempo}</td>
                             <td>${p.duracion_plan} días</td>
@@ -898,9 +908,19 @@ async function cargarTablaDatawarehouseCompleta() {
         
         if (data.proyectos && data.proyectos.length > 0) {
             tbody.innerHTML = data.proyectos.map(p => {
-                const estadoBadge = p.tareas_completadas === p.tareas_total ? 
-                    '<span class="badge bg-success">Completado</span>' : 
-                    '<span class="badge bg-warning">Cancelado</span>';
+                // Determinar badge de estado según el estado real del proyecto
+                let estadoBadge = '<span class="badge bg-secondary">Desconocido</span>';
+                if (p.estado) {
+                    if (p.estado === 'Completado') {
+                        estadoBadge = '<span class="badge bg-success">Completado</span>';
+                    } else if (p.estado === 'Cancelado') {
+                        estadoBadge = '<span class="badge bg-warning">Cancelado</span>';
+                    } else if (p.estado === 'En Progreso') {
+                        estadoBadge = '<span class="badge bg-primary">En Progreso</span>';
+                    } else if (p.estado === 'Pendiente') {
+                        estadoBadge = '<span class="badge bg-info">Pendiente</span>';
+                    }
+                }
                 
                 const cumplimientoTiempo = p.cumplimiento_tiempo === 1 ? 
                     '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
@@ -984,7 +1004,7 @@ async function cargarAnalisis() {
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', async function() {
-    addLog('🚀 Iniciando dashboard ETL...', 'info');
+    addLog('Iniciando dashboard ETL...', 'info');
     
     // Verificar conexión inicial
     await checkStatus();
@@ -1006,5 +1026,5 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }, 30000);
     
-    addLog('✅ Dashboard listo para usar', 'success');
+    addLog('Dashboard listo para usar', 'success');
 });

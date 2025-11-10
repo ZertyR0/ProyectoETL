@@ -120,6 +120,25 @@ CREATE TABLE Tarea (
 ) ENGINE=InnoDB COMMENT='Tareas de proyectos';
 
 -- =========================================================
+-- TABLA DE AUDITORÍA ETL
+-- =========================================================
+
+CREATE TABLE AuditoriaETL (
+  id_auditoria        INT AUTO_INCREMENT PRIMARY KEY,
+  fecha_hora          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  operacion           VARCHAR(50),
+  tabla               VARCHAR(50),
+  registros_procesados INT DEFAULT 0,
+  estado              VARCHAR(20),
+  mensaje             TEXT,
+  usuario_etl         VARCHAR(100),
+  
+  INDEX idx_fecha (fecha_hora),
+  INDEX idx_operacion (operacion),
+  INDEX idx_estado (estado)
+) ENGINE=InnoDB COMMENT='Auditoría de procesos ETL';
+
+-- =========================================================
 -- TABLAS DE RELACIÓN
 -- =========================================================
 
@@ -159,9 +178,7 @@ INSERT INTO Estado (nombre_estado, descripcion) VALUES
 ('Pendiente', 'Proyecto o tarea pendiente de iniciar'),
 ('En Progreso', 'Proyecto o tarea en desarrollo'),
 ('Completado', 'Proyecto o tarea finalizada exitosamente'),
-('Cancelado', 'Proyecto o tarea cancelada'),
-('En Pausa', 'Proyecto o tarea temporalmente suspendida'),
-('En Revisión', 'Proyecto o tarea en proceso de revisión');
+('Cancelado', 'Proyecto o tarea cancelada');
 
 -- =========================================================
 -- FOREIGN KEYS (OPCIONAL - Comentado para flexibilidad ETL)

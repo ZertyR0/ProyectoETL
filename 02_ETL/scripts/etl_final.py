@@ -67,13 +67,7 @@ def ejecutar_etl():
             print(f"  📅 Fecha/Hora:              {resultado.get('fecha_hora')}")
             print("=" * 70)
             print()
-            print("🔐 NIVEL DE SEGURIDAD:")
-            print("  ✅ Python NO conoce nombres de tablas")
-            print("  ✅ Python NO conoce nombres de columnas")
-            print("  ✅ Python NO tiene lógica de transformación")
-            print("  ✅ Python NO tiene lógica de negocio")
-            print("  ✅ TODO el procesamiento está en MySQL")
-            print("  ✅ Solo 1 línea de código: CALL sp_ejecutar_etl_completo()")
+         
             print("=" * 70)
             return True
         else:

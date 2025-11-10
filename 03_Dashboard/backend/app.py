@@ -1,29 +1,24 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import mysql.connector
-import pandas as pd
-from sqlalchemy import create_engine, text
 import sys
 import os
 import subprocess
-import traceback
 from datetime import datetime, date
 from decimal import Decimal
-import json
+from pathlib import Path
 
 app = Flask(__name__)
-CORS(app)  # Permitir requests desde Angular
+CORS(app)
 
-# Agregar path para importar configuración ETL
+# Configuración ETL
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '02_ETL', 'config'))
 
 try:
     from config_conexion import get_config
-    # Obtener configuración según ambiente
     AMBIENTE = os.getenv('ETL_AMBIENTE', 'local')
     config = get_config(AMBIENTE)
     
-    # Configuración unificada usando el sistema de configuración ETL
     DB_CONFIG = {
         'host_origen': config['host_origen'],
         'port_origen': config['port_origen'],
@@ -37,19 +32,15 @@ try:
         'db_destino': config['database_destino']
     }
     
-    # Agregar unix_socket si existe en la configuración
     if 'unix_socket' in config:
         DB_CONFIG['unix_socket'] = config['unix_socket']
     
-    print(f"🚀 Dashboard configurado para ambiente: {AMBIENTE}")
-    print(f"📊 BD Origen: {config['host_origen']}:{config['port_origen']}")
-    if 'unix_socket' in config:
-        print(f"   Socket: {config['unix_socket']}")
-    print(f"🏢 BD Destino: {config['host_destino']}:{config['port_destino']}")
+    print(f"🚀 Dashboard: {AMBIENTE}")
+    print(f"📊 Origen: {config['host_origen']}:{config['port_origen']}")
+    print(f"🏢 Destino: {config['host_destino']}:{config['port_destino']}")
     
 except ImportError:
-    # Fallback a configuración local si no se puede importar
-    print("⚠️ No se pudo importar configuración ETL, usando configuración local")
+    print("⚠️ Configuración local")
     DB_CONFIG = {
         'host_origen': 'localhost',
         'port_origen': 3306,
@@ -88,18 +79,7 @@ def get_connection(db_type='origen'):
             database=DB_CONFIG['db_destino']
         )
 
-def get_engine(db_type='origen'):
-    """Obtener engine SQLAlchemy"""
-    if db_type == 'origen':
-        # Si hay unix_socket, usar ese en lugar de host/port
-        if 'unix_socket' in DB_CONFIG and DB_CONFIG['unix_socket']:
-            url = f"mysql+mysqlconnector://{DB_CONFIG['user_origen']}:{DB_CONFIG['password_origen']}@/?unix_socket={DB_CONFIG['unix_socket']}&database={DB_CONFIG['db_origen']}"
-        else:
-            url = f"mysql+mysqlconnector://{DB_CONFIG['user_origen']}:{DB_CONFIG['password_origen']}@{DB_CONFIG['host_origen']}:{DB_CONFIG['port_origen']}/{DB_CONFIG['db_origen']}"
-    else:
-        url = f"mysql+mysqlconnector://{DB_CONFIG['user_destino']}:{DB_CONFIG['password_destino']}@{DB_CONFIG['host_destino']}:{DB_CONFIG['port_destino']}/{DB_CONFIG['db_destino']}"
-    
-    return create_engine(url, pool_pre_ping=True)
+# Función eliminada - no necesaria
 
 @app.route('/')
 def home():
@@ -112,7 +92,7 @@ def home():
             'GET /status': 'Estado de conexiones',
             'GET /datos-origen': 'Datos de la BD origen',
             'GET /datos-datawarehouse': 'Datos del datawarehouse',
-            'POST /insertar-datos': 'Insertar datos de prueba',
+            'POST /generar-datos': 'Generar datos de prueba',
             'POST /ejecutar-etl': 'Ejecutar proceso ETL',
             'DELETE /limpiar-datos': 'Limpiar todas las tablas'
         }
@@ -133,7 +113,7 @@ def status():
         # Probar conexión destino
         conn_destino = get_connection('destino')
         cursor_destino = conn_destino.cursor()
-        cursor_destino.execute("SELECT COUNT(*) FROM HechoProyecto")
+        cursor_destino.execute("SELECT COUNT(*) FROM hechoproyecto")
         hechos = cursor_destino.fetchone()[0]
         cursor_destino.close()
         conn_destino.close()
@@ -176,10 +156,10 @@ def datos_origen():
         # Obtener proyectos recientes
         cursor.execute("""
             SELECT p.id_proyecto, p.nombre, p.fecha_inicio, p.presupuesto, 
-                   c.nombre as cliente, e.nombre_estado
+                   c.nombre as cliente, IFNULL(e.nombre, 'Sin estado') as nombre_estado
             FROM Proyecto p
-            JOIN Cliente c ON p.id_cliente = c.id_cliente
-            JOIN Estado e ON p.id_estado = e.id_estado
+            LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
+            LEFT JOIN Estado e ON p.id_estado = e.id_estado
             ORDER BY p.id_proyecto DESC
             LIMIT 10
         """)
@@ -217,9 +197,9 @@ def datos_datawarehouse():
         conn = get_connection('destino')
         cursor = conn.cursor()
         
-        # Obtener estadísticas
+        # Obtener estadísticas del DW
         stats = {}
-        tablas = ['DimCliente', 'DimEmpleado', 'DimEquipo', 'DimProyecto', 'DimTiempo', 'HechoProyecto', 'HechoTarea']
+        tablas = ['dimcliente', 'dimempleado', 'dimequipo', 'dimproyecto', 'dimtiempo', 'hechoproyecto', 'hechotarea']
         
         for tabla in tablas:
             try:
@@ -235,7 +215,7 @@ def datos_datawarehouse():
                 AVG(presupuesto) as presupuesto_promedio,
                 AVG(duracion_real) as duracion_promedio,
                 SUM(CASE WHEN cumplimiento_tiempo = 1 THEN 1 ELSE 0 END) as proyectos_a_tiempo
-            FROM HechoProyecto
+            FROM hechoproyecto
         """)
         
         metricas_row = cursor.fetchone()
@@ -246,14 +226,11 @@ def datos_datawarehouse():
             'proyectos_a_tiempo': metricas_row[3] if metricas_row[3] else 0
         }
         
-        # Obtener detalle de proyectos en el DW
-        # Como DimProyecto puede no tener datos, obtenemos nombres directamente del origen
-        conn_origen = get_connection('origen')
-        cursor_origen = conn_origen.cursor()
-        
+        # Obtener detalle de proyectos en el DW con nombres desde DimProyecto
         cursor.execute("""
             SELECT 
                 hp.id_proyecto,
+                dp.nombre_proyecto,
                 hp.presupuesto,
                 hp.costo_real,
                 hp.duracion_planificada,
@@ -263,43 +240,94 @@ def datos_datawarehouse():
                 hp.tareas_total,
                 hp.tareas_completadas,
                 hp.tareas_canceladas
-            FROM HechoProyecto hp
+            FROM hechoproyecto hp
+            LEFT JOIN dimproyecto dp ON hp.id_proyecto = dp.id_proyecto
             ORDER BY hp.id_proyecto
             LIMIT 50
         """)
         
-        proyectos_dw = []
-        for row in cursor.fetchall():
-            id_proyecto = row[0]
-            
-            # Obtener nombre del proyecto desde la base de datos origen
-            cursor_origen.execute("SELECT nombre FROM Proyecto WHERE id_proyecto = %s", (id_proyecto,))
-            nombre_row = cursor_origen.fetchone()
-            nombre_proyecto = nombre_row[0] if nombre_row else f"Proyecto {id_proyecto}"
-            
-            proyectos_dw.append({
-                'id': id_proyecto,
-                'nombre': nombre_proyecto,
-                'presupuesto': float(row[1]) if row[1] else 0,
-                'costo_real': float(row[2]) if row[2] else 0,
-                'duracion_plan': row[3],
-                'duracion_real': row[4],
-                'cumplimiento_tiempo': row[5],
-                'cumplimiento_presupuesto': row[6],
-                'tareas_total': row[7],
-                'tareas_completadas': row[8],
-                'tareas_canceladas': row[9]
-            })
-        
-        cursor_origen.close()
-        conn_origen.close()
-        
+        proyectos_dw_rows = cursor.fetchall()
         cursor.close()
         conn.close()
         
+        # Obtener estados desde base origen (solo en modo distribuido)
+        proyectos_dw = []
+        if AMBIENTE == 'distribuido':
+            conn_origen = get_connection('origen')
+            cursor_origen = conn_origen.cursor()
+            
+            for row in proyectos_dw_rows:
+                id_proy = row[0]
+                nombre_proy = row[1]
+                # Consultar estado desde origen por NOMBRE (más confiable que por ID)
+                try:
+                    cursor_origen.execute("""
+                        SELECT estado, id_estado FROM Proyecto WHERE nombre = %s
+                    """, (nombre_proy,))
+                    estado_row = cursor_origen.fetchone()
+                    if estado_row:
+                        estado = estado_row[0]
+                        id_estado = estado_row[1]
+                    else:
+                        # Si no encuentra por nombre, intentar por ID
+                        cursor_origen.execute("""
+                            SELECT estado, id_estado FROM Proyecto WHERE id_proyecto = %s
+                        """, (id_proy,))
+                        estado_row = cursor_origen.fetchone()
+                        estado = estado_row[0] if estado_row else 'Desconocido'
+                        id_estado = estado_row[1] if estado_row else None
+                except Exception as e:
+                    print(f"❌ Error obteniendo estado para proyecto {nombre_proy}: {str(e)}")
+                    estado = 'Desconocido'
+                    id_estado = None
+                
+                proyectos_dw.append({
+                    'id_proyecto': row[0],
+                    'nombre_proyecto': row[1] if row[1] else f"Proyecto {row[0]}",
+                    'estado': estado,
+                    'id_estado': id_estado,
+                    'presupuesto': float(row[2]) if row[2] else 0,
+                    'costo_real': float(row[3]) if row[3] else 0,
+                    'duracion_plan': row[4],
+                    'duracion_real': row[5],
+                    'cumplimiento_tiempo': row[6],
+                    'cumplimiento_presupuesto': row[7],
+                    'tareas_total': row[8],
+                    'tareas_completadas': row[9],
+                    'tareas_canceladas': row[10]
+                })
+            
+            cursor_origen.close()
+            conn_origen.close()
+        else:
+            # Modo local: usar estado de la misma base
+            for row in proyectos_dw_rows:
+                proyectos_dw.append({
+                    'id_proyecto': row[0],
+                    'nombre_proyecto': row[1] if row[1] else f"Proyecto {row[0]}",
+                    'estado': 'N/A',
+                    'id_estado': None,
+                    'presupuesto': float(row[2]) if row[2] else 0,
+                    'costo_real': float(row[3]) if row[3] else 0,
+                    'duracion_plan': row[4],
+                    'duracion_real': row[5],
+                    'cumplimiento_tiempo': row[6],
+                    'cumplimiento_presupuesto': row[7],
+                    'tareas_total': row[8],
+                    'tareas_completadas': row[9],
+                    'tareas_canceladas': row[10]
+                })
+        
         return jsonify({
             'status': 'success',
-            'estadisticas': stats,
+            'stats': {
+                'clientes': stats['dimcliente'],
+                'empleados': stats['dimempleado'],
+                'equipos': stats['dimequipo'],
+                'proyectos': stats['dimproyecto'],
+                'hechos_proyecto': stats['hechoproyecto'],
+                'hechos_tarea': stats['hechotarea']
+            },
             'metricas': metricas,
             'proyectos': proyectos_dw
         })
@@ -310,81 +338,76 @@ def datos_datawarehouse():
             'error': str(e)
         }), 500
 
-@app.route('/insertar-datos', methods=['POST'])
-def insertar_datos():
-    """Generar datos de prueba en la base origen"""
-    try:
-        # Ejecutar script de generación de datos
-        # Aquí puedes llamar al script de generación o ejecutar la lógica directamente
-        
-        conn = get_connection('origen')
-        cursor = conn.cursor()
-        
-        # Insertar algunos datos de ejemplo
-        from faker import Faker
-        import random
-        fake = Faker('es_MX')
-        
-        # Insertar clientes
-        for _ in range(5):
-            nombre = fake.company()[:100]
-            sector = fake.bs().split()[0][:50]
-            contacto = fake.name()[:100]
-            cursor.execute(
-                "INSERT INTO Cliente (nombre, sector, contacto) VALUES (%s, %s, %s)",
-                (nombre, sector, contacto)
-            )
-        
-        # Insertar empleados
-        puestos = ["Desarrollador", "Analista", "QA", "Gerente"]
-        for _ in range(10):
-            nombre = fake.name()[:100]
-            puesto = random.choice(puestos)
-            cursor.execute(
-                "INSERT INTO Empleado (nombre, puesto) VALUES (%s, %s)",
-                (nombre, puesto)
-            )
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Datos de prueba insertados correctamente'
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
+# Función eliminada - usar /generar-datos en su lugar
 
 @app.route('/ejecutar-etl', methods=['POST'])
 def ejecutar_etl():
     """Ejecutar proceso ETL"""
     try:
-        # Importar el ETL principal
-        import sys
-        import os
-        from pathlib import Path
+        print("🚀 Iniciando proceso ETL...")
         
-        # Configurar paths
-        base_dir = Path(__file__).parent.parent.parent
-        etl_dir = base_dir / '02_ETL'
-        etl_scripts_dir = etl_dir / 'scripts'
-        etl_config_dir = etl_dir / 'config'
+        # MODO DISTRIBUIDO: Usar script Python ETL que conecta a 2 BDs remotas
+        if os.environ.get('ETL_AMBIENTE') == 'distribuido':
+            print("🌐 Modo distribuido detectado - usando ETL Python")
+            
+            # Importar y ejecutar ETL distribuido
+            import sys
+            from pathlib import Path
+            etl_path = Path(__file__).parent.parent.parent / '02_ETL' / 'scripts'
+            sys.path.insert(0, str(etl_path))
+            
+            from etl_distribuido import ejecutar_etl_distribuido
+            
+            success = ejecutar_etl_distribuido()
+            
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'message': 'Error ejecutando ETL distribuido',
+                    'error': 'Revisar logs del servidor'
+                }), 500
         
-        # Agregar al path
-        sys.path.insert(0, str(etl_scripts_dir))
-        sys.path.insert(0, str(etl_config_dir))
-        
-        # Importar el ETL
-        from etl_principal import ETLProyectos
-        
-        # Ejecutar ETL
-        etl = ETLProyectos('local')
-        success = etl.ejecutar_etl_completo()
+        # MODO LOCAL: Usar procedimiento almacenado
+        else:
+            print("🏠 Modo local detectado - usando procedimiento almacenado")
+            
+            # Conectar al datawarehouse
+            connection_params = {
+                'user': DB_CONFIG['user_destino'],
+                'password': DB_CONFIG['password_destino'],
+                'database': DB_CONFIG['db_destino']
+            }
+            
+            # Solo usar unix_socket si el host es localhost
+            if DB_CONFIG['host_destino'] == 'localhost' and 'unix_socket' in DB_CONFIG and DB_CONFIG['unix_socket']:
+                connection_params['unix_socket'] = DB_CONFIG['unix_socket']
+            else:
+                connection_params['host'] = DB_CONFIG['host_destino']
+                connection_params['port'] = DB_CONFIG['port_destino']
+            
+            conn_destino = mysql.connector.connect(**connection_params)
+            cursor = conn_destino.cursor(dictionary=True)
+            
+            # Ejecutar el procedimiento almacenado completo
+            print("⏳ Ejecutando sp_ejecutar_etl_completo()...")
+            cursor.execute("CALL sp_ejecutar_etl_completo()")
+            resultado = cursor.fetchone()
+            
+            print(f"✅ Resultado: {resultado}")
+            
+            cursor.nextset()
+            cursor.close()
+            conn_destino.close()
+            
+            # Verificar si hubo éxito
+            if resultado and resultado.get('estado') == 'ERROR':
+                return jsonify({
+                    'success': False,
+                    'message': resultado.get('mensaje', 'Error desconocido en ETL'),
+                    'error': str(resultado)
+                }), 500
+            
+            success = True
         
         if success:
             # Obtener estadísticas del datawarehouse
@@ -393,35 +416,31 @@ def ejecutar_etl():
                 cursor = conn.cursor()
                 
                 # Contar registros en tablas principales
-                cursor.execute("SELECT COUNT(*) FROM HechoProyecto")
-                result = cursor.fetchone()
-                fact_proyectos = result[0] if result else 0
+                cursor.execute("SELECT COUNT(*) FROM hechoproyecto")
+                fact_proyectos = cursor.fetchone()[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM HechoTarea")
-                result = cursor.fetchone()
-                fact_tareas = result[0] if result else 0
+                cursor.execute("SELECT COUNT(*) FROM hechotarea")
+                fact_tareas = cursor.fetchone()[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM DimCliente")
-                result = cursor.fetchone()
-                dim_clientes = result[0] if result else 0
+                cursor.execute("SELECT COUNT(*) FROM dimcliente")
+                dim_clientes = cursor.fetchone()[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM DimTiempo")
-                result = cursor.fetchone()
-                dim_tiempo = result[0] if result else 0
+                cursor.execute("SELECT COUNT(*) FROM dimtiempo")
+                dim_tiempo = cursor.fetchone()[0]
                 
                 cursor.close()
                 conn.close()
                 
                 return jsonify({
                     'success': True,
-                    'message': 'ETL ejecutado exitosamente',
+                    'message': f'ETL ejecutado exitosamente - {resultado.get("mensaje", "Completado")}' if resultado else 'ETL ejecutado exitosamente',
                     'registros_procesados': {
-                        'HechoProyecto': fact_proyectos,
-                        'HechoTarea': fact_tareas,
-                        'DimCliente': dim_clientes,
-                        'DimTiempo': dim_tiempo
+                        'HechoProyecto': int(fact_proyectos) if fact_proyectos else 0,
+                        'HechoTarea': int(fact_tareas) if fact_tareas else 0,
+                        'DimCliente': int(dim_clientes) if dim_clientes else 0,
+                        'DimTiempo': int(dim_tiempo) if dim_tiempo else 0
                     },
-                    'total': fact_proyectos + fact_tareas + dim_clientes + dim_tiempo
+                    'total': int(fact_proyectos or 0) + int(fact_tareas or 0) + int(dim_clientes or 0) + int(dim_tiempo or 0)
                 })
                 
             except Exception as db_error:
@@ -444,92 +463,6 @@ def ejecutar_etl():
             'traceback': traceback.format_exc()
         }), 500
 
-@app.route('/datos-origen/todas-tablas', methods=['GET'])
-def obtener_todas_tablas_origen():
-    """Obtiene datos de todas las tablas de la base de datos origen"""
-    try:
-        conn = get_connection('origen')
-        cursor = conn.cursor()
-        
-        # Definir el orden y configuración de las tablas
-        tablas_config = [
-            {'nombre': 'Estado', 'limite': 10},
-            {'nombre': 'Cliente', 'limite': 10},
-            {'nombre': 'Empleado', 'limite': 10},
-            {'nombre': 'Equipo', 'limite': 10},
-            {'nombre': 'Proyecto', 'limite': 15},
-            {'nombre': 'MiembroEquipo', 'limite': 15},
-            {'nombre': 'Tarea', 'limite': 15}
-        ]
-        
-        resultado = []
-        
-        for tabla_config in tablas_config:
-            tabla = tabla_config['nombre']
-            limite = tabla_config['limite']
-            
-            try:
-                # Obtener el total de registros
-                cursor.execute(f"SELECT COUNT(*) FROM {tabla}")
-                total = cursor.fetchone()[0]
-                
-                # Obtener nombres de columnas
-                cursor.execute(f"DESCRIBE {tabla}")
-                columnas_info = cursor.fetchall()
-                columnas = [col[0] for col in columnas_info]
-                
-                # Obtener datos (limitados)
-                cursor.execute(f"SELECT * FROM {tabla} ORDER BY {columnas[0]} DESC LIMIT {limite}")
-                filas = cursor.fetchall()
-                
-                # Convertir a diccionarios
-                datos = []
-                for fila in filas:
-                    fila_dict = {}
-                    for i, valor in enumerate(fila):
-                        # Convertir tipos especiales a string para JSON
-                        if isinstance(valor, (date, datetime)):
-                            fila_dict[columnas[i]] = valor.strftime('%Y-%m-%d')
-                        elif isinstance(valor, Decimal):
-                            fila_dict[columnas[i]] = float(valor)
-                        else:
-                            fila_dict[columnas[i]] = valor
-                    datos.append(fila_dict)
-                
-                resultado.append({
-                    'tabla': tabla,
-                    'total_registros': total,
-                    'registros_mostrados': len(datos),
-                    'columnas': columnas,
-                    'datos': datos
-                })
-                
-            except Exception as e:
-                resultado.append({
-                    'tabla': tabla,
-                    'error': str(e),
-                    'total_registros': 0,
-                    'registros_mostrados': 0,
-                    'columnas': [],
-                    'datos': []
-                })
-        
-        cursor.close()
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'tablas': resultado
-        })
-        
-    except Exception as e:
-        import traceback
-        return jsonify({
-            'success': False,
-            'message': f'Error obteniendo datos: {str(e)}',
-            'traceback': traceback.format_exc()
-        }), 500
-
 @app.route('/limpiar-datos', methods=['DELETE'])
 def limpiar_datos():
     """Limpiar todas las tablas"""
@@ -539,9 +472,12 @@ def limpiar_datos():
         cursor_origen = conn_origen.cursor()
         
         cursor_origen.execute("SET FOREIGN_KEY_CHECKS=0")
-        tablas_origen = ['TareaEquipoHist', 'Tarea', 'Proyecto', 'MiembroEquipo', 'Estado', 'Equipo', 'Empleado', 'Cliente']
+        tablas_origen = ['TareaEquipoHist', 'Tarea', 'Proyecto', 'MiembroEquipo', 'Equipo', 'Empleado', 'Cliente']
         for tabla in tablas_origen:
-            cursor_origen.execute(f"TRUNCATE TABLE {tabla}")
+            try:
+                cursor_origen.execute(f"TRUNCATE TABLE {tabla}")
+            except:
+                cursor_origen.execute(f"DELETE FROM {tabla}")
         cursor_origen.execute("SET FOREIGN_KEY_CHECKS=1")
         
         cursor_origen.close()
@@ -554,7 +490,10 @@ def limpiar_datos():
         cursor_destino.execute("SET FOREIGN_KEY_CHECKS=0")
         tablas_destino = ['HechoTarea', 'HechoProyecto', 'DimTiempo', 'DimProyecto', 'DimEquipo', 'DimEmpleado', 'DimCliente']
         for tabla in tablas_destino:
-            cursor_destino.execute(f"TRUNCATE TABLE {tabla}")
+            try:
+                cursor_destino.execute(f"TRUNCATE TABLE {tabla}")
+            except:
+                cursor_destino.execute(f"DELETE FROM {tabla}")
         cursor_destino.execute("SET FOREIGN_KEY_CHECKS=1")
         
         cursor_destino.close()
@@ -573,43 +512,93 @@ def limpiar_datos():
 
 @app.route('/generar-datos', methods=['POST'])
 def generar_datos():
-    """Generar datos de prueba usando el generador final"""
+    """Generar datos de prueba"""
     try:
         import sys
         from pathlib import Path
-        
-        # Agregar el directorio de datos al path
-        datos_dir = Path(__file__).parent.parent.parent / '01_GestionProyectos' / 'datos'
-        sys.path.insert(0, str(datos_dir))
-        
-        # Importar el generador final
-        from generar_datos_final import GeneradorDatosFinal
+        import subprocess
         
         # Obtener parámetros del request
         data = request.get_json()
         num_proyectos = data.get('proyectos', 50)
         
-        # Nota: El nuevo generador usa cantidades fijas internas
-        # Se puede extender para aceptar parámetros personalizados
+        # En modo distribuido, usar el script de generación remota
+        if os.environ.get('ETL_AMBIENTE') == 'distribuido':
+            print("🌐 Generando datos en modo distribuido...")
+            
+            # Ejecutar el script de generación completa desde la raíz del proyecto
+            project_root = Path(__file__).parent.parent.parent
+            script_path = project_root / 'generar_datos_completos.py'
+            
+            # Cambiar al directorio del proyecto para asegurar rutas correctas
+            result = subprocess.run(
+                ['python3', str(script_path)],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=180
+            )
+            
+            if result.returncode == 0:
+                return jsonify({
+                    'success': True,
+                    'message': 'Datos generados exitosamente en BD remota',
+                    'output': result.stdout[-500:] if len(result.stdout) > 500 else result.stdout
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Error durante la generación de datos',
+                    'error': result.stderr
+                }), 500
         
-        # Crear instancia del generador
-        generador = GeneradorDatosFinal()
-        
-        # Ejecutar la generación completa
-        exito = generador.ejecutar()
-        
-        if exito:
+        # Modo local - usar faker directamente
+        else:
+            print("🏠 Generando datos en modo local...")
+            
+            from faker import Faker
+            import random
+            
+            fake = Faker('es_MX')
+            conn = get_connection('origen')
+            cursor = conn.cursor()
+            
+            # Generar algunos datos básicos
+            # Clientes
+            for _ in range(10):
+                nombre = fake.company()[:100]
+                sector = fake.bs().split()[0][:50]
+                contacto = fake.name()[:100]
+                cursor.execute(
+                    "INSERT INTO Cliente (nombre, sector, contacto, telefono, email) VALUES (%s, %s, %s, %s, %s)",
+                    (nombre, sector, contacto, fake.phone_number()[:20], fake.email())
+                )
+            
+            # Empleados
+            puestos = ["Desarrollador", "Analista", "QA", "Gerente", "Diseñador"]
+            for _ in range(15):
+                nombre = fake.name()[:100]
+                puesto = random.choice(puestos)
+                cursor.execute(
+                    "INSERT INTO Empleado (nombre, puesto, departamento, email) VALUES (%s, %s, %s, %s)",
+                    (nombre, puesto, fake.job()[:50], fake.email())
+                )
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
             return jsonify({
                 'success': True,
-                'message': 'Datos generados exitosamente con el nuevo generador',
-                'stats': generador.stats
+                'message': 'Datos generados exitosamente en modo local'
             })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Error durante la generación de datos'
-            }), 500
         
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'message': 'Timeout: La generación tardó más de 120 segundos',
+            'error': 'Timeout'
+        }), 500
     except Exception as e:
         import traceback
         return jsonify({
@@ -619,241 +608,7 @@ def generar_datos():
             'traceback': traceback.format_exc()
         }), 500
 
-@app.route('/buscar-trazabilidad', methods=['POST'])
-def buscar_trazabilidad():
-    """Buscar un registro en BD Origen y verificar si está en DataWarehouse"""
-    try:
-        data = request.get_json()
-        tipo = data.get('tipo')  # 'proyecto', 'cliente', 'empleado', 'tarea'
-        criterio = data.get('criterio')  # 'id' o 'nombre'
-        valor = data.get('valor')
-        
-        if not tipo or not criterio or not valor:
-            return jsonify({
-                'success': False,
-                'message': 'Faltan parámetros requeridos (tipo, criterio, valor)'
-            }), 400
-        
-        conn_origen = get_connection('origen')
-        cursor_origen = conn_origen.cursor(dictionary=True)
-        
-        conn_destino = get_connection('destino')
-        cursor_destino = conn_destino.cursor(dictionary=True)
-        
-        resultado = {
-            'success': True,
-            'tipo': tipo,
-            'encontrado_origen': False,
-            'encontrado_dw': False,
-            'datos_origen': None,
-            'datos_dw': None,
-            'mensaje': ''
-        }
-        
-        # PROYECTOS
-        if tipo == 'proyecto':
-            if criterio == 'id':
-                cursor_origen.execute("""
-                    SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente, 
-                           est.nombre_estado
-                    FROM Proyecto p
-                    LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
-                    LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
-                    LEFT JOIN Estado est ON p.id_estado = est.id_estado
-                    WHERE p.id_proyecto = %s
-                """, (valor,))
-            else:  # nombre
-                cursor_origen.execute("""
-                    SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente,
-                           est.nombre_estado
-                    FROM Proyecto p
-                    LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
-                    LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
-                    LEFT JOIN Estado est ON p.id_estado = est.id_estado
-                    WHERE p.nombre LIKE %s
-                """, (f'%{valor}%',))
-            
-            proyecto_origen = cursor_origen.fetchone()
-            
-            if proyecto_origen:
-                resultado['encontrado_origen'] = True
-                # Convertir tipos especiales
-                for key, val in proyecto_origen.items():
-                    if isinstance(val, (date, datetime)):
-                        proyecto_origen[key] = val.isoformat()
-                    elif isinstance(val, Decimal):
-                        proyecto_origen[key] = float(val)
-                resultado['datos_origen'] = proyecto_origen
-                
-                # Buscar en DW
-                cursor_destino.execute("""
-                    SELECT hp.*, dp.nombre_proyecto
-                    FROM HechoProyecto hp
-                    LEFT JOIN DimProyecto dp ON hp.id_proyecto = dp.id_proyecto
-                    WHERE hp.id_proyecto = %s
-                """, (proyecto_origen['id_proyecto'],))
-                
-                proyecto_dw = cursor_destino.fetchone()
-                
-                if proyecto_dw:
-                    resultado['encontrado_dw'] = True
-                    for key, val in proyecto_dw.items():
-                        if isinstance(val, (date, datetime)):
-                            proyecto_dw[key] = val.isoformat()
-                        elif isinstance(val, Decimal):
-                            proyecto_dw[key] = float(val)
-                    resultado['datos_dw'] = proyecto_dw
-                    resultado['mensaje'] = '✅ Proyecto encontrado en ambas bases de datos'
-                else:
-                    resultado['mensaje'] = '⚠️ Proyecto encontrado en BD Origen pero NO en DataWarehouse (puede que no esté completado/cancelado)'
-            else:
-                resultado['mensaje'] = '❌ Proyecto no encontrado en BD Origen'
-        
-        # CLIENTES
-        elif tipo == 'cliente':
-            if criterio == 'id':
-                cursor_origen.execute("SELECT * FROM Cliente WHERE id_cliente = %s", (valor,))
-            else:
-                cursor_origen.execute("SELECT * FROM Cliente WHERE nombre LIKE %s", (f'%{valor}%',))
-            
-            cliente_origen = cursor_origen.fetchone()
-            
-            if cliente_origen:
-                resultado['encontrado_origen'] = True
-                for key, val in cliente_origen.items():
-                    if isinstance(val, (date, datetime)):
-                        cliente_origen[key] = val.isoformat()
-                    elif isinstance(val, Decimal):
-                        cliente_origen[key] = float(val)
-                resultado['datos_origen'] = cliente_origen
-                
-                # Buscar en DW
-                cursor_destino.execute("SELECT * FROM DimCliente WHERE id_cliente = %s", 
-                                      (cliente_origen['id_cliente'],))
-                cliente_dw = cursor_destino.fetchone()
-                
-                if cliente_dw:
-                    resultado['encontrado_dw'] = True
-                    for key, val in cliente_dw.items():
-                        if isinstance(val, (date, datetime)):
-                            cliente_dw[key] = val.isoformat()
-                        elif isinstance(val, Decimal):
-                            cliente_dw[key] = float(val)
-                    resultado['datos_dw'] = cliente_dw
-                    resultado['mensaje'] = '✅ Cliente encontrado en ambas bases de datos'
-                else:
-                    resultado['mensaje'] = '⚠️ Cliente encontrado en BD Origen pero NO en DataWarehouse'
-            else:
-                resultado['mensaje'] = '❌ Cliente no encontrado en BD Origen'
-        
-        # EMPLEADOS
-        elif tipo == 'empleado':
-            if criterio == 'id':
-                cursor_origen.execute("SELECT * FROM Empleado WHERE id_empleado = %s", (valor,))
-            else:
-                cursor_origen.execute("SELECT * FROM Empleado WHERE nombre LIKE %s", (f'%{valor}%',))
-            
-            empleado_origen = cursor_origen.fetchone()
-            
-            if empleado_origen:
-                resultado['encontrado_origen'] = True
-                for key, val in empleado_origen.items():
-                    if isinstance(val, (date, datetime)):
-                        empleado_origen[key] = val.isoformat()
-                    elif isinstance(val, Decimal):
-                        empleado_origen[key] = float(val)
-                resultado['datos_origen'] = empleado_origen
-                
-                # Buscar en DW
-                cursor_destino.execute("SELECT * FROM DimEmpleado WHERE id_empleado = %s",
-                                      (empleado_origen['id_empleado'],))
-                empleado_dw = cursor_destino.fetchone()
-                
-                if empleado_dw:
-                    resultado['encontrado_dw'] = True
-                    for key, val in empleado_dw.items():
-                        if isinstance(val, (date, datetime)):
-                            empleado_dw[key] = val.isoformat()
-                        elif isinstance(val, Decimal):
-                            empleado_dw[key] = float(val)
-                    resultado['datos_dw'] = empleado_dw
-                    resultado['mensaje'] = '✅ Empleado encontrado en ambas bases de datos'
-                else:
-                    resultado['mensaje'] = '⚠️ Empleado encontrado en BD Origen pero NO en DataWarehouse'
-            else:
-                resultado['mensaje'] = '❌ Empleado no encontrado en BD Origen'
-        
-        # TAREAS
-        elif tipo == 'tarea':
-            if criterio == 'id':
-                cursor_origen.execute("""
-                    SELECT t.*, p.nombre as nombre_proyecto, e.nombre as nombre_empleado,
-                           est.nombre_estado
-                    FROM Tarea t
-                    LEFT JOIN Proyecto p ON t.id_proyecto = p.id_proyecto
-                    LEFT JOIN Empleado e ON t.id_empleado = e.id_empleado
-                    LEFT JOIN Estado est ON t.id_estado = est.id_estado
-                    WHERE t.id_tarea = %s
-                """, (valor,))
-            else:
-                cursor_origen.execute("""
-                    SELECT t.*, p.nombre as nombre_proyecto, e.nombre as nombre_empleado,
-                           est.nombre_estado
-                    FROM Tarea t
-                    LEFT JOIN Proyecto p ON t.id_proyecto = p.id_proyecto
-                    LEFT JOIN Empleado e ON t.id_empleado = e.id_empleado
-                    LEFT JOIN Estado est ON t.id_estado = est.id_estado
-                    WHERE t.nombre_tarea LIKE %s
-                """, (f'%{valor}%',))
-            
-            tarea_origen = cursor_origen.fetchone()
-            
-            if tarea_origen:
-                resultado['encontrado_origen'] = True
-                for key, val in tarea_origen.items():
-                    if isinstance(val, (date, datetime)):
-                        tarea_origen[key] = val.isoformat()
-                    elif isinstance(val, Decimal):
-                        tarea_origen[key] = float(val)
-                resultado['datos_origen'] = tarea_origen
-                
-                # Buscar en DW
-                cursor_destino.execute("SELECT * FROM HechoTarea WHERE id_tarea = %s",
-                                      (tarea_origen['id_tarea'],))
-                tarea_dw = cursor_destino.fetchone()
-                
-                if tarea_dw:
-                    resultado['encontrado_dw'] = True
-                    for key, val in tarea_dw.items():
-                        if isinstance(val, (date, datetime)):
-                            tarea_dw[key] = val.isoformat()
-                        elif isinstance(val, Decimal):
-                            tarea_dw[key] = float(val)
-                    resultado['datos_dw'] = tarea_dw
-                    resultado['mensaje'] = '✅ Tarea encontrada en ambas bases de datos'
-                else:
-                    resultado['mensaje'] = '⚠️ Tarea encontrada en BD Origen pero NO en DataWarehouse'
-            else:
-                resultado['mensaje'] = '❌ Tarea no encontrada en BD Origen'
-        
-        else:
-            resultado['success'] = False
-            resultado['mensaje'] = f'❌ Tipo "{tipo}" no soportado'
-        
-        cursor_origen.close()
-        conn_origen.close()
-        cursor_destino.close()
-        conn_destino.close()
-        
-        return jsonify(resultado)
-        
-    except Exception as e:
-        import traceback
-        return jsonify({
-            'success': False,
-            'message': f'Error en búsqueda: {str(e)}',
-            'traceback': traceback.format_exc()
-        }), 500
+# Función de trazabilidad eliminada - demasiado compleja
 
 
 if __name__ == '__main__':
