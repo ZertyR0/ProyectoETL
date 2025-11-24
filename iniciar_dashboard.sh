@@ -1,19 +1,19 @@
 #!/bin/bash
 # ============================================================
-# Script para iniciar el Dashboard ETL en modo distribuido
+# Script para iniciar el Dashboard DSS en modo local
 # ============================================================
 
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║              🚀 INICIANDO DASHBOARD ETL - MODO DISTRIBUIDO           ║"
+echo "║                🚀 INICIANDO DASHBOARD DSS - MODO LOCAL               ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
 # Configurar ambiente
-export ETL_AMBIENTE=distribuido
+export ETL_AMBIENTE=local
 
 # Directorio base
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$BASEDIR"
+cd "$BASEDIR"s
 
 # Crear directorio de logs si no existe
 mkdir -p 03_Dashboard/logs
@@ -24,20 +24,26 @@ pkill -f "python.*03_Dashboard/backend/app.py" 2>/dev/null
 pkill -f "python.*http.server 8080" 2>/dev/null
 sleep 2
 
+# Activar entorno virtual si existe
+if [ -d ".venv" ]; then
+    echo "🐍 Activando entorno virtual Python..."
+    source .venv/bin/activate
+fi
+
 # Iniciar backend
-echo "🔧 Iniciando Backend (Puerto 5001)..."
-/opt/anaconda3/bin/python 03_Dashboard/backend/app.py > 03_Dashboard/logs/backend.log 2>&1 &
+echo "🔧 Iniciando Backend DSS (Puerto 5001)..."
+python 03_Dashboard/backend/app.py > 03_Dashboard/logs/backend.log 2>&1 &
 BACKEND_PID=$!
-echo "   ✅ Backend iniciado (PID: $BACKEND_PID)"
+echo "    Backend iniciado (PID: $BACKEND_PID)"
 
 # Esperar a que el backend esté listo
 sleep 3
 
 # Verificar que el backend está corriendo
 if ps -p $BACKEND_PID > /dev/null 2>&1; then
-    echo "   ✅ Backend verificado y funcionando"
+    echo "    Backend verificado y funcionando"
 else
-    echo "   ❌ Error: Backend no está corriendo"
+    echo "    Error: Backend no está corriendo"
     exit 1
 fi
 
@@ -47,15 +53,15 @@ cd "$BASEDIR/03_Dashboard/frontend"
 python3 -m http.server 8080 > "$BASEDIR/03_Dashboard/logs/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 cd "$BASEDIR"
-echo "   ✅ Frontend iniciado (PID: $FRONTEND_PID)"
+echo "    Frontend iniciado (PID: $FRONTEND_PID)"
 
 sleep 2
 
 # Verificar que el frontend está corriendo
 if ps -p $FRONTEND_PID > /dev/null 2>&1; then
-    echo "   ✅ Frontend verificado y funcionando"
+    echo "    Frontend verificado y funcionando"
 else
-    echo "   ❌ Error: Frontend no está corriendo"
+    echo "    Error: Frontend no está corriendo"
     kill $BACKEND_PID 2>/dev/null
     exit 1
 fi
@@ -66,26 +72,35 @@ echo $FRONTEND_PID >> .dashboard.pid
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║                  ✅ DASHBOARD INICIADO CORRECTAMENTE                 ║"
+echo "║                   SISTEMA DSS INICIADO CORRECTAMENTE               ║"
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🌐 ACCEDE AL DASHBOARD EN:"
+echo "🌐 ACCEDE AL DASHBOARD DSS EN:"
 echo "   http://localhost:8080"
 echo ""
-echo "📊 API BACKEND:"
+echo "📊 API BACKEND DSS:"
 echo "   http://localhost:5001"
 echo ""
-echo "📝 LOGS:"
+echo "🎯 MÓDULOS DSS DISPONIBLES:"
+echo "   • 📊 Dashboard Principal & Análisis"
+echo "   • 🗄️ Control de Datos Origen"
+echo "   • ⚙️ Gestión ETL Automática"
+echo "   • 🏢 DataWarehouse & Reports"
+echo "   • 📈 KPIs OLAP con Cubo Multidimensional"
+echo "   • 🎯 Balanced Scorecard (BSC) con OKR"
+echo "   • � Predicción Rayleigh de Defectos"
+echo "   • 🔍 Trazabilidad Completa"
+echo ""
+echo " LOGS:"
 echo "   Backend:  tail -f 03_Dashboard/logs/backend.log"
 echo "   Frontend: tail -f 03_Dashboard/logs/frontend.log"
 echo ""
 echo "🛑 PARA DETENER:"
 echo "   ./detener_dashboard.sh"
-echo "   O ejecuta: pkill -f 'python.*03_Dashboard'"
 echo ""
-echo "⚙️  CONFIGURACIÓN:"
-echo "   BD Origen: 172.20.10.3:3306 (gestionproyectos_hist)"
-echo "   DataWarehouse: 172.20.10.2:3306 (dw_proyectos_hist)"
+echo "⚙️  CONFIGURACIÓN LOCAL:"
+echo "   BD Origen: localhost:3306 (gestionproyectos_hist)"
+echo "   DataWarehouse: localhost:3306 (dw_proyectos_hist)"
 echo ""
 
 # Abrir navegador automáticamente (macOS)

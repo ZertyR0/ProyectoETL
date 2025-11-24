@@ -1,16 +1,13 @@
--- =========================================================
--- PROCEDIMIENTOS ALMACENADOS ETL - OPCIÓN 3: SEGURIDAD TOTAL
+
+-- PROCEDIMIENTOS ALMACENADOS ETL COMPLETA SEGURIDAD
 -- Python solo ejecuta: CALL sp_ejecutar_etl_completo()
 -- CERO nombres de tablas/columnas en código Python
--- =========================================================
 
 USE dw_proyectos_hist;
 
 DELIMITER //
 
--- =====================================================
--- PROCEDIMIENTO MAESTRO - TODO EL ETL EN 1 LLAMADA
--- =====================================================
+-- PROCEDIMIENTO MAESTRO 
 
 DROP PROCEDURE IF EXISTS sp_ejecutar_etl_completo//
 
@@ -34,9 +31,7 @@ BEGIN
     
     START TRANSACTION;
     
-    -- ===================================================
     -- PASO 1: LIMPIAR DATAWAREHOUSE
-    -- ===================================================
     
     SET FOREIGN_KEY_CHECKS = 0;
     
@@ -53,9 +48,7 @@ BEGIN
     
     SET FOREIGN_KEY_CHECKS = 1;
     
-    -- ===================================================
-    -- PASO 2: GENERAR DIMENSIÓN TIEMPO (4 años)
-    -- ===================================================
+    -- PASO 2: GENERAR DIMENSIÓN TIEMPO 
     
     SET @fecha = DATE_SUB(CURDATE(), INTERVAL 3 YEAR);
     SET @fecha_max = DATE_ADD(CURDATE(), INTERVAL 1 YEAR);
@@ -85,9 +78,7 @@ BEGIN
         SET v_tiempo = v_tiempo + 1;
     END WHILE;
     
-    -- ===================================================
     -- PASO 3: CARGAR DIMENSIONES DESDE BD ORIGEN
-    -- ===================================================
     
     -- DimCliente
     INSERT INTO DimCliente (
@@ -141,9 +132,7 @@ BEGIN
     
     SET v_proyectos = ROW_COUNT();
     
-    -- ===================================================
     -- PASO 4: CARGAR HECHOS CON MÉTRICAS CALCULADAS
-    -- ===================================================
     
     -- HechoProyecto con todas las métricas
     INSERT INTO HechoProyecto (
@@ -257,9 +246,7 @@ BEGIN
     
     COMMIT;
     
-    -- ===================================================
     -- RETORNAR RESULTADO EXITOSO
-    -- ===================================================
     
     SELECT 
         'EXITOSO' AS estado,
@@ -276,11 +263,9 @@ END//
 
 DELIMITER ;
 
--- =====================================================
 -- VERIFICACIÓN
--- =====================================================
 
 SHOW PROCEDURE STATUS WHERE Db = 'dw_proyectos_hist' AND Name = 'sp_ejecutar_etl_completo';
 
-SELECT '✅ Procedimiento maestro ETL creado' AS resultado;
+SELECT ' Procedimiento maestro ETL creado' AS resultado;
 SELECT '💡 Python solo necesita: CALL sp_ejecutar_etl_completo()' AS instruccion;

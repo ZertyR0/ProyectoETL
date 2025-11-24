@@ -501,6 +501,68 @@ body {
     border-left: 4px solid #6c757d !important;
 }
 
+/* ========================================
+   Estilos para Tabla OLAP
+   ======================================== */
+#tabla-olap-resultados {
+    margin-bottom: 0;
+}
+
+#tabla-olap-resultados thead th {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: #ffffff;
+    font-weight: 600;
+    text-align: center;
+    padding: 15px 10px;
+    border: none;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+#tabla-olap-resultados tbody td {
+    padding: 12px 10px;
+    vertical-align: middle;
+    text-align: center;
+    color: #2c3e50;
+    font-weight: 500;
+    border-bottom: 1px solid #dee2e6;
+}
+
+#tabla-olap-resultados tbody tr {
+    background-color: #ffffff;
+    transition: all 0.2s ease;
+}
+
+#tabla-olap-resultados tbody tr:nth-child(odd) {
+    background-color: #f8f9fa;
+}
+
+#tabla-olap-resultados tbody tr:hover {
+    background-color: #e3f2fd;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Columnas específicas */
+#tabla-olap-resultados tbody td:nth-child(1),
+#tabla-olap-resultados tbody td:nth-child(2) {
+    text-align: left;
+    font-weight: 600;
+    color: #34495e;
+}
+
+#tabla-olap-resultados tbody td:nth-child(6),
+#tabla-olap-resultados tbody td:nth-child(7) {
+    font-family: 'Courier New', monospace;
+    color: #27ae60;
+    font-weight: 600;
+}
+
+#tabla-olap-resultados tbody td:nth-child(8) {
+    font-weight: 700;
+    color: #3498db;
+}
+
 #todas-tablas-origen-container .border-dark {
     border-color: #212529 !important;
     border-left: 4px solid #212529 !important;

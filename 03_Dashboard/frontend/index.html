@@ -38,6 +38,18 @@
                 <i class="fas fa-chart-line"></i>
                 <span>Análisis</span>
             </a>
+            <a href="#" class="menu-item" onclick="showSection('olap-kpis')">
+                <i class="fas fa-cubes"></i>
+                <span>KPIs OLAP</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('bsc-okr')">
+                <i class="fas fa-bullseye"></i>
+                <span>BSC / OKR</span>
+            </a>
+            <a href="#" class="menu-item" onclick="showSection('prediccion-rayleigh')">
+                <i class="fas fa-chart-area"></i>
+                <span>Predicción</span>
+            </a>
             <a href="#" class="menu-item" onclick="showSection('trazabilidad')">
                 <i class="fas fa-search"></i>
                 <span>Trazabilidad</span>
@@ -82,9 +94,9 @@
                 <strong>El datawarehouse solo contiene proyectos históricos (finalizados):</strong>
             </p>
             <ul class="mb-0">
-                <li>✅ <strong>Proyectos Completados</strong> - Finalizados exitosamente</li>
-                <li>✅ <strong>Proyectos Cancelados</strong> - Finalizados pero cancelados</li>
-                <li>❌ Proyectos en Progreso, Pendientes o en Pausa - NO se incluyen</li>
+                <li> <strong>Proyectos Completados</strong> - Finalizados exitosamente</li>
+                <li> <strong>Proyectos Cancelados</strong> - Finalizados pero cancelados</li>
+                <li> Proyectos en Progreso, Pendientes o en Pausa - NO se incluyen</li>
             </ul>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -582,6 +594,336 @@
             </div>
         </div>
         <!-- FIN SECCIÓN TRAZABILIDAD -->
+
+        <!-- SECCIÓN: KPIs OLAP -->
+        <div id="section-olap-kpis" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-cubes text-primary me-2"></i>
+                    KPIs OLAP - Análisis Multidimensional
+                </h3>
+                <p class="text-muted">Drill-down y análisis por dimensiones con cubo OLAP</p>
+            </div>
+
+            <!-- Controles de filtros OLAP -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtros de Análisis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="filtro-cliente" class="form-label">Cliente</label>
+                            <select id="filtro-cliente" class="form-select">
+                                <option value="">Todos los clientes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro-equipo" class="form-label">Equipo</label>
+                            <select id="filtro-equipo" class="form-select">
+                                <option value="">Todos los equipos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filtro-anio" class="form-label">Año</label>
+                            <select id="filtro-anio" class="form-select">
+                                <option value="">Todos los años</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="nivel-agregacion" class="form-label">Nivel</label>
+                            <select id="nivel-agregacion" class="form-select">
+                                <option value="DETALLADO">Detallado</option>
+                                <option value="POR_CLIENTE">Por Cliente</option>
+                                <option value="POR_EQUIPO">Por Equipo</option>
+                                <option value="POR_TIEMPO">Por Tiempo</option>
+                                <option value="TOTAL">Total</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="aplicarFiltrosOLAP()">
+                                <i class="fas fa-search me-1"></i>
+                                Aplicar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPIs Ejecutivos -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4>
+                        <i class="fas fa-tachometer-alt text-success me-2"></i>
+                        KPIs Ejecutivos
+                    </h4>
+                </div>
+            </div>
+            <div class="row mb-4" id="kpis-ejecutivos-cards">
+                <!-- Se llenarán dinámicamente -->
+            </div>
+
+            <!-- Tabla de resultados OLAP -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Resultados del Análisis OLAP
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabla-olap-resultados">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Equipo</th>
+                                    <th>Año</th>
+                                    <th>Total Proyectos</th>
+                                    <th>Completados</th>
+                                    <th>Presupuesto Total</th>
+                                    <th>Costo Real</th>
+                                    <th>Progreso Promedio</th>
+                                    <th>A Tiempo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN KPIs OLAP -->
+
+        <!-- SECCIÓN: BSC/OKR -->
+        <div id="section-bsc-okr" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-bullseye text-warning me-2"></i>
+                    Balanced Scorecard (BSC) / OKR
+                </h3>
+                <p class="text-muted">Seguimiento de objetivos estratégicos y resultados clave</p>
+            </div>
+
+            <!-- Visión Estratégica -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>
+                        Visión Estratégica
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold">Transformación Digital para la Excelencia Operacional</h6>
+                    <p class="text-muted mb-3">
+                        Liderar la transformación digital mediante sistemas de soporte de decisiones, 
+                        procesos automatizados y analítica avanzada para entregar valor superior a nuestros clientes.
+                    </p>
+                    <div class="row" id="vision-componentes">
+                        <!-- Se llenarán dinámicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Perspectivas del BSC -->
+            <div class="row">
+                <div class="col-12">
+                    <h4>
+                        <i class="fas fa-layer-group text-primary me-2"></i>
+                        4 Perspectivas del Balanced Scorecard
+                    </h4>
+                </div>
+            </div>
+
+            <div class="row" id="perspectivas-bsc">
+                <!-- Se llenarán dinámicamente las 4 perspectivas -->
+            </div>
+
+            <!-- Modal para registrar medición -->
+            <div class="modal fade" id="modal-medicion-okr" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Registrar Nueva Medición</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="form-medicion-okr">
+                                <div class="mb-3">
+                                    <label class="form-label">KR Seleccionado</label>
+                                    <input type="text" id="kr-nombre-medicion" class="form-control" readonly>
+                                    <input type="hidden" id="kr-id-medicion">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="valor-medicion" class="form-label">Valor Observado</label>
+                                    <input type="number" step="0.01" id="valor-medicion" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fecha-medicion" class="form-label">Fecha de Medición</label>
+                                    <input type="date" id="fecha-medicion" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="comentario-medicion" class="form-label">Comentario</label>
+                                    <textarea id="comentario-medicion" class="form-control" rows="3"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="registrarMedicionOKR()">
+                                <i class="fas fa-save me-1"></i>
+                                Registrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN BSC/OKR -->
+
+        <!-- SECCIÓN: PREDICCIÓN RAYLEIGH -->
+        <div id="section-prediccion-rayleigh" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h3>
+                    <i class="fas fa-chart-area text-danger me-2"></i>
+                    Predicción de Defectos - Modelo Rayleigh
+                </h3>
+                <p class="text-muted">Predicción estadística de defectos en proyectos de software</p>
+            </div>
+
+            <!-- Validación de acceso -->
+            <div class="alert alert-warning" id="alert-acceso-pm" style="display: none;">
+                <i class="fas fa-lock me-2"></i>
+                <strong>Acceso Restringido:</strong> Esta funcionalidad requiere permisos de Project Manager.
+                <br>
+                <small>Para esta demo, use el botón "Simular Acceso PM" abajo.</small>
+            </div>
+
+            <!-- Botón para simular acceso PM (solo para demo) -->
+            <div class="text-center mb-3">
+                <button class="btn btn-outline-primary" onclick="simularAccesoPM()">
+                    <i class="fas fa-key me-1"></i>
+                    Simular Acceso PM (Demo)
+                </button>
+                <button class="btn btn-outline-secondary ms-2" onclick="verificarAccesoPM()">
+                    <i class="fas fa-shield-alt me-1"></i>
+                    Verificar Acceso
+                </button>
+            </div>
+
+            <!-- Formulario de predicción -->
+            <div class="card mb-4" id="form-prediccion-container">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        Parámetros del Proyecto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-prediccion-rayleigh">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="tamanio-proyecto" class="form-label">Tamaño del Proyecto</label>
+                                <input type="number" id="tamanio-proyecto" class="form-control" 
+                                       placeholder="Ej: 50" value="50" required>
+                                <small class="text-muted">Puntos de función, KLOC, etc.</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="duracion-semanas" class="form-label">Duración (semanas)</label>
+                                <input type="number" id="duracion-semanas" class="form-control" 
+                                       placeholder="Ej: 16" value="16" min="1" max="104" required>
+                                <small class="text-muted">Duración estimada del proyecto</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="complejidad-proyecto" class="form-label">Complejidad</label>
+                                <select id="complejidad-proyecto" class="form-select" required>
+                                    <option value="baja">Baja</option>
+                                    <option value="media" selected>Media</option>
+                                    <option value="alta">Alta</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <label for="tipo-proyecto" class="form-label">Tipo de Proyecto</label>
+                                <select id="tipo-proyecto" class="form-select" required>
+                                    <option value="web" selected>Aplicación Web</option>
+                                    <option value="movil">Aplicación Móvil</option>
+                                    <option value="sistema">Sistema de Escritorio</option>
+                                    <option value="api">API/Servicio</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="esfuerzo-testing" class="form-label">Esfuerzo Testing (horas)</label>
+                                <input type="number" id="esfuerzo-testing" class="form-control" 
+                                       value="160" min="40" step="10">
+                                <small class="text-muted">Horas disponibles para testing</small>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger w-100" onclick="generarPrediccionRayleigh()">
+                                    <i class="fas fa-chart-line me-1"></i>
+                                    Generar Predicción
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Resultados de la predicción -->
+            <div id="resultados-prediccion" style="display: none;">
+                <!-- Resumen ejecutivo -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Resumen Ejecutivo
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="resumen-ejecutivo-cards">
+                            <!-- Se llenarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de predicciones por semana -->
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table me-2"></i>
+                            Predicción Semanal de Defectos
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="tabla-prediccion-semanal">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Semana</th>
+                                        <th>Defectos Esperados</th>
+                                        <th>Acumulados</th>
+                                        <th>% Completado</th>
+                                        <th>Tasa Instantánea</th>
+                                        <th>Esfuerzo Testing (h)</th>
+                                        <th>Intensidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Se llenará dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- FIN SECCIÓN PREDICCIÓN RAYLEIGH -->
         
     </div>
 
@@ -661,6 +1003,6 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>

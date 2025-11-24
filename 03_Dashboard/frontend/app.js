@@ -42,11 +42,11 @@ function addLog(message, type = 'info') {
     }[type] || 'text-light';
     
     const typeIcon = {
-        'info': 'ℹ️',
-        'success': '✅',
+        'info': '',
+        'success': '',
         'warning': '⚠️',
-        'error': '❌'
-    }[type] || '📝';
+        'error': ''
+    }[type] || '';
     
     logsDiv.innerHTML += `<div class="${colorClass}">[${timestamp}] ${typeIcon} ${message}</div>`;
     logsDiv.scrollTop = logsDiv.scrollHeight;
@@ -110,10 +110,10 @@ async function checkStatus() {
         if (statusTop) {
             if (connectionStatus) {
                 statusTop.innerHTML = '<i class="fas fa-circle text-success"></i> Sistema Operativo';
-                addLog('✅ Conexiones establecidas correctamente', 'success');
+                addLog('Conexiones establecidas correctamente', 'success');
             } else {
                 statusTop.innerHTML = '<i class="fas fa-circle text-danger"></i> Error de conexión';
-                addLog('❌ Error en las conexiones', 'error');
+                addLog('Error en las conexiones', 'error');
             }
         }
         
@@ -124,7 +124,7 @@ async function checkStatus() {
         connectionStatus = false;
         const statusIndicator = document.getElementById('connection-status');
         statusIndicator.innerHTML = '<i class="fas fa-circle text-danger"></i> Sin conexión';
-        addLog(`❌ Error de conexión: ${error.message}`, 'error');
+        addLog(` Error de conexión: ${error.message}`, 'error');
         
         // Mostrar error en cards
         document.getElementById('origen-status').innerHTML = `
@@ -231,10 +231,10 @@ async function cargarDatosOrigen() {
             `;
         }
         
-        addLog(`✅ Datos de origen cargados: ${data.proyectos_recientes?.length || 0} proyectos`, 'success');
+        addLog(` Datos de origen cargados: ${data.proyectos_recientes?.length || 0} proyectos`, 'success');
         
     } catch (error) {
-        addLog(`❌ Error cargando datos de origen: ${error.message}`, 'error');
+        addLog(` Error cargando datos de origen: ${error.message}`, 'error');
         document.getElementById('tabla-origen').innerHTML = `
             <tr>
                 <td colspan="6" class="text-center text-danger">
@@ -255,8 +255,8 @@ async function cargarMetricas() {
         const dataDW = await makeRequest('/datos-datawarehouse');
         
         // Actualizar tarjetas de métricas
-        if (dataOrigen && dataOrigen.total_proyectos !== undefined) {
-            document.getElementById('total-proyectos-origen').textContent = dataOrigen.total_proyectos;
+        if (dataOrigen && dataOrigen.estadisticas && dataOrigen.estadisticas.Proyecto !== undefined) {
+            document.getElementById('total-proyectos-origen').textContent = dataOrigen.estadisticas.Proyecto;
         }
         
         if (dataDW && dataDW.metricas) {
@@ -290,7 +290,7 @@ async function cargarMetricas() {
                 <div class="col-md-3 mb-3">
                     <div class="card text-center border-warning">
                         <div class="card-body">
-                            <h2 class="text-warning">${Math.round(metricas.duracion_promedio)}</h2>
+                            <h2 class="text-warning">${Math.round(metricas.dias_promedio || 0)}</h2>
                             <p class="card-text">Días Promedio</p>
                         </div>
                     </div>
@@ -325,11 +325,11 @@ async function cargarMetricas() {
                         }
                     }
                     
-                    const cumplimientoTiempo = p.cumplimiento_tiempo === 1 ? 
+                    const cumplimientoTiempo = p.cumplimiento_tiempo === 'Sí' || p.cumplimiento_tiempo === 1 ? 
                         '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
                         '<span class="badge bg-danger"><i class="fas fa-times"></i></span>';
                     
-                    const cumplimientoPresupuesto = p.cumplimiento_presupuesto === 1 ? 
+                    const cumplimientoPresupuesto = p.cumplimiento_presupuesto === 'Sí' || p.cumplimiento_presupuesto === 1 ? 
                         '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
                         '<span class="badge bg-danger"><i class="fas fa-times"></i></span>';
                     
@@ -339,8 +339,8 @@ async function cargarMetricas() {
                             <td><strong>${p.nombre_proyecto || 'Sin nombre'}</strong></td>
                             <td>${estadoBadge}</td>
                             <td>${cumplimientoTiempo}</td>
-                            <td>${p.duracion_plan} días</td>
-                            <td>${p.duracion_real} días</td>
+                            <td>${p.duracion_planificada || 0} días</td>
+                            <td>${p.duracion_real || 0} días</td>
                             <td>${cumplimientoPresupuesto}</td>
                             <td>${formatCurrency(p.presupuesto)}</td>
                             <td>${formatCurrency(p.costo_real)}</td>
@@ -359,10 +359,10 @@ async function cargarMetricas() {
             }
         }
         
-        addLog(`✅ Métricas cargadas: ${dataDW?.proyectos?.length || 0} proyectos en DW`, 'success');
+        addLog(` Métricas cargadas: ${dataDW?.proyectos?.length || 0} proyectos en DW`, 'success');
         
     } catch (error) {
-        addLog(`❌ Error cargando métricas: ${error.message}`, 'error');
+        addLog(` Error cargando métricas: ${error.message}`, 'error');
         const container = document.getElementById('metricas-container');
         if (container) {
             container.innerHTML = `
@@ -414,7 +414,7 @@ async function generarDatosPersonalizados() {
         
         if (result.success) {
             const stats = result.stats;
-            addLog(`✅ Datos generados: ${stats.clientes} clientes, ${stats.empleados} empleados, ${stats.equipos} equipos, ${stats.proyectos} proyectos, ${stats.tareas} tareas`, 'success');
+            addLog(` Datos generados: ${stats.clientes} clientes, ${stats.empleados} empleados, ${stats.equipos} equipos, ${stats.proyectos} proyectos, ${stats.tareas} tareas`, 'success');
             showToast('¡Datos generados exitosamente!', 'success');
             
             // Recargar datos
@@ -425,7 +425,7 @@ async function generarDatosPersonalizados() {
         }
         
     } catch (error) {
-        addLog(`❌ Error generando datos: ${error.message}`, 'error');
+        addLog(` Error generando datos: ${error.message}`, 'error');
         showToast(`Error: ${error.message}`, 'error');
     }
 }
@@ -444,14 +444,14 @@ async function insertarDatos() {
             method: 'POST'
         });
         
-        addLog('✅ Datos insertados correctamente', 'success');
+        addLog(' Datos insertados correctamente', 'success');
         showToast(result.message, 'success');
         
         // Recargar datos
         await checkStatus();
         
     } catch (error) {
-        addLog(`❌ Error insertando datos: ${error.message}`, 'error');
+        addLog(` Error insertando datos: ${error.message}`, 'error');
         showToast(`Error: ${error.message}`, 'error');
     }
 }
@@ -477,7 +477,7 @@ async function ejecutarETL() {
             method: 'POST'
         });
         
-        addLog('✅ Proceso ETL completado exitosamente', 'success');
+        addLog(' Proceso ETL completado exitosamente', 'success');
         addLog(`📊 Registros procesados: ${JSON.stringify(result.registros_procesados)}`, 'info');
         showToast(result.message, 'success');
         
@@ -486,7 +486,7 @@ async function ejecutarETL() {
         await checkStatus();
         
     } catch (error) {
-        addLog(`❌ Error en proceso ETL: ${error.message}`, 'error');
+        addLog(` Error en proceso ETL: ${error.message}`, 'error');
         showToast(`Error en ETL: ${error.message}`, 'error');
     } finally {
         // Restaurar botón
@@ -513,7 +513,7 @@ async function limpiarDatos() {
             method: 'DELETE'
         });
         
-        addLog('✅ Datos eliminados correctamente', 'success');
+        addLog(' Datos eliminados correctamente', 'success');
         showToast(result.message, 'success');
         
         // Recargar datos
@@ -521,7 +521,7 @@ async function limpiarDatos() {
         await checkStatus();
         
     } catch (error) {
-        addLog(`❌ Error limpiando datos: ${error.message}`, 'error');
+        addLog(` Error limpiando datos: ${error.message}`, 'error');
         showToast(`Error: ${error.message}`, 'error');
     }
 }
@@ -711,7 +711,7 @@ async function cargarTablaOrigenCompleta() {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay datos disponibles</td></tr>';
         }
     } catch (error) {
-        addLog(`❌ Error cargando tabla origen: ${error.message}`, 'error');
+        addLog(` Error cargando tabla origen: ${error.message}`, 'error');
     }
 }
 
@@ -811,13 +811,13 @@ async function buscarTrazabilidad(event) {
             `;
         }
         
-        addLog(`✅ Búsqueda completada`, 'success');
+        addLog(` Búsqueda completada`, 'success');
         
         // Scroll hacia los resultados
         document.getElementById('resultado-trazabilidad').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         
     } catch (error) {
-        addLog(`❌ Error en búsqueda: ${error.message}`, 'error');
+        addLog(` Error en búsqueda: ${error.message}`, 'error');
         showToast(`Error: ${error.message}`, 'error');
     }
 }
@@ -922,11 +922,11 @@ async function cargarTablaDatawarehouseCompleta() {
                     }
                 }
                 
-                const cumplimientoTiempo = p.cumplimiento_tiempo === 1 ? 
+                const cumplimientoTiempo = p.cumplimiento_tiempo === 'Sí' || p.cumplimiento_tiempo === 1 ? 
                     '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
                     '<span class="badge bg-danger"><i class="fas fa-times"></i></span>';
                     
-                const cumplimientoPresup = p.cumplimiento_presupuesto === 1 ? 
+                const cumplimientoPresup = p.cumplimiento_presupuesto === 'Sí' || p.cumplimiento_presupuesto === 1 ? 
                     '<span class="badge bg-success"><i class="fas fa-check"></i></span>' : 
                     '<span class="badge bg-danger"><i class="fas fa-times"></i></span>';
                 
@@ -936,8 +936,8 @@ async function cargarTablaDatawarehouseCompleta() {
                         <td>${p.nombre_proyecto}</td>
                         <td>${estadoBadge}</td>
                         <td class="text-center">${cumplimientoTiempo}</td>
-                        <td>${p.duracion_plan} días</td>
-                        <td>${p.duracion_real} días</td>
+                        <td>${p.duracion_planificada || 0} días</td>
+                        <td>${p.duracion_real || 0} días</td>
                         <td class="text-center">${cumplimientoPresup}</td>
                         <td>${formatCurrency(p.presupuesto)}</td>
                         <td>${formatCurrency(p.costo_real)}</td>
@@ -948,7 +948,7 @@ async function cargarTablaDatawarehouseCompleta() {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No hay datos en el datawarehouse</td></tr>';
         }
     } catch (error) {
-        addLog(`❌ Error cargando tabla datawarehouse: ${error.message}`, 'error');
+        addLog(` Error cargando tabla datawarehouse: ${error.message}`, 'error');
     }
 }
 
@@ -970,7 +970,7 @@ async function cargarAnalisis() {
                         <p class="small text-muted">Presupuesto Promedio</p>
                     </div>
                     <div class="col-6 mb-3">
-                        <h2 class="text-warning">${Math.round(metricas.duracion_promedio)}</h2>
+                        <h2 class="text-warning">${Math.round(metricas.dias_promedio || 0)}</h2>
                         <p class="small text-muted">Días Promedio</p>
                     </div>
                     <div class="col-6 mb-3">
@@ -998,7 +998,7 @@ async function cargarAnalisis() {
             `;
         }
     } catch (error) {
-        addLog(`❌ Error cargando análisis: ${error.message}`, 'error');
+        addLog(` Error cargando análisis: ${error.message}`, 'error');
     }
 }
 
@@ -1028,3 +1028,566 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     addLog('Dashboard listo para usar', 'success');
 });
+
+// ========================================
+// FUNCIONES DSS - CUBO OLAP
+// ========================================
+
+// Variable para controlar acceso PM (simulación)
+let tieneAccesoPM = false;
+
+async function cargarDimensionesOLAP() {
+    try {
+        const response = await fetch(`${API_BASE}/olap/dimensiones`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Poblar selectores
+            const clienteSelect = document.getElementById('filtro-cliente');
+            const equipoSelect = document.getElementById('filtro-equipo');
+            const anioSelect = document.getElementById('filtro-anio');
+            
+            // Limpiar y poblar clientes
+            clienteSelect.innerHTML = '<option value="">Todos los clientes</option>';
+            data.dimensiones.clientes.forEach(cliente => {
+                clienteSelect.innerHTML += `<option value="${cliente.id_cliente}">${cliente.nombre_cliente} (${cliente.sector})</option>`;
+            });
+            
+            // Limpiar y poblar equipos
+            equipoSelect.innerHTML = '<option value="">Todos los equipos</option>';
+            data.dimensiones.equipos.forEach(equipo => {
+                equipoSelect.innerHTML += `<option value="${equipo.id_equipo}">${equipo.nombre_equipo} (${equipo.tipo})</option>`;
+            });
+            
+            // Limpiar y poblar años
+            anioSelect.innerHTML = '<option value="">Todos los años</option>';
+            data.dimensiones.anios.forEach(anio => {
+                anioSelect.innerHTML += `<option value="${anio.anio}">${anio.anio}</option>`;
+            });
+            
+            // Cargar KPIs ejecutivos
+            await cargarKPIsEjecutivos();
+        }
+    } catch (error) {
+        console.error('Error cargando dimensiones OLAP:', error);
+        showToast('Error cargando dimensiones OLAP', 'error');
+    }
+}
+
+async function cargarKPIsEjecutivos() {
+    try {
+        const response = await fetch(`${API_BASE}/olap/kpis-ejecutivos`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const container = document.getElementById('kpis-ejecutivos-cards');
+            container.innerHTML = '';
+            
+            // Tomar los KPIs más recientes
+            const ultimosKpis = data.kpis_temporales[0] || {};
+            
+            const kpiCards = [
+                {
+                    titulo: 'Proyectos Activos',
+                    valor: ultimosKpis.total_proyectos_periodo || 0,
+                    icono: 'fas fa-project-diagram',
+                    color: 'primary'
+                },
+                {
+                    titulo: 'Completados',
+                    valor: ultimosKpis.proyectos_completados || 0,
+                    icono: 'fas fa-check-circle',
+                    color: 'success'
+                },
+                {
+                    titulo: 'Presupuesto Total',
+                    valor: `$${(ultimosKpis.presupuesto_total_periodo || 0).toLocaleString()}`,
+                    icono: 'fas fa-dollar-sign',
+                    color: 'info'
+                },
+                {
+                    titulo: 'Eficiencia Estimación',
+                    valor: `${(ultimosKpis.eficiencia_estimacion_porcentaje || 0).toFixed(1)}%`,
+                    icono: 'fas fa-percentage',
+                    color: 'warning'
+                }
+            ];
+            
+            kpiCards.forEach(kpi => {
+                container.innerHTML += `
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card metric-card metric-${kpi.color}">
+                            <div class="card-body text-center">
+                                <i class="${kpi.icono} fa-2x mb-2"></i>
+                                <h4>${kpi.valor}</h4>
+                                <p class="mb-0">${kpi.titulo}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando KPIs ejecutivos:', error);
+    }
+}
+
+async function aplicarFiltrosOLAP() {
+    try {
+        const clienteId = document.getElementById('filtro-cliente').value;
+        const equipoId = document.getElementById('filtro-equipo').value;
+        const anio = document.getElementById('filtro-anio').value;
+        const nivel = document.getElementById('nivel-agregacion').value;
+        
+        const params = new URLSearchParams();
+        if (clienteId) params.append('cliente_id', clienteId);
+        if (equipoId) params.append('equipo_id', equipoId);
+        if (anio) params.append('anio', anio);
+        params.append('nivel', nivel);
+        
+        const response = await fetch(`${API_BASE}/olap/kpis?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarResultadosOLAP(data.data);
+        } else {
+            showToast('Error aplicando filtros OLAP: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error aplicando filtros OLAP:', error);
+        showToast('Error aplicando filtros OLAP', 'error');
+    }
+}
+
+function mostrarResultadosOLAP(datos) {
+    const tbody = document.querySelector('#tabla-olap-resultados tbody');
+    tbody.innerHTML = '';
+    
+    datos.forEach(fila => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${fila.cliente || 'N/A'}</td>
+            <td>${fila.equipo || 'N/A'}</td>
+            <td>${fila.anio || 'N/A'}</td>
+            <td>${fila.total_proyectos}</td>
+            <td>${fila.proyectos_completados}</td>
+            <td>$${(fila.presupuesto_total || 0).toLocaleString()}</td>
+            <td>$${(fila.costo_real_total || 0).toLocaleString()}</td>
+            <td>${(fila.progreso_promedio || 0).toFixed(1)}%</td>
+            <td>${fila.proyectos_a_tiempo}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ========================================
+// FUNCIONES DSS - BSC/OKR
+// ========================================
+
+async function cargarBSC_OKR() {
+    try {
+        const response = await fetch(`${API_BASE}/bsc/okr`);
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarVisionEstrategica();
+            mostrarPerspectivasBSC(data.perspectivas);
+        } else {
+            showToast('Error cargando BSC/OKR: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error cargando BSC/OKR:', error);
+        showToast('Error cargando BSC/OKR', 'error');
+    }
+}
+
+async function mostrarVisionEstrategica() {
+    try {
+        const response = await fetch(`${API_BASE}/bsc/vision-estrategica`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const container = document.getElementById('vision-componentes');
+            container.innerHTML = '';
+            
+            data.vision_componentes.forEach(componente => {
+                const progreso = componente.avance_promedio || 0;
+                const colorProgress = progreso >= 70 ? 'success' : progreso >= 50 ? 'warning' : 'danger';
+                
+                container.innerHTML += `
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="fw-bold">${componente.vision_componente}</h6>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-${colorProgress}" style="width: ${progreso}%">
+                                        ${progreso.toFixed(1)}%
+                                    </div>
+                                </div>
+                                <small class="text-muted">${componente.total_objetivos} objetivos</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando visión estratégica:', error);
+    }
+}
+
+function mostrarPerspectivasBSC(perspectivas) {
+    const container = document.getElementById('perspectivas-bsc');
+    container.innerHTML = '';
+    
+    const coloresPerspectivas = {
+        'Financiera': 'success',
+        'Clientes': 'primary',
+        'Procesos Internos': 'info',
+        'Aprendizaje y Innovación': 'warning'
+    };
+    
+    Object.keys(perspectivas).forEach(nombrePerspectiva => {
+        const perspectiva = perspectivas[nombrePerspectiva];
+        const color = coloresPerspectivas[nombrePerspectiva] || 'secondary';
+        
+        let objetivosHtml = '';
+        perspectiva.objetivos.forEach(objetivo => {
+            const estadoColor = {
+                'Verde': 'success',
+                'Amarillo': 'warning',
+                'Rojo': 'danger'
+            }[objetivo.estado_objetivo] || 'secondary';
+            
+            let krsHtml = '';
+            objetivo.krs.forEach(kr => {
+                const krColor = {
+                    'Verde': 'success',
+                    'Amarillo': 'warning', 
+                    'Rojo': 'danger'
+                }[kr.estado_semaforo] || 'secondary';
+                
+                krsHtml += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="fw-bold">${kr.kr_nombre}</small><br>
+                            <small class="text-muted">${kr.valor_observado} ${kr.unidad_medida} / ${kr.meta_objetivo} ${kr.unidad_medida}</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-${krColor}">${kr.progreso_hacia_meta?.toFixed(1) || 0}%</span>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="abrirModalMedicion('${kr.id_kr}', '${kr.kr_nombre}')">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </li>
+                `;
+            });
+            
+            objetivosHtml += `
+                <div class="card mb-3">
+                    <div class="card-header bg-${estadoColor} text-white">
+                        <h6 class="mb-0">${objetivo.codigo_objetivo}: ${objetivo.objetivo_nombre}</h6>
+                        <small>Avance: ${objetivo.avance_objetivo_porcentaje?.toFixed(1) || 0}%</small>
+                    </div>
+                    <div class="card-body p-2">
+                        <ul class="list-group list-group-flush">
+                            ${krsHtml}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML += `
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-${color} text-white">
+                        <h5 class="mb-0">${nombrePerspectiva}</h5>
+                        <small>
+                            ${perspectiva.resumen.objetivos_verde} 🟢 
+                            ${perspectiva.resumen.objetivos_amarillo} 🟡 
+                            ${perspectiva.resumen.objetivos_rojo} 🔴
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        ${objetivosHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function abrirModalMedicion(idKr, nombreKr) {
+    document.getElementById('kr-id-medicion').value = idKr;
+    document.getElementById('kr-nombre-medicion').value = nombreKr;
+    document.getElementById('fecha-medicion').value = new Date().toISOString().split('T')[0];
+    
+    const modal = new bootstrap.Modal(document.getElementById('modal-medicion-okr'));
+    modal.show();
+}
+
+async function registrarMedicionOKR() {
+    try {
+        const idKr = document.getElementById('kr-id-medicion').value;
+        const valorObservado = parseFloat(document.getElementById('valor-medicion').value);
+        const fechaMedicion = document.getElementById('fecha-medicion').value;
+        const comentario = document.getElementById('comentario-medicion').value;
+        
+        const response = await fetch(`${API_BASE}/bsc/medicion`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id_kr: idKr,
+                valor_observado: valorObservado,
+                fecha_medicion: fechaMedicion,
+                comentario: comentario
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Medición registrada exitosamente', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modal-medicion-okr')).hide();
+            
+            // Recargar datos BSC
+            if (document.getElementById('section-bsc-okr').style.display !== 'none') {
+                await cargarBSC_OKR();
+            }
+        } else {
+            showToast('Error registrando medición: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error registrando medición:', error);
+        showToast('Error registrando medición', 'error');
+    }
+}
+
+// ========================================
+// FUNCIONES DSS - PREDICCIÓN RAYLEIGH
+// ========================================
+
+function simularAccesoPM() {
+    // Simular acceso PM para demo
+    tieneAccesoPM = true;
+    document.getElementById('alert-acceso-pm').style.display = 'none';
+    showToast('Acceso PM simulado activado', 'success');
+}
+
+async function verificarAccesoPM() {
+    try {
+        const headers = {};
+        if (tieneAccesoPM) {
+            headers['X-ROLE'] = 'pm';
+        }
+        
+        const response = await fetch(`${API_BASE}/prediccion/validar-acceso`, { headers });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.tiene_acceso) {
+                document.getElementById('alert-acceso-pm').style.display = 'none';
+                showToast('Acceso autorizado para predicciones', 'success');
+            } else {
+                document.getElementById('alert-acceso-pm').style.display = 'block';
+                showToast('Acceso denegado - se requieren permisos PM', 'warning');
+            }
+        }
+    } catch (error) {
+        console.error('Error verificando acceso:', error);
+        showToast('Error verificando acceso', 'error');
+    }
+}
+
+async function generarPrediccionRayleigh() {
+    try {
+        // Validar acceso
+        if (!tieneAccesoPM) {
+            showToast('Se requieren permisos de Project Manager', 'warning');
+            document.getElementById('alert-acceso-pm').style.display = 'block';
+            return;
+        }
+        
+        const tamanioProyecto = parseFloat(document.getElementById('tamanio-proyecto').value);
+        const duracionSemanas = parseInt(document.getElementById('duracion-semanas').value);
+        const complejidad = document.getElementById('complejidad-proyecto').value;
+        const tipoProyecto = document.getElementById('tipo-proyecto').value;
+        const esfuerzoTesting = parseFloat(document.getElementById('esfuerzo-testing').value);
+        
+        // Validaciones
+        if (!tamanioProyecto || !duracionSemanas) {
+            showToast('Por favor complete todos los campos requeridos', 'warning');
+            return;
+        }
+        
+        if (tamanioProyecto <= 0 || duracionSemanas <= 0) {
+            showToast('Los valores deben ser positivos', 'warning');
+            return;
+        }
+        
+        const headers = { 'Content-Type': 'application/json' };
+        if (tieneAccesoPM) headers['X-ROLE'] = 'pm';
+        
+        const response = await fetch(`${API_BASE}/prediccion/defectos-rayleigh`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                tamanio_proyecto: tamanioProyecto,
+                duracion_semanas: duracionSemanas,
+                complejidad: complejidad,
+                tipo_proyecto: tipoProyecto,
+                esfuerzo_testing: esfuerzoTesting,
+                guardar_en_dw: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarResultadosPrediccion(data);
+            showToast('Predicción generada exitosamente', 'success');
+        } else {
+            showToast('Error generando predicción: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error generando predicción Rayleigh:', error);
+        showToast('Error generando predicción', 'error');
+    }
+}
+
+function mostrarResultadosPrediccion(data) {
+    // Mostrar sección de resultados
+    document.getElementById('resultados-prediccion').style.display = 'block';
+    
+    // Resumen ejecutivo
+    const resumenContainer = document.getElementById('resumen-ejecutivo-cards');
+    const resumen = data.resumen_ejecutivo;
+    const metricas = data.metricas_proyecto;
+    
+    resumenContainer.innerHTML = `
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-primary">${metricas.total_defectos_estimado}</h4>
+                    <p class="mb-0">Defectos Estimados</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-warning">${metricas.tiempo_pico_semanas}</h4>
+                    <p class="mb-0">Semana Pico</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h4 class="text-info">${metricas.defectos_al_50_pct}</h4>
+                    <p class="mb-0">Defectos al 50%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center ${resumen.nivel_riesgo === 'Alto' ? 'border-danger' : resumen.nivel_riesgo === 'Medio' ? 'border-warning' : 'border-success'}">
+                <div class="card-body">
+                    <h4 class="${resumen.nivel_riesgo === 'Alto' ? 'text-danger' : resumen.nivel_riesgo === 'Medio' ? 'text-warning' : 'text-success'}">${resumen.nivel_riesgo}</h4>
+                    <p class="mb-0">Nivel de Riesgo</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Tabla de predicción semanal
+    const tbody = document.querySelector('#tabla-prediccion-semanal tbody');
+    tbody.innerHTML = '';
+    
+    data.predicciones_semanales.forEach((prediccion, index) => {
+        const cronogramaTesting = data.cronograma_testing[index];
+        const tr = document.createElement('tr');
+        
+        tr.innerHTML = `
+            <td>${prediccion.semana}</td>
+            <td>${prediccion.defectos_esperados_semana}</td>
+            <td>${prediccion.defectos_acumulados}</td>
+            <td>${prediccion.porcentaje_completado}%</td>
+            <td>${prediccion.tasa_instantanea}</td>
+            <td>${cronogramaTesting?.esfuerzo_testing_horas || 0}</td>
+            <td>
+                <span class="badge ${cronogramaTesting?.intensidad_recomendada === 'Alta' ? 'bg-danger' : 
+                                    cronogramaTesting?.intensidad_recomendada === 'Media' ? 'bg-warning' : 'bg-success'}">
+                    ${cronogramaTesting?.intensidad_recomendada || 'Baja'}
+                </span>
+            </td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+    
+    // Scroll hacia los resultados
+    document.getElementById('resultados-prediccion').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ========================================
+// FUNCIONES ACTUALIZADAS showSection
+// ========================================
+
+// Actualizar función showSection para incluir las nuevas secciones
+const originalShowSection = window.showSection;
+window.showSection = async function(sectionName) {
+    // Llamar función original
+    if (originalShowSection) {
+        originalShowSection(sectionName);
+    } else {
+        // Implementación básica si no existe
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        
+        const targetSection = document.getElementById(`section-${sectionName}`);
+        if (targetSection) {
+            targetSection.style.display = 'block';
+        }
+        
+        // Actualizar menú activo
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        event?.target?.closest('.menu-item')?.classList.add('active');
+        
+        // Actualizar título
+        const titles = {
+            'dashboard': 'Dashboard Principal',
+            'datos-origen': 'Datos de Origen',
+            'control-etl': 'Control ETL',
+            'datawarehouse': 'DataWarehouse',
+            'analisis': 'Análisis de Datos',
+            'olap-kpis': 'KPIs OLAP',
+            'bsc-okr': 'BSC / OKR',
+            'prediccion-rayleigh': 'Predicción de Defectos',
+            'trazabilidad': 'Trazabilidad'
+        };
+        
+        const titleElement = document.getElementById('section-title');
+        if (titleElement) {
+            titleElement.textContent = titles[sectionName] || 'Dashboard';
+        }
+    }
+    
+    // Cargar datos específicos según sección
+    switch (sectionName) {
+        case 'olap-kpis':
+            await cargarDimensionesOLAP();
+            break;
+        case 'bsc-okr':
+            await cargarBSC_OKR();
+            break;
+        case 'prediccion-rayleigh':
+            await verificarAccesoPM();
+            break;
+    }
+};

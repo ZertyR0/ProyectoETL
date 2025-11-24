@@ -81,7 +81,7 @@ echo $FRONTEND_PID > logs/frontend.pid
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║                                                              ║"
-echo "║             ✅ DASHBOARD INICIADO                            ║"
+echo "║              DASHBOARD INICIADO                            ║"
 echo "║                                                              ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""

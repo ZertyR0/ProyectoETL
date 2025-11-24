@@ -160,10 +160,10 @@ python generar_datos_seguro.py
 ```
 
 **Ventajas:**
-- ✅ Mayor seguridad
-- ✅ Auditoría automática
-- ✅ Validaciones integradas
-- ✅ Trazabilidad completa
+-  Mayor seguridad
+-  Auditoría automática
+-  Validaciones integradas
+-  Trazabilidad completa
 
 ---
 
@@ -324,11 +324,11 @@ CALL InsertarProyecto(...);
 
 ## ✨ Características Destacadas
 
-- ✅ **Seguridad por Diseño**: Stored procedures para todo acceso
-- ✅ **Auditoría Completa**: Triggers automáticos de auditoría
-- ✅ **Datos Realistas**: Generador con Faker para datos de prueba
-- ✅ **Validaciones**: Validaciones en procedures
-- ✅ **Trazabilidad**: Log completo de todas las operaciones
+-  **Seguridad por Diseño**: Stored procedures para todo acceso
+-  **Auditoría Completa**: Triggers automáticos de auditoría
+-  **Datos Realistas**: Generador con Faker para datos de prueba
+-  **Validaciones**: Validaciones en procedures
+-  **Trazabilidad**: Log completo de todas las operaciones
 
 ---
 

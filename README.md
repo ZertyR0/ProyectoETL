@@ -1,22 +1,203 @@
-# 🚀 ProyectoETL - Sistema de Gestión de Proyectos
+# 🏢 Sistema de Soporte de Decisiones (DSS) - ProyectoETL
+# ProyectoETL (Versión Simplificada)
 
-Sistema completo de ETL (Extract, Transform, Load) con Data Warehouse y Dashboard Web interactivo.
+Reestructuración enfocada en los componentes activos. La documentación extensa original permanece debajo como referencia histórica.
 
-## 📦 Proyecto Modular - 3 Módulos Independientes
+## Resumen Minimal
+```
+src/
+    config/                # config_conexion.py
+    etl/                   # etl_incremental.py / etl_final.py
+    dw/sql/                # SQL esenciales DW
+    origen/sql/            # SQL creación origen
+01_GestionProyectos/     # Scripts y generación de datos
+03_Dashboard/            # Backend Flask + Frontend
+04_Datawarehouse/        # Scripts DW completos (histórico)
+requirements.txt         # Dependencias raíz
+```
 
-Este proyecto está estructurado en **3 módulos completamente independientes** que pueden ser:
-- ✅ Enviados por separado
-- ✅ Instalados independientemente  
-- ✅ Desplegados en máquinas diferentes
-- ✅ Mantenidos de forma aislada
+## Variables de Entorno ETL
+Estas variables permiten controlar comportamiento del proceso sin modificar código.
 
-### Los 3 Módulos:
+| Variable | Valores | Default | Descripción |
+|----------|---------|---------|-------------|
+| ETL_AMBIENTE | local, distribuido | local | Selecciona configuración de conexiones (host/socket vs IP remota). |
+| ETL_DRY_RUN | 0, 1 | 0 | Si es 1, muestra pasos y consultas clave sin realizar escrituras (modo simulación). |
+| ETL_LOG_LEVEL | DEBUG, INFO, WARNING, ERROR | INFO | Nivel de detalle de logs del ETL y endpoints. |
 
-| Módulo | Carpeta | Descripción | Independiente |
-|--------|---------|-------------|---------------|
-| **1** | `01_GestionProyectos/` | Base de Datos Transaccional (OLTP) | ✅ Sí |
-| **2** | `03_Dashboard/` | Dashboard Web (Frontend + Backend Flask) | ⚠️  Requiere Módulos 1 y 3 |
-| **3** | `04_Datawarehouse/` | Data Warehouse + ETL | ⚠️  Requiere Módulo 1 |
+Ejemplo (macOS / zsh):
+```bash
+export ETL_AMBIENTE=local
+export ETL_DRY_RUN=0
+export ETL_LOG_LEVEL=DEBUG
+python src/etl/etl_incremental.py
+```
+
+Para una sola ejecución sin persistir en la sesión:
+```bash
+ETL_LOG_LEVEL=WARNING ETL_DRY_RUN=1 python src/etl/etl_incremental.py
+```
+
+El backend también lee estas variables al iniciar para ajustar comportamiento de `/ejecutar-etl`.
+
+## Comandos Clave
+```bash
+python 01_GestionProyectos/datos/generar_datos_final.py      # Generar datos
+python src/etl/etl_incremental.py                            # ETL incremental
+python src/etl/etl_final.py                                  # ETL procedimiento
+./iniciar_dashboard.sh                                       # Dashboard
+```
+
+## Endpoints Principales
+/status, /ejecutar-etl, /datos-origen, /datos-datawarehouse,
+/trazabilidad/tarea/<id>, /olap/*, /bsc/okr, /prediccion/defectos-rayleigh
+
+## Trazabilidad
+Las tareas de proyectos no finalizados/cancelados no aparecen en el DW. Usa `/trazabilidad/tarea/<id>` para ver motivo.
+
+## Próximos Pasos Recomendados
+1. Usuario MySQL de sólo lectura para la BD origen.
+2. Conteos de verificación pre/post ETL.
+3. Limpieza de imports de rutas antiguas.
+4. Timestamp de última ejecución ETL incremental.
+
+---
+# 🏢 Sistema de Soporte de Decisiones (DSS) - ProyectoETL
+
+**Sistema Integral de Business Intelligence con Cubo OLAP, BSC/OKR y Modelo de Predicción Rayleigh**
+
+Sistema completo de ETL (Extract, Transform, Load) con **Data Warehouse**, **Cubo OLAP**, **Balanced Scorecard/OKR** y **Modelo de Predicción de Defectos** usando distribución de Rayleigh. Diseñado para la **transformación digital** y **excelencia operacional**.
+
+## ⚡ INICIO RÁPIDO - CONFIGURACIÓN LOCAL
+
+```bash
+# 1. Clonar el repositorio
+git clone [url-del-repo]
+cd ProyectoETL
+
+# 2. Ejecutar configuración automática completa
+./configurar_local_completo.sh
+
+# 3. Iniciar el Dashboard DSS
+./iniciar_dashboard.sh
+
+# 4. Acceder al sistema
+open http://localhost:8080
+```
+
+**¡En 3 comandos tienes el DSS completo funcionando! 🎉**
+
+## 🎯 Visión Estratégica
+
+**"Transformación Digital para la Excelencia Operacional"**
+
+Liderar la transformación digital mediante sistemas de soporte de decisiones, procesos automatizados y analítica avanzada para entregar valor superior a nuestros clientes.
+
+### 🏗️ Arquitectura del Sistema de Soporte de Decisiones (DSS)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    DASHBOARD DSS INTEGRADO                         │
+├─────────────────┬─────────────────┬─────────────────┬──────────────┤
+│   📊 CUBO OLAP  │   🎯 BSC/OKR   │  📈 PREDICCIÓN  │   🔍 ETL     │
+│                 │                 │   (Rayleigh)    │              │
+│ • Drill-down    │ • 4 Perspectivas│ • Modelo        │ • Monitoreo  │
+│ • Roll-up       │ • Objetivos     │   Estadístico   │ • Control    │
+│ • Filtros       │ • Key Results   │ • Control PM    │ • Trazab.    │
+│ • Series Temp.  │ • Semáforos     │ • Cronograma    │              │
+└─────────────────┴─────────────────┴─────────────────┴──────────────┘
+                                │
+                    ┌───────────────────────┐
+                    │    DATA WAREHOUSE     │
+                    │   Esquema Estrella    │
+                    ├───────────────────────┤
+                    │ • Dimensiones         │
+                    │ • Tablas de Hechos    │
+                    │ • Vistas OLAP         │
+                    │ • Tablas BSC/OKR      │
+                    │ • Procedimientos      │
+                    └───────────────────────┘
+                                │
+                    ┌───────────────────────┐
+                    │     PROCESO ETL       │
+                    │   (02_ETL/scripts/)   │
+                    └───────────────────────┘
+                                │
+                    ┌───────────────────────┐
+                    │   BASE DE DATOS       │
+                    │      ORIGEN           │
+                    │ (01_GestionProyectos) │
+                    └───────────────────────┘
+```
+
+## 🚀 Componentes del DSS
+
+### 1. 📊 **Cubo OLAP** - Análisis Multidimensional
+- **Vistas Materializadas** con `ROLLUP` para agregaciones
+- **Drill-down** por Cliente, Equipo, Tiempo
+- **Roll-up** automático con niveles de agregación
+- **Series Temporales** (mensual, trimestral, anual)
+- **KPIs Ejecutivos** en tiempo real
+
+**Endpoints:**
+- `GET /olap/kpis` - KPIs con filtros multidimensionales
+- `GET /olap/series` - Series temporales configurables
+- `GET /olap/kpis-ejecutivos` - Dashboard ejecutivo
+- `GET /olap/dimensiones` - Valores para filtros
+
+### 2. 🎯 **BSC/OKR** - Balanced Scorecard con Objectives & Key Results
+- **4 Perspectivas del BSC**: Financiera, Clientes, Procesos Internos, Aprendizaje/Innovación  
+- **Objetivos Estratégicos** vinculados con la visión
+- **Key Results** con semáforos (🟢🟡🔴)
+- **Seguimiento** automático con umbrales
+- **Mapa Estratégico** visual interactivo
+
+**Componentes de la Visión:**
+- Transformación Digital
+- Confiabilidad y Calidad  
+- Analítica Avanzada
+- Automatización de Procesos
+- Excelencia Operacional
+
+**Endpoints:**
+- `GET /bsc/okr` - Tablero BSC consolidado
+- `POST /bsc/medicion` - Registrar mediciones
+- `GET /bsc/vision-estrategica` - Resumen de visión
+- `GET /bsc/historico-kr/{id}` - Histórico de KRs
+
+### 3. 📈 **Modelo de Predicción Rayleigh** - Predicción de Defectos
+- **Distribución de Rayleigh** para modelado de defectos en software
+- **Control de Acceso** - Solo Project Managers
+- **Predicción Semanal** de defectos esperados
+- **Cronograma de Testing** optimizado
+- **Métricas de Riesgo** del proyecto
+
+**Fórmulas Implementadas:**
+- Función de densidad: `f(t) = (t/σ²) * exp(-t²/(2σ²))`
+- Función acumulativa: `F(t) = 1 - exp(-t²/(2σ²))`
+- Tasa de fallas: `h(t) = t/σ²`
+
+**Endpoints:**
+- `POST /prediccion/defectos-rayleigh` - Generar predicción (requiere PM)
+- `GET /prediccion/historico` - Histórico de predicciones
+- `GET /prediccion/validar-acceso` - Validar permisos PM
+
+### 4. 🔍 **ETL y Monitoreo** - Proceso de Datos
+- **Monitoreo ETL** en tiempo real
+- **Trazabilidad** completa de datos
+- **Control de Calidad** automatizado
+- **Alertas** y notificaciones
+
+## 📦 Arquitectura Modular
+
+El sistema está estructurado en **4 módulos independientes**:
+
+| Módulo | Carpeta | Descripción | Tecnología |
+|--------|---------|-------------|------------|
+| **1** | `01_GestionProyectos/` | BD Transaccional (OLTP) | MySQL + Python |
+| **2** | `02_ETL/` | Proceso ETL | Python + SQL |
+| **3** | `03_Dashboard/` | Dashboard DSS | Flask + HTML/JS |
+| **4** | `04_Datawarehouse/` | Data Warehouse + OLAP | MySQL + SQL |
 
 ### 📖 Documentación de Módulos:
 
@@ -37,68 +218,180 @@ Sistema completo de **ETL (Extract, Transform, Load)** para gestión de proyecto
 
 ### Características Principales
 
-- ✅ **Seguridad por Diseño**: Todo el acceso a datos mediante stored procedures
-- ✅ **Trazabilidad Completa**: Sistema de auditoría con triggers automáticos
-- ✅ **ETL Robusto**: Transformación y carga de datos con validaciones
-- ✅ **Dashboard Interactivo**: Visualización en tiempo real con gráficos
-- ✅ **Multi-entorno**: Configuración para desarrollo y producción
+-  **Seguridad por Diseño**: Todo el acceso a datos mediante stored procedures
+-  **Trazabilidad Completa**: Sistema de auditoría con triggers automáticos
+-  **ETL Robusto**: Transformación y carga de datos con validaciones
+-  **Dashboard Interactivo**: Visualización en tiempo real con gráficos
+-  **Multi-entorno**: Configuración para desarrollo y producción
 
 ---
 
 ## 📁 Estructura del Proyecto
 
 ```
-ProyectoETL/
+ProyectoETL/ - Sistema de Soporte de Decisiones (DSS)
 │
-├── 01_GestionProyectos/        # Base de datos origen
-│   ├── scripts/                 # Scripts SQL y Python
+├── 01_GestionProyectos/        # 🗄️ Base de datos origen (OLTP)
+│   ├── scripts/
 │   │   ├── crear_bd_origen.sql
-│   │   ├── generar_datos.py
-│   │   ├── procedimientos_seguros.sql
-│   │   └── generar_datos_seguro.py
-│   └── datos/                   # Datos generados
+│   │   ├── crear_estado_remoto.py
+│   │   └── crear_tabla_estado.sql
+│   └── datos/
+│       └── generar_datos_final.py
 │
-├── 02_ETL/                      # Proceso ETL
-│   ├── config/                  # Configuraciones
-│   │   └── config_conexion.py
-│   └── scripts/                 # Scripts ETL
-│       ├── etl_principal.py
-│       ├── etl_principal_seguro.py
-│       ├── etl_utils.py
-│       └── procedimientos_etl.sql
+├── 02_ETL/                      # ⚙️ Proceso ETL
+│   ├── config/
+│   │   └── config_conexion.py  # Multi-ambiente
+│   └── scripts/
+│       ├── etl_final.py                # Ejecución por procedimiento almacenado
+│       ├── procedimientos_etl_completo.sql
+│       └── procedimientos_etl_final.sql
 │
-├── 03_Dashboard/               # Dashboard Web
-│   ├── backend/                # API Flask
-│   │   ├── app.py
+├── 03_Dashboard/               # 🖥️ Dashboard DSS Completo
+│   ├── backend/
+│   │   ├── app.py              # Flask API con todos los endpoints
+│   │   ├── rayleigh.py         # 📊 Modelo de Predicción Rayleigh
 │   │   └── requirements.txt
-│   └── frontend/               # Interfaz HTML/CSS/JS
-│       ├── index.html
-│       ├── app.js
+│   └── frontend/
+│       ├── index.html          # UI con 7 módulos integrados
+│       ├── app.js              # JavaScript para DSS
 │       └── styles.css
 │
-├── 04_Datawarehouse/           # Data Warehouse destino
-│   └── scripts/                # Scripts SQL
-│       ├── crear_datawarehouse.sql
-│       ├── procedimientos_seguros_dw.sql
-│       └── consultas_analisis.sql
+├── 04_Datawarehouse/           # 🏢 Data Warehouse + OLAP + BSC
+│   └── scripts/
+│       ├── crear_datawarehouse.sql    # Esquema estrella
+│       ├── olap_views.sql            # 📊 Cubo OLAP con ROLLUP
+│       ├── crear_bsc.sql             # 🎯 Tablas BSC/OKR
+│       └── procedimientos_seguros_dw.sql
 │
-└── docs/                       # Documentación completa
-    ├── guias/                  # Guías de usuario
-    ├── configuracion/          # Documentación técnica
-    ├── analisis/               # Análisis y mejoras
-    ├── seguridad/              # Documentación de seguridad
-    └── resumen/                # Resúmenes ejecutivos
+├── docs/                       # 📚 Documentación DSS
+│   └── README.md
+│
+├── (eliminado) generar_datos_completos.py  # Código legacy retirado (unificado en src/origen/generar_datos.py / generar_datos_final.py)
+├── iniciar_dashboard.sh        # 🚀 Script de inicio
+├── detener_dashboard.sh        # ⏹️ Script de parada
+└── requirements.txt            # 📦 Dependencias del sistema
 ```
 
 ---
 
-## 🚀 Inicio Rápido
+## 🚀 Instalación y Uso del DSS
 
 ### Pre-requisitos
 
-- Python 3.8+
-- MySQL 8.0+
-- pip (gestor de paquetes Python)
+- **Python 3.8+**
+- **MySQL 8.0+** 
+- **pip** (gestor de paquetes Python)
+- **Navegador Web** moderno (Chrome, Firefox, Safari)
+
+### 🔧 Instalación Rápida (5 minutos)
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/usuario/ProyectoETL.git
+cd ProyectoETL
+
+# 2. Instalar dependencias Python
+pip install -r requirements.txt
+
+# 3. Configurar MySQL (crear bases de datos)
+mysql -u root -p < 01_GestionProyectos/scripts/crear_bd_origen.sql
+mysql -u root -p < 04_Datawarehouse/scripts/crear_datawarehouse.sql
+
+# 4. Configurar el DSS completo
+mysql -u root -p datawarehouse < 04_Datawarehouse/scripts/olap_views.sql
+mysql -u root -p datawarehouse < 04_Datawarehouse/scripts/crear_bsc.sql
+
+# 5. Generar datos de demostración
+python 01_GestionProyectos/datos/generar_datos_final.py
+
+# 6. Iniciar Dashboard DSS
+chmod +x iniciar_dashboard.sh
+./iniciar_dashboard.sh
+```
+
+### 🌐 Acceder al Dashboard DSS
+
+Una vez instalado, abrir navegador en: **http://localhost:5001**
+
+#### 🧭 Navegación del Dashboard:
+
+1. **📊 Dashboard** - Vista general del sistema
+2. **🗄️ Datos Origen** - Monitoreo BD transaccional  
+3. **⚙️ Control ETL** - Ejecución y monitoreo procesos
+4. **🏢 DataWarehouse** - Visualización DW
+5. **📈 Análisis** - Reportes tradicionales
+6. **📊 KPIs OLAP** - Análisis multidimensional (NUEVO)
+7. **🎯 BSC/OKR** - Balanced Scorecard (NUEVO)
+8. **📈 Predicción** - Modelo Rayleigh para PMs (NUEVO)
+9. **🔍 Trazabilidad** - Seguimiento de datos
+
+### 🎯 Uso de Componentes DSS
+
+#### 1. **Cubo OLAP** - Análisis Multidimensional
+
+```
+📊 KPIs OLAP → Aplicar Filtros → Ver Resultados
+```
+
+**Funcionalidades:**
+-  Filtrar por Cliente, Equipo, Año
+-  Cambiar nivel de agregación (Detallado → Total)
+-  Drill-down automático
+-  Series temporales configurables
+-  Exportar resultados
+
+#### 2. **BSC/OKR** - Gestión Estratégica  
+
+```
+🎯 BSC/OKR → Ver Objetivos → Registrar Mediciones
+```
+
+**Perspectivas Implementadas:**
+- 💰 **Financiera**: Rentabilidad, costos
+- 👥 **Clientes**: Satisfacción, expansión
+- ⚙️ **Procesos Internos**: Automatización, calidad
+- 🧠 **Aprendizaje/Innovación**: Capacitación, cultura
+
+#### 3. **Predicción Rayleigh** - Solo Project Managers
+
+```
+📈 Predicción → Simular Acceso PM → Configurar Proyecto → Generar
+```
+
+**Control de Acceso:**
+- 🔒 Requiere permisos PM
+- 🔑 Para demo: usar botón "Simular Acceso PM"
+- 📊 Genera curva de defectos + cronograma de testing
+
+### 📊 Datos de Demostración
+
+El sistema incluye **datos realistas** generados automáticamente:
+
+- **300 Proyectos** (completados/cancelados)
+- **1,500 Empleados** en equipos
+- **3,000 Tareas** con métricas
+- **Objetivos BSC** pre-configurados
+- **Mediciones OKR** de ejemplo
+
+### 🔗 API Endpoints del DSS
+
+#### OLAP Endpoints:
+- `GET /olap/kpis?dim=cliente,equipo&nivel=DETALLADO`
+- `GET /olap/series?granularidad=mes&metrica=proyectos`
+- `GET /olap/kpis-ejecutivos`
+- `GET /olap/dimensiones`
+
+#### BSC/OKR Endpoints:
+- `GET /bsc/okr`
+- `POST /bsc/medicion`
+- `GET /bsc/vision-estrategica`
+- `GET /bsc/historico-kr/{id}`
+
+#### Rayleigh Endpoints:
+- `POST /prediccion/defectos-rayleigh` (requiere X-ROLE: pm)
+- `GET /prediccion/historico`
+- `GET /prediccion/validar-acceso`
 
 ### Instalación Rápida
 
@@ -187,11 +480,11 @@ El sistema implementa múltiples capas de seguridad:
 
 ### Operaciones Disponibles
 
-- ✅ Visualizar datos de origen y Data Warehouse
-- ✅ Ejecutar proceso ETL manualmente
-- ✅ Generar datos de prueba
-- ✅ Limpiar bases de datos
-- ✅ Monitorear estado del sistema
+-  Visualizar datos de origen y Data Warehouse
+-  Ejecutar proceso ETL manualmente
+-  Generar datos de prueba
+-  Limpiar bases de datos
+-  Monitorear estado del sistema
 
 ---
 
@@ -309,7 +602,7 @@ const API_BASE_URL = 'http://localhost:5001';
 
 ---
 
-## 📝 Mantenimiento
+##  Mantenimiento
 
 ### Limpieza de Datos
 
@@ -446,11 +739,11 @@ Para reportar problemas o solicitar ayuda:
 
 ## ✨ Últimas Actualizaciones
 
-- ✅ Sistema de seguridad con stored procedures
-- ✅ Dashboard web completo
-- ✅ Documentación reorganizada
-- ✅ Scripts de instalación automatizados
-- ✅ Sistema de trazabilidad completo
+-  Sistema de seguridad con stored procedures
+-  Dashboard web completo
+-  Documentación reorganizada
+-  Scripts de instalación automatizados
+-  Sistema de trazabilidad completo
 
 ---
 
@@ -577,14 +870,14 @@ ProyectoETL/
 
 ## 🎓 Características
 
-✅ ETL automatizado con Python  
-✅ Modelo dimensional (esquema estrella)  
-✅ Cálculo de KPIs y métricas  
-✅ Dashboard web interactivo  
-✅ API REST con Flask  
-✅ Generación de datos de prueba  
-✅ Scripts de automatización  
-✅ Documentación completa  
+ ETL automatizado con Python  
+ Modelo dimensional (esquema estrella)  
+ Cálculo de KPIs y métricas  
+ Dashboard web interactivo  
+ API REST con Flask  
+ Generación de datos de prueba  
+ Scripts de automatización  
+ Documentación completa  
 
 ---
 
@@ -715,12 +1008,12 @@ cd ETL
 python3 setup_local.py
 ```
 Este comando:
-- ✅ Instala dependencias automáticamente
-- ✅ Configura bases de datos locales
-- ✅ Genera datos de prueba
-- ✅ Ejecuta ETL de prueba
-- ✅ Inicia dashboard web en http://localhost:5000
-- ✅ Abre interfaz visual en navegador
+-  Instala dependencias automáticamente
+-  Configura bases de datos locales
+-  Genera datos de prueba
+-  Ejecuta ETL de prueba
+-  Inicia dashboard web en http://localhost:5000
+-  Abre interfaz visual en navegador
 
 ### 🏗️ Opción 2: Configuración Distribuida (3 máquinas)
 
@@ -877,11 +1170,11 @@ pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors fake
 - **Análisis:** Reportes y gráficos de cumplimiento
 
 ### 🎮 Controles Interactivos:
-- ✅ **Generar Datos:** Botón para crear datos de prueba
-- ✅ **Ejecutar ETL:** Control visual con barra de progreso
-- ✅ **Visualizar Resultados:** Tablas dinámicas y gráficos
-- ✅ **Monitoreo:** Estado de conexiones en tiempo real
-- ✅ **Logs ETL:** Console log de la ejecución ETL
+-  **Generar Datos:** Botón para crear datos de prueba
+-  **Ejecutar ETL:** Control visual con barra de progreso
+-  **Visualizar Resultados:** Tablas dinámicas y gráficos
+-  **Monitoreo:** Estado de conexiones en tiempo real
+-  **Logs ETL:** Console log de la ejecución ETL
 
 ### 📱 Responsive Design:
 - Interface adaptable a desktop y móvil
@@ -1018,23 +1311,23 @@ El sistema soporta configuración via variables de entorno:
 ## 📋 Funcionalidades
 
 ### ETL Principal
-- ✅ Extracción de datos transaccionales
-- ✅ Transformación y limpieza de datos
-- ✅ Carga incremental en Data Warehouse
-- ✅ Manejo de dimensiones SCD (Slowly Changing Dimensions)
-- ✅ Logging y monitoreo
+-  Extracción de datos transaccionales
+-  Transformación y limpieza de datos
+-  Carga incremental en Data Warehouse
+-  Manejo de dimensiones SCD (Slowly Changing Dimensions)
+-  Logging y monitoreo
 
 ### ETL Remoto
-- ✅ Ejecución independiente
-- ✅ Auto-instalación de dependencias
-- ✅ Configuración flexible
-- ✅ Manejo de errores robusto
+-  Ejecución independiente
+-  Auto-instalación de dependencias
+-  Configuración flexible
+-  Manejo de errores robusto
 
 ### Servidor ETL
-- ✅ API REST para ejecución remota
-- ✅ Interface web simple
-- ✅ Logs de ejecución
-- ✅ Estado de procesos
+-  API REST para ejecución remota
+-  Interface web simple
+-  Logs de ejecución
+-  Estado de procesos
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -1044,7 +1337,7 @@ El sistema soporta configuración via variables de entorno:
 - **MySQL**: Sistema de gestión de base de datos
 - **HTTP Server**: Para API remota
 
-## 📝 Licencia
+##  Licencia
 
 Este proyecto está bajo la Licencia MIT - ver archivo LICENSE para detalles.
 

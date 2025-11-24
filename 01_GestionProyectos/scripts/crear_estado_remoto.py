@@ -67,15 +67,15 @@ def ejecutar_sql_file(conn, sql_file_path):
                     for row in result:
                         print(f"{'  '.join(str(val) for val in row)}")
             else:
-                resultados.append(f"✅ Statement {i} ejecutado")
+                resultados.append(f" Statement {i} ejecutado")
             
             conn.commit()
             
         except Error as e:
             if 'Duplicate entry' in str(e) or 'already exists' in str(e):
-                resultados.append(f"ℹ️  Statement {i} omitido (ya existe)")
+                resultados.append(f"  Statement {i} omitido (ya existe)")
             else:
-                print(f"❌ Error en statement {i}: {e}")
+                print(f" Error en statement {i}: {e}")
                 print(f"   SQL: {statement[:100]}...")
                 # No detener, continuar con los siguientes
     
@@ -103,14 +103,14 @@ def main():
     try:
         print("\n⏳ Estableciendo conexión...")
         conn = mysql.connector.connect(**config)
-        print("✅ Conexión exitosa!\n")
+        print(" Conexión exitosa!\n")
         
         # Ruta del archivo SQL
         script_dir = Path(__file__).parent
         sql_file = script_dir / 'crear_tabla_estado.sql'
         
         if not sql_file.exists():
-            print(f"❌ Error: No se encontró el archivo {sql_file}")
+            print(f" Error: No se encontró el archivo {sql_file}")
             return 1
         
         print(f"📄 Ejecutando: {sql_file.name}")
@@ -128,7 +128,7 @@ def main():
         print("\n" + "=" * 80)
         print("🎉 ¡TABLA ESTADO CREADA EXITOSAMENTE!")
         print("=" * 80)
-        print("\n✅ Ahora puedes:")
+        print("\n Ahora puedes:")
         print("   1. Ejecutar el proceso ETL desde el dashboard")
         print("   2. Generar más datos de prueba")
         print("   3. Usar la funcionalidad de trazabilidad")
@@ -136,7 +136,7 @@ def main():
         return 0
         
     except Error as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n ERROR: {e}")
         return 1
 
 if __name__ == "__main__":

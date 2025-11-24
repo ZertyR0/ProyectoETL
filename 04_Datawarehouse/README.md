@@ -60,17 +60,17 @@ DimEmpleado - HechoTarea - DimEquipo
 ## 📊 Métricas Principales
 
 ### Proyectos
-- ✅ Cumplimiento de tiempo y presupuesto
-- ✅ Variaciones de cronograma y costos
-- ✅ Eficiencia de recursos
-- ✅ Satisfacción del cliente
-- ✅ Métricas de calidad
+-  Cumplimiento de tiempo y presupuesto
+-  Variaciones de cronograma y costos
+-  Eficiencia de recursos
+-  Satisfacción del cliente
+-  Métricas de calidad
 
 ### Tareas
-- ✅ Eficiencia de horas
-- ✅ Cumplimiento de plazos
-- ✅ Productividad por empleado
-- ✅ Utilización de equipos
+-  Eficiencia de horas
+-  Cumplimiento de plazos
+-  Productividad por empleado
+-  Utilización de equipos
 
 ## 🔍 Consultas Comunes
 
@@ -84,9 +84,9 @@ DimEmpleado - HechoTarea - DimEquipo
 ## 📈 Business Intelligence
 
 El datawarehouse soporta:
-- ✅ Reportes ejecutivos
-- ✅ Dashboards interactivos
-- ✅ Análisis de tendencias
-- ✅ KPIs y métricas clave
-- ✅ Alertas automáticas
-- ✅ Forecasting
+-  Reportes ejecutivos
+-  Dashboards interactivos
+-  Análisis de tendencias
+-  KPIs y métricas clave
+-  Alertas automáticas
+-  Forecasting

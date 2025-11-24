@@ -53,22 +53,22 @@ python -m http.server 8000
 ## 📋 Funcionalidades
 
 ### 🔍 Monitoreo
-- ✅ Estado de conexiones a BD
-- ✅ Estadísticas de tablas origen y destino
-- ✅ Métricas del datawarehouse
-- ✅ Historial de ejecuciones
+-  Estado de conexiones a BD
+-  Estadísticas de tablas origen y destino
+-  Métricas del datawarehouse
+-  Historial de ejecuciones
 
 ### 🎛️ Control
-- ✅ Generar datos de prueba
-- ✅ Ejecutar proceso ETL
-- ✅ Limpiar bases de datos
-- ✅ Reiniciar sistema
+-  Generar datos de prueba
+-  Ejecutar proceso ETL
+-  Limpiar bases de datos
+-  Reiniciar sistema
 
 ### 📊 Visualización
-- ✅ Tablas de datos origen
-- ✅ Métricas de proyectos
-- ✅ Gráficos de rendimiento
-- ✅ Logs detallados
+-  Tablas de datos origen
+-  Métricas de proyectos
+-  Gráficos de rendimiento
+-  Logs detallados
 
 ## 🌐 Endpoints API
 

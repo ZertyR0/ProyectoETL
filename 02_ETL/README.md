@@ -62,8 +62,8 @@ El proceso ETL realiza:
 ## 🔧 Configuración
 
 El ETL soporta:
-- ✅ Ejecución local
-- ✅ Ejecución distribuida (3 máquinas)
-- ✅ Logging detallado
-- ✅ Manejo de errores
-- ✅ Validación de datos
+-  Ejecución local
+-  Ejecución distribuida (3 máquinas)
+-  Logging detallado
+-  Manejo de errores
+-  Validación de datos

@@ -38,4 +38,4 @@ if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null ; then
 fi
 
 echo ""
-echo "✅ Dashboard detenido completamente"
+echo " Dashboard detenido completamente"

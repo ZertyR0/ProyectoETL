@@ -18,10 +18,11 @@ CONFIG_LOCAL = {
     'database_origen': 'gestionproyectos_hist',
     'unix_socket': '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock',
     
-    'host_destino': '172.20.10.2',
+    # Para desarrollo local, usar mismo servidor para ambas BD
+    'host_destino': 'localhost',
     'port_destino': 3306,
-    'user_destino': 'etl_user',
-    'password_destino': 'etl_password_123',
+    'user_destino': 'root',
+    'password_destino': '',
     'database_destino': 'dw_proyectos_hist'
 }
 
@@ -148,7 +149,7 @@ def test_conexiones(ambiente: str = 'local') -> bool:
             database=config['database_origen']
         )
         conn_origen.close()
-        print("  ✅ Conexión origen exitosa")
+        print("   Conexión origen exitosa")
         
         # Probar conexión destino
         print(f"🔍 Probando conexión destino ({config['host_destino']}:{config['port_destino']})...")
@@ -160,13 +161,13 @@ def test_conexiones(ambiente: str = 'local') -> bool:
             database=config['database_destino']
         )
         conn_destino.close()
-        print("  ✅ Conexión destino exitosa")
+        print("   Conexión destino exitosa")
         
         print("🎉 Todas las conexiones funcionan correctamente")
         return True
         
     except Exception as e:
-        print(f"❌ Error en las conexiones: {e}")
+        print(f" Error en las conexiones: {e}")
         return False
 
 if __name__ == "__main__":

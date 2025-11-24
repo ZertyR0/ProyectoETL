@@ -67,7 +67,7 @@ class GeneradorDatosFinal:
                     unix_socket='/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock',
                     autocommit=False
                 )
-                print("✅ Conectado vía socket XAMPP")
+                print(" Conectado vía socket XAMPP")
             except:
                 # Fallback a conexión TCP
                 self.conn = mysql.connector.connect(
@@ -78,13 +78,13 @@ class GeneradorDatosFinal:
                     database='gestionproyectos_hist',
                     autocommit=False
                 )
-                print("✅ Conectado vía TCP")
+                print(" Conectado vía TCP")
             
             self.cursor = self.conn.cursor(dictionary=True)
             return True
             
         except mysql.connector.Error as err:
-            print(f"❌ Error conectando: {err}")
+            print(f" Error conectando: {err}")
             return False
     
     def cerrar_conexion(self):
@@ -118,12 +118,53 @@ class GeneradorDatosFinal:
             for key in nombres_unicos:
                 nombres_unicos[key].clear()
             
-            print("  ✅ Limpieza completada")
+            print("   Limpieza completada")
             return True
             
         except Exception as e:
-            print(f"  ❌ Error limpiando: {e}")
+            print(f"   Error limpiando: {e}")
             self.conn.rollback()
+            return False
+    
+    def _cargar_nombres_existentes(self):
+        """Cargar nombres existentes en la BD para evitar duplicados en modo incremental"""
+        print("📚 Cargando nombres existentes para evitar duplicados...")
+        
+        try:
+            # Cargar clientes existentes
+            self.cursor.execute("SELECT nombre FROM Cliente")
+            for (nombre,) in self.cursor.fetchall():
+                nombres_unicos['clientes'].add(nombre)
+            
+            # Cargar empleados existentes
+            self.cursor.execute("SELECT nombre FROM Empleado")
+            for (nombre,) in self.cursor.fetchall():
+                nombres_unicos['empleados'].add(nombre)
+            
+            # Cargar equipos existentes
+            self.cursor.execute("SELECT nombre FROM Equipo")
+            for (nombre,) in self.cursor.fetchall():
+                nombres_unicos['equipos'].add(nombre)
+            
+            # Cargar proyectos existentes
+            self.cursor.execute("SELECT nombre FROM Proyecto")
+            for (nombre,) in self.cursor.fetchall():
+                nombres_unicos['proyectos'].add(nombre)
+            
+            # Cargar emails existentes
+            self.cursor.execute("SELECT email FROM Empleado WHERE email IS NOT NULL")
+            for (email,) in self.cursor.fetchall():
+                nombres_unicos['emails'].add(email)
+            
+            print(f"  ✓ {len(nombres_unicos['clientes'])} clientes existentes")
+            print(f"  ✓ {len(nombres_unicos['empleados'])} empleados existentes")
+            print(f"  ✓ {len(nombres_unicos['equipos'])} equipos existentes")
+            print(f"  ✓ {len(nombres_unicos['proyectos'])} proyectos existentes")
+            
+            return True
+            
+        except Exception as e:
+            print(f"⚠️  Error cargando nombres existentes: {e}")
             return False
     
     def generar_nombre_unico(self, tipo, generador_func):
@@ -153,16 +194,19 @@ class GeneradorDatosFinal:
         nombres_unicos['emails'].add(email)
         return email
     
-    def generar_clientes(self):
+    def generar_clientes(self, cantidad=None):
         """Generar un cliente por proyecto (relación 1:1)"""
-        print(f"\n👥 Generando {CANTIDAD_PROYECTOS} clientes (1 por proyecto)...")
+        if cantidad is None:
+            cantidad = CANTIDAD_PROYECTOS
+            
+        print(f"\n👥 Generando {cantidad} clientes (1 por proyecto)...")
         
         sectores = ['Tecnología', 'Finanzas', 'Salud', 'Educación', 'Retail', 
                    'Manufactura', 'Servicios', 'Telecomunicaciones', 'Gobierno', 'Energía']
         
         clientes_ids = []
         
-        for i in range(CANTIDAD_PROYECTOS):
+        for i in range(cantidad):
             nombre = self.generar_nombre_unico('clientes', fake.company)
             sector = random.choice(sectores)
             contacto = fake.name()
@@ -179,11 +223,14 @@ class GeneradorDatosFinal:
             self.stats['clientes'] += 1
         
         self.conn.commit()
-        print(f"  ✅ {self.stats['clientes']} clientes únicos creados")
+        print(f"   {self.stats['clientes']} clientes únicos creados")
         return clientes_ids
     
-    def generar_empleados_por_proyecto(self, num_proyecto):
+    def generar_empleados_por_proyecto(self, num_proyecto, cantidad=None):
         """Generar empleados exclusivos para un proyecto específico"""
+        if cantidad is None:
+            cantidad = EMPLEADOS_POR_PROYECTO
+            
         puestos = [
             ('Gerente de Proyecto', 'Gestión', (60000, 100000)),
             ('Desarrollador Senior', 'Desarrollo', (50000, 80000)),
@@ -198,7 +245,7 @@ class GeneradorDatosFinal:
         ]
         
         empleados_proyecto = []
-        puestos_proyecto = random.sample(puestos, min(EMPLEADOS_POR_PROYECTO, len(puestos)))
+        puestos_proyecto = random.sample(puestos, min(cantidad, len(puestos)))
         
         for puesto, departamento, (sal_min, sal_max) in puestos_proyecto:
             nombre = self.generar_nombre_unico('empleados', fake.name)
@@ -220,8 +267,15 @@ class GeneradorDatosFinal:
         
         return empleados_proyecto
     
-    def generar_equipo_por_proyecto(self, num_proyecto, empleados):
-        """Generar equipo exclusivo para un proyecto"""
+    def generar_equipo_por_proyecto(self, num_proyecto, empleados, fecha_fin_proyecto=None, estado_proyecto=None):
+        """Generar equipo exclusivo para un proyecto
+        
+        Args:
+            num_proyecto: Número del proyecto
+            empleados: Lista de empleados del equipo
+            fecha_fin_proyecto: Fecha de fin del proyecto (si está completado/cancelado)
+            estado_proyecto: Estado del proyecto (3=Completado, 4=Cancelado)
+        """
         nombre_equipo = self.generar_nombre_unico('equipos', 
             lambda: f"Equipo Proyecto {num_proyecto + 1}")
         descripcion = fake.catch_phrase()
@@ -240,20 +294,33 @@ class GeneradorDatosFinal:
         for idx, empleado in enumerate(empleados):
             rol = 'Team Lead' if empleado['es_gerente'] else random.choice(roles)
             fecha_inicio = fake.date_between(start_date='-2y', end_date='-1m')
-            fecha_fin = None  # Equipo activo
+            
+            # Si el proyecto está completado/cancelado, el equipo también debe tener fecha_fin
+            if estado_proyecto in [3, 4] and fecha_fin_proyecto:
+                # Fecha fin del equipo cercana a la fecha fin del proyecto
+                dias_variacion = random.randint(-5, 10)
+                fecha_fin = fecha_fin_proyecto + timedelta(days=dias_variacion)
+                activo = 0  # Equipo inactivo
+            else:
+                fecha_fin = None  # Equipo activo
+                activo = 1
             
             self.cursor.execute("""
                 INSERT INTO MiembroEquipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, 
                                           rol_miembro, activo)
                 VALUES (%s, %s, %s, %s, %s, %s)
-            """, (id_equipo, empleado['id'], fecha_inicio, fecha_fin, rol, 1))
+            """, (id_equipo, empleado['id'], fecha_inicio, fecha_fin, rol, activo))
             
             self.stats['asignaciones'] += 1
         
         return id_equipo
     
-    def generar_proyecto_completo(self, num_proyecto, id_cliente, empleados, id_equipo):
-        """Generar un proyecto completo con sus datos"""
+    def generar_proyecto_base(self, num_proyecto, id_cliente, empleados):
+        """Generar un proyecto base (sin equipo ni tareas) y retornar sus datos clave
+        
+        Returns:
+            tuple: (id_proyecto, fecha_fin_real, estado)
+        """
         tipos_proyecto = [
             'Sistema Web', 'Aplicación Móvil', 'Plataforma E-commerce',
             'Sistema CRM', 'Portal Corporativo', 'API REST', 
@@ -262,7 +329,14 @@ class GeneradorDatosFinal:
         ]
         
         tipo = random.choice(tipos_proyecto)
-        cliente_nombre = list(nombres_unicos['clientes'])[id_cliente - 1]
+        
+        # Obtener el nombre del cliente de la BD en lugar del set
+        cursor_temp = self.conn.cursor()
+        cursor_temp.execute("SELECT nombre FROM Cliente WHERE id_cliente = %s", (id_cliente,))
+        result = cursor_temp.fetchone()
+        cliente_nombre = result[0] if result else "Cliente"
+        cursor_temp.close()
+        
         nombre = self.generar_nombre_unico('proyectos', 
             lambda: f"{tipo} - {cliente_nombre.split()[0]}")
         
@@ -292,6 +366,7 @@ class GeneradorDatosFinal:
         prioridad = random.choice(prioridades)
         progreso = 100 if estado == 3 else (random.randint(10, 90) if estado == 2 else 0)
         
+        # Insertar proyecto SIN id_equipo (se actualizará después)
         self.cursor.execute("""
             INSERT INTO Proyecto (nombre, descripcion, fecha_inicio, fecha_fin_plan, 
                                 fecha_fin_real, presupuesto, costo_real, id_cliente, 
@@ -304,11 +379,20 @@ class GeneradorDatosFinal:
         id_proyecto = self.cursor.lastrowid
         self.stats['proyectos'] += 1
         
-        # Generar tareas del proyecto
-        self.generar_tareas_proyecto(id_proyecto, empleados, id_equipo, 
-                                     fecha_inicio, fecha_fin_plan, estado)
+        # Guardar datos del proyecto para uso posterior
+        self._proyecto_fecha_inicio = fecha_inicio
+        self._proyecto_fecha_fin_plan = fecha_fin_plan
         
-        return id_proyecto
+        return id_proyecto, fecha_fin_real, estado
+    
+    def completar_proyecto(self, id_proyecto, id_equipo, empleados, estado_proyecto):
+        """Completar el proyecto actualizando el equipo y generando tareas"""
+        # No hay columna id_equipo en Proyecto, así que solo generamos las tareas
+        # Generar tareas del proyecto
+        self.generar_tareas_proyecto(
+            id_proyecto, empleados, id_equipo,
+            self._proyecto_fecha_inicio, self._proyecto_fecha_fin_plan, estado_proyecto
+        )
     
     def generar_tareas_proyecto(self, id_proyecto, empleados, id_equipo, 
                                fecha_inicio_proyecto, fecha_fin_proyecto, estado_proyecto):
@@ -411,7 +495,7 @@ class GeneradorDatosFinal:
             total = result['t']
             unicos = result['u']
             ok = total == unicos
-            icono = "✅" if ok else "❌"
+            icono = "" if ok else ""
             print(f"  {icono} {nombre}: {unicos}/{total}")
             if not ok:
                 todas_ok = False
@@ -431,7 +515,7 @@ class GeneradorDatosFinal:
             print(f"  ⚠️  {len(empleados_compartidos)} empleados están en múltiples proyectos")
             todas_ok = False
         else:
-            print(f"  ✅ Sin empleados compartidos entre proyectos")
+            print(f"   Sin empleados compartidos entre proyectos")
         
         return todas_ok
     
@@ -480,57 +564,114 @@ class GeneradorDatosFinal:
             print(f"  • {row['nombre_estado']:15} {row['cantidad']:>3} proyectos "
                   f"(progreso: {row['progreso_avg']}%)")
     
-    def ejecutar(self):
-        """Ejecutar el proceso completo de generación"""
+    def ejecutar(self, limpiar=True, num_proyectos=None, num_clientes=None, num_empleados=None, num_equipos=None):
+        """Ejecutar el proceso completo de generación
+        
+        Args:
+            limpiar: Si True, limpia las tablas antes de generar. Si False, agrega datos incrementalmente.
+            num_proyectos: Número de proyectos a generar. Si None, usa CANTIDAD_PROYECTOS.
+            num_clientes: Número de clientes a generar. Si None, usa num_proyectos (1 cliente por proyecto).
+            num_empleados: Empleados por proyecto. Si None, usa EMPLEADOS_POR_PROYECTO.
+            num_equipos: Equipos por proyecto. Si None, usa EQUIPOS_POR_PROYECTO.
+        """
+        cantidad_proyectos = num_proyectos or CANTIDAD_PROYECTOS
+        cantidad_clientes = num_clientes or cantidad_proyectos  # 1 cliente por proyecto por defecto
+        empleados_por_proyecto = num_empleados or EMPLEADOS_POR_PROYECTO
+        equipos_por_proyecto = num_equipos or EQUIPOS_POR_PROYECTO
+        
+        # En modo incremental, cambiar semilla para evitar duplicados
+        if not limpiar:
+            import time
+            nueva_semilla = int(time.time())
+            Faker.seed(nueva_semilla)
+            random.seed(nueva_semilla)
+            print(f"🎲 Modo incremental: nueva semilla aleatoria = {nueva_semilla}")
+        
         print("="*70)
         print("🚀 GENERADOR DE DATOS FINAL")
         print("="*70)
+        print(f"📊 Configuración:")
+        print(f"   • {cantidad_proyectos} proyectos")
+        print(f"   • {cantidad_clientes} clientes")
+        print(f"   • {empleados_por_proyecto} empleados por proyecto")
+        print(f"   • {equipos_por_proyecto} equipo(s) por proyecto")
         print("✓ Datos únicos por proyecto")
         print("✓ Sin reutilización de empleados")
         print("✓ Sin duplicados")
         print("✓ Validación de integridad")
+        if not limpiar:
+            print("✓ Modo INCREMENTAL - Agregando datos sin limpiar")
         print("="*70)
         
         if not self.conectar_bd():
             return False
         
         try:
-            # 1. Limpiar
-            if not self.limpiar_tablas():
-                return False
+            # 1. Limpiar (solo si se solicita)
+            if limpiar:
+                if not self.limpiar_tablas():
+                    return False
+            else:
+                print("\n📝 Modo incremental: omitiendo limpieza de tablas")
+                # Cargar nombres existentes para evitar duplicados
+                self._cargar_nombres_existentes()
+            
+            # Obtener offset para numeración incremental
+            if limpiar:
+                offset = 0
+            else:
+                # Usar cursor normal (sin dictionary=True) para COUNT
+                cursor_count = self.conn.cursor()
+                cursor_count.execute("SELECT COUNT(*) FROM Proyecto")
+                offset = cursor_count.fetchone()[0]
+                cursor_count.close()
+                print(f"\n📊 Proyectos existentes: {offset}")
             
             # 2. Generar clientes (1 por proyecto)
-            clientes_ids = self.generar_clientes()
+            clientes_ids = self.generar_clientes(cantidad_clientes)
             
             # 3. Generar cada proyecto con su equipo exclusivo
-            print(f"\n🏗️  Generando {CANTIDAD_PROYECTOS} proyectos completos...")
+            print(f"\n🏗️  Generando {cantidad_proyectos} proyectos completos...")
             print(f"   Cada proyecto tendrá:")
-            print(f"   • {EMPLEADOS_POR_PROYECTO} empleados exclusivos")
-            print(f"   • 1 equipo propio")
+            print(f"   • {empleados_por_proyecto} empleados exclusivos")
+            print(f"   • {equipos_por_proyecto} equipo(s)")
             print(f"   • ~{TAREAS_POR_PROYECTO} tareas\n")
             
-            for i in range(CANTIDAD_PROYECTOS):
+            for i in range(cantidad_proyectos):
+                # Usar índice con offset para evitar duplicados en nombres
+                indice = offset + i
+                
+                # Cliente para este proyecto (cíclico si hay menos clientes que proyectos)
+                id_cliente = clientes_ids[i % len(clientes_ids)]
+                
                 # Empleados exclusivos para este proyecto
-                empleados = self.generar_empleados_por_proyecto(i)
+                empleados = self.generar_empleados_por_proyecto(indice, empleados_por_proyecto)
                 
-                # Equipo exclusivo para este proyecto
-                id_equipo = self.generar_equipo_por_proyecto(i, empleados)
+                # Proyecto completo (retorna: id_proyecto, fecha_fin_real, estado)
+                id_proyecto, fecha_fin_proyecto, estado_proyecto = self.generar_proyecto_base(
+                    indice, id_cliente, empleados
+                )
                 
-                # Proyecto completo con tareas
-                self.generar_proyecto_completo(i, clientes_ids[i], empleados, id_equipo)
+                # Equipo exclusivo para este proyecto (con info del proyecto)
+                id_equipo = self.generar_equipo_por_proyecto(
+                    indice, empleados, fecha_fin_proyecto, estado_proyecto
+                )
+                
+                # Actualizar proyecto con el equipo y generar tareas
+                self.completar_proyecto(id_proyecto, id_equipo, empleados, estado_proyecto)
                 
                 # Commit cada 10 proyectos
                 if (i + 1) % 10 == 0:
                     self.conn.commit()
-                    print(f"  ✓ {i + 1}/{CANTIDAD_PROYECTOS} proyectos generados...")
+                    print(f"  ✓ {i + 1}/{cantidad_proyectos} proyectos generados...")
             
             # Commit final
             self.conn.commit()
-            print(f"  ✅ {CANTIDAD_PROYECTOS} proyectos completados\n")
+            print(f"   {cantidad_proyectos} proyectos completados\n")
             
             # 4. Validar
             if self.validar_integridad():
-                print("\n✅ Validación exitosa - Todos los datos son únicos")
+                print("\n Validación exitosa - Todos los datos son únicos")
             else:
                 print("\n⚠️  Algunas validaciones fallaron")
             
@@ -548,7 +689,7 @@ class GeneradorDatosFinal:
             return True
             
         except Exception as e:
-            print(f"\n❌ Error en la generación: {e}")
+            print(f"\n Error en la generación: {e}")
             import traceback
             traceback.print_exc()
             self.conn.rollback()

@@ -1,12 +1,9 @@
--- =========================================================
+
 -- PROCEDIMIENTOS ALMACENADOS ETL - COMPLETO (OPCIÓN 2)
 -- TODO el proceso ETL dentro de MySQL
 -- Sin exposición de estructura en código Python
--- =========================================================
 
--- =====================================================
 -- PARTE 1: BD ORIGEN - PROCEDIMIENTOS DE EXTRACCIÓN
--- =====================================================
 
 USE gestionproyectos_hist;
 
@@ -88,11 +85,11 @@ BEGIN
     LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
     LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
     LEFT JOIN Estado est ON p.id_estado = est.id_estado
-    WHERE p.id_estado IN (3, 4)  -- 3=Completado, 4=Cancelado
+    WHERE p.id_estado IN (3, 4)  -- Completado o Cancelado
     ORDER BY p.id_proyecto;
 END//
 
--- Procedimiento: Extraer tareas de proyectos completados
+-- Procedimiento para extraer tareas de proyectos completados
 DROP PROCEDURE IF EXISTS sp_etl_extraer_tareas//
 CREATE PROCEDURE sp_etl_extraer_tareas()
 BEGIN
@@ -169,17 +166,11 @@ END//
 
 DELIMITER ;
 
--- =====================================================
--- PARTE 2: DATAWAREHOUSE - PROCEDIMIENTOS COMPLETOS
--- =====================================================
-
 USE dw_proyectos_hist;
 
 DELIMITER //
 
--- =====================================================
 -- LIMPIAR DATAWAREHOUSE
--- =====================================================
 
 DROP PROCEDURE IF EXISTS sp_dw_limpiar//
 CREATE PROCEDURE sp_dw_limpiar()
@@ -258,9 +249,7 @@ BEGIN
     SELECT 'EXITOSO' AS resultado, v_contador AS registros_insertados;
 END//
 
--- =====================================================
 -- PROCESO ETL COMPLETO - ORQUESTADOR
--- =====================================================
 
 DROP PROCEDURE IF EXISTS sp_etl_proceso_completo//
 CREATE PROCEDURE sp_etl_proceso_completo()
@@ -456,9 +445,6 @@ END//
 
 DELIMITER ;
 
--- =====================================================
--- VERIFICACIÓN
--- =====================================================
 
 SELECT '=== PROCEDIMIENTOS BD ORIGEN ===' AS info;
 USE gestionproyectos_hist;
@@ -468,5 +454,5 @@ SELECT '=== PROCEDIMIENTOS DATAWAREHOUSE ===' AS info;
 USE dw_proyectos_hist;
 SHOW PROCEDURE STATUS WHERE Db = 'dw_proyectos_hist';
 
-SELECT '✅ Procedimientos ETL COMPLETOS creados exitosamente' AS resultado;
-SELECT '💡 Ahora el ETL Python solo necesita llamar: CALL sp_etl_proceso_completo()' AS nota;
+SELECT ' Procedimientos ETL COMPLETOS creados exitosamente' AS resultado;
+SELECT 'Ahora el ETL Python solo necesita llamar: CALL sp_etl_proceso_completo()' AS nota;
