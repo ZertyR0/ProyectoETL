@@ -1054,6 +1054,42 @@ def get_kpis_ejecutivos():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/olap/rollup', methods=['GET'])
+def get_olap_rollup():
+    """
+    Endpoint para obtener datos con ROLLUP (agregaciones jerárquicas)
+    """
+    try:
+        # Conectar a DataWarehouse
+        conn_destino = mysql.connector.connect(
+            host=DB_CONFIG['host_destino'],
+            port=DB_CONFIG['port_destino'],
+            user=DB_CONFIG['user_destino'],
+            password=DB_CONFIG['password_destino'],
+            database=DB_CONFIG['db_destino']
+        )
+        cursor_destino = conn_destino.cursor(dictionary=True)
+        
+        # Obtener datos ROLLUP
+        cursor_destino.execute("SELECT * FROM vw_olap_proyectos_rollup")
+        datos_rollup = cursor_destino.fetchall()
+        
+        cursor_destino.close()
+        conn_destino.close()
+        
+        return jsonify({
+            'success': True,
+            'datos': datos_rollup,
+            'total_registros': len(datos_rollup)
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': f'Error en OLAP ROLLUP: {str(e)}',
+            'traceback': traceback.format_exc()
+        }), 500
+
 @app.route('/olap/dimensiones', methods=['GET'])
 def get_dimensiones():
     """
@@ -1071,11 +1107,11 @@ def get_dimensiones():
         cursor_destino = conn_destino.cursor(dictionary=True)
         
         # Obtener clientes
-        cursor_destino.execute("SELECT id_cliente, nombre_cliente, sector FROM DimCliente ORDER BY nombre_cliente")
+        cursor_destino.execute("SELECT id_cliente, nombre AS nombre_cliente, sector FROM DimCliente ORDER BY nombre")
         clientes = cursor_destino.fetchall()
         
         # Obtener equipos
-        cursor_destino.execute("SELECT id_equipo, nombre_equipo, tipo FROM DimEquipo ORDER BY nombre_equipo")
+        cursor_destino.execute("SELECT id_equipo, nombre_equipo, descripcion AS tipo FROM DimEquipo ORDER BY nombre_equipo")
         equipos = cursor_destino.fetchall()
         
         # Obtener años disponibles

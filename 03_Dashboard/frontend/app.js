@@ -1184,6 +1184,10 @@ function mostrarResultadosOLAP(datos) {
 // FUNCIONES DSS - BSC/OKR
 // ========================================
 
+// Variables globales para almacenar instancias de charts
+let chartRadarPerspectivas = null;
+let chartDonutObjetivos = null;
+
 async function cargarBSC_OKR() {
     try {
         const response = await fetch(`${API_BASE}/bsc/okr`);
@@ -1191,6 +1195,7 @@ async function cargarBSC_OKR() {
         
         if (data.success) {
             mostrarVisionEstrategica();
+            renderizarGraficosResumen(data.perspectivas);
             mostrarPerspectivasBSC(data.perspectivas);
         } else {
             showToast('Error cargando BSC/OKR: ' + data.message, 'error');
@@ -1199,6 +1204,140 @@ async function cargarBSC_OKR() {
         console.error('Error cargando BSC/OKR:', error);
         showToast('Error cargando BSC/OKR', 'error');
     }
+}
+
+function renderizarGraficosResumen(perspectivas) {
+    // Destruir charts anteriores si existen
+    if (chartRadarPerspectivas) {
+        chartRadarPerspectivas.destroy();
+    }
+    if (chartDonutObjetivos) {
+        chartDonutObjetivos.destroy();
+    }
+
+    // Preparar datos para radar chart (avance por perspectiva)
+    const labelsPerspectivas = [];
+    const dataAvance = [];
+    let totalVerde = 0;
+    let totalAmarillo = 0;
+    let totalRojo = 0;
+
+    Object.keys(perspectivas).forEach(nombrePerspectiva => {
+        const perspectiva = perspectivas[nombrePerspectiva];
+        labelsPerspectivas.push(nombrePerspectiva);
+        dataAvance.push(perspectiva.resumen.avance_promedio || 0);
+        
+        totalVerde += perspectiva.resumen.objetivos_verde || 0;
+        totalAmarillo += perspectiva.resumen.objetivos_amarillo || 0;
+        totalRojo += perspectiva.resumen.objetivos_rojo || 0;
+    });
+
+    // Radar Chart de Perspectivas
+    const ctxRadar = document.getElementById('chart-radar-perspectivas').getContext('2d');
+    chartRadarPerspectivas = new Chart(ctxRadar, {
+        type: 'radar',
+        data: {
+            labels: labelsPerspectivas,
+            datasets: [{
+                label: 'Avance Promedio (%)',
+                data: dataAvance,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(54, 162, 235, 1)',
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20,
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    pointLabels: {
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.r.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Donut Chart de Estado de Objetivos
+    const ctxDonut = document.getElementById('chart-donut-objetivos').getContext('2d');
+    chartDonutObjetivos = new Chart(ctxDonut, {
+        type: 'doughnut',
+        data: {
+            labels: ['🟢 En Meta (Verde)', '🟡 Atención (Amarillo)', '🔴 Crítico (Rojo)'],
+            datasets: [{
+                data: [totalVerde, totalAmarillo, totalRojo],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ' + value + ' objetivos (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 async function mostrarVisionEstrategica() {
@@ -1247,9 +1386,25 @@ function mostrarPerspectivasBSC(perspectivas) {
         'Aprendizaje y Innovación': 'warning'
     };
     
+    const iconosPerspectivas = {
+        'Financiera': 'fa-dollar-sign',
+        'Clientes': 'fa-users',
+        'Procesos Internos': 'fa-cogs',
+        'Aprendizaje y Innovación': 'fa-lightbulb'
+    };
+    
+    const descripcionesPerspectivas = {
+        'Financiera': 'Métricas de rentabilidad, costos y eficiencia económica del proyecto',
+        'Clientes': 'Satisfacción, entregas y cumplimiento de expectativas del cliente',
+        'Procesos Internos': 'Eficiencia operacional, plazos y calidad de procesos',
+        'Aprendizaje y Innovación': 'Capacitación, mejora continua y desarrollo del equipo'
+    };
+    
     Object.keys(perspectivas).forEach(nombrePerspectiva => {
         const perspectiva = perspectivas[nombrePerspectiva];
         const color = coloresPerspectivas[nombrePerspectiva] || 'secondary';
+        const icono = iconosPerspectivas[nombrePerspectiva] || 'fa-star';
+        const descripcion = descripcionesPerspectivas[nombrePerspectiva] || '';
         
         let objetivosHtml = '';
         perspectiva.objetivos.forEach(objetivo => {
@@ -1267,29 +1422,89 @@ function mostrarPerspectivasBSC(perspectivas) {
                     'Rojo': 'danger'
                 }[kr.estado_semaforo] || 'secondary';
                 
+                const progreso = kr.progreso_hacia_meta || 0;
+                const progresoWidth = Math.min(progreso, 100);
+                
+                // Determinar si el valor es "undefined" y mostrarlo como N/A
+                const valorObservado = (kr.valor_observado !== null && kr.valor_observado !== undefined) 
+                    ? kr.valor_observado 
+                    : 'N/A';
+                const metaObjetivo = kr.meta_objetivo || 'N/A';
+                
                 krsHtml += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="fw-bold">${kr.kr_nombre}</small><br>
-                            <small class="text-muted">${kr.valor_observado} ${kr.unidad_medida} / ${kr.meta_objetivo} ${kr.unidad_medida}</small>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fas fa-key text-muted me-2" style="font-size: 0.8rem;"></i>
+                                    <small class="fw-bold">${kr.kr_nombre}</small>
+                                </div>
+                                <div class="ms-4">
+                                    <small class="text-muted">
+                                        <strong>Actual:</strong> ${valorObservado} ${kr.unidad_medida} 
+                                        <span class="mx-2">|</span>
+                                        <strong>Meta:</strong> ${metaObjetivo} ${kr.unidad_medida}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="ms-2 text-end">
+                                <span class="badge bg-${krColor} mb-1">${progreso.toFixed(1)}%</span>
+                                <button class="btn btn-sm btn-outline-primary d-block" 
+                                        onclick="abrirModalMedicion('${kr.id_kr}', '${kr.kr_nombre}')"
+                                        title="Registrar nueva medición para actualizar este KR">
+                                    <i class="fas fa-plus"></i> Medir
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <span class="badge bg-${krColor}">${kr.progreso_hacia_meta?.toFixed(1) || 0}%</span>
-                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="abrirModalMedicion('${kr.id_kr}', '${kr.kr_nombre}')">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-${krColor}" 
+                                 role="progressbar" 
+                                 style="width: ${progresoWidth}%;" 
+                                 aria-valuenow="${progreso}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100"
+                                 title="${progreso.toFixed(1)}% de cumplimiento">
+                            </div>
                         </div>
+                        ${valorObservado === 'N/A' ? 
+                            '<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sin mediciones registradas</small>' 
+                            : ''}
                     </li>
                 `;
             });
             
+            const avanceObjetivo = objetivo.avance_objetivo_porcentaje || 0;
+            
             objetivosHtml += `
-                <div class="card mb-3">
+                <div class="card mb-3 shadow-sm">
                     <div class="card-header bg-${estadoColor} text-white">
-                        <h6 class="mb-0">${objetivo.codigo_objetivo}: ${objetivo.objetivo_nombre}</h6>
-                        <small>Avance: ${objetivo.avance_objetivo_porcentaje?.toFixed(1) || 0}%</small>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">
+                                    <i class="fas fa-bullseye me-2"></i>
+                                    ${objetivo.codigo_objetivo}: ${objetivo.objetivo_nombre}
+                                </h6>
+                                <small class="opacity-75">${objetivo.objetivo_descripcion || ''}</small>
+                            </div>
+                            <div class="text-end ms-3">
+                                <div class="fs-5 fw-bold">${avanceObjetivo.toFixed(1)}%</div>
+                                <small>Cumplimiento</small>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px; background-color: rgba(255,255,255,0.3);">
+                            <div class="progress-bar bg-light" 
+                                 style="width: ${Math.min(avanceObjetivo, 100)}%;"
+                                 title="${avanceObjetivo.toFixed(1)}% completado">
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body p-2">
+                        <div class="mb-2 px-2">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>Key Results (KRs):</strong> Métricas específicas que determinan el éxito de este objetivo
+                            </small>
+                        </div>
                         <ul class="list-group list-group-flush">
                             ${krsHtml}
                         </ul>
@@ -1298,19 +1513,46 @@ function mostrarPerspectivasBSC(perspectivas) {
             `;
         });
         
+        const totalObjetivos = perspectiva.resumen.total_objetivos || 0;
+        const avancePromedioPerspectiva = perspectiva.resumen.avance_promedio || 0;
+        
         container.innerHTML += `
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100 shadow-sm border-${color}">
                     <div class="card-header bg-${color} text-white">
-                        <h5 class="mb-0">${nombrePerspectiva}</h5>
-                        <small>
-                            ${perspectiva.resumen.objetivos_verde} 🟢 
-                            ${perspectiva.resumen.objetivos_amarillo} 🟡 
-                            ${perspectiva.resumen.objetivos_rojo} 🔴
-                        </small>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">
+                                    <i class="fas ${icono} me-2"></i>
+                                    ${nombrePerspectiva}
+                                </h5>
+                                <small class="opacity-75">${descripcion}</small>
+                                <div class="mt-2">
+                                    <small class="me-3">
+                                        ${perspectiva.resumen.objetivos_verde || 0} 🟢 En meta
+                                    </small>
+                                    <small class="me-3">
+                                        ${perspectiva.resumen.objetivos_amarillo || 0} 🟡 Atencion
+                                    </small>
+                                    <small>
+                                        ${perspectiva.resumen.objetivos_rojo || 0} 🔴 Crítico
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="text-end ms-3">
+                                <div class="display-6 fw-bold">${avancePromedioPerspectiva.toFixed(0)}%</div>
+                                <small>Avance Global</small>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body">
-                        ${objetivosHtml}
+                        ${objetivosHtml || '<p class="text-muted text-center py-3">No hay objetivos definidos para esta perspectiva</p>'}
+                    </div>
+                    <div class="card-footer bg-light text-muted">
+                        <small>
+                            <i class="fas fa-chart-bar me-1"></i>
+                            ${totalObjetivos} objetivo(s) estratégico(s) en esta perspectiva
+                        </small>
                     </div>
                 </div>
             </div>
