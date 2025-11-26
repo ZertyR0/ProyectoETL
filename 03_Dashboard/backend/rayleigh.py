@@ -404,10 +404,13 @@ def generar_prediccion_completa(tamanio_proyecto: float,
     cronograma_testing = modelo.generar_cronograma_testing(fecha_inicio, esfuerzo_testing)
     
     # Generar resumen ejecutivo
+    densidad_defectos = round(metricas['total_defectos_estimado'] / tamanio_proyecto, 1)
+    
     resumen_ejecutivo = {
         'total_defectos_estimado': metricas['total_defectos_estimado'],
         'semana_pico_defectos': metricas['tiempo_pico_semanas'],
         'defectos_primera_mitad': metricas['defectos_al_50_pct'],
+        'densidad_defectos': densidad_defectos,
         'recomendacion_principal': f"Concentrar esfuerzo de testing en semana {metricas['tiempo_pico_semanas']:.0f}",
         'alerta_calidad': metricas['total_defectos_estimado'] > tamanio_proyecto * 5,
         'nivel_riesgo': 'Alto' if metricas['total_defectos_estimado'] > tamanio_proyecto * 6 else 

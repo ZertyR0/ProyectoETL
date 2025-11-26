@@ -983,6 +983,35 @@
                     </div>
                 </div>
 
+                <!-- Gráfica de Distribución Rayleigh -->
+                <div class="card mb-4">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Curva de Distribución de Rayleigh - Defectos por Semana
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="rayleigh-chart-container">
+                            <canvas id="chart-rayleigh"></canvas>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4 text-center">
+                                <small class="text-muted">Pico de Defectos</small>
+                                <div class="fw-bold text-warning" id="chart-info-pico">--</div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <small class="text-muted">Total Acumulado</small>
+                                <div class="fw-bold text-primary" id="chart-info-total">--</div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <small class="text-muted">Semanas Activas</small>
+                                <div class="fw-bold text-info" id="chart-info-semanas">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tabla de predicciones por semana -->
                 <div class="card">
                     <div class="card-header bg-info text-white">

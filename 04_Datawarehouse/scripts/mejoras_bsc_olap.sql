@@ -45,80 +45,51 @@ DROP VIEW IF EXISTS vw_bsc_financiera;
 
 CREATE VIEW vw_bsc_financiera AS
 SELECT 
-    'FIN-001' as codigo_objetivo,
-    'Maximizar Rentabilidad de Proyectos' as objetivo_nombre,
-    'Aumentar margen de ganancia y control de costos' as objetivo_descripcion,
-    'Financiera' as perspectiva,
-    'Crecimiento y Rentabilidad' as vision_componente,
-    'CFO' as owner_responsable,
-    3.0 as peso_ponderacion,
-    3 as total_krs,
-    
-    -- KR1: % Proyectos en Presupuesto
-    ROUND(
-        COUNT(CASE WHEN ABS(h.variacion_costos) <= 5 THEN 1 END) * 100.0 / COUNT(*),
-        1
-    ) as kr1_valor_observado,
-    ROUND(
-        LEAST(100, GREATEST(0,
-            (COUNT(CASE WHEN ABS(h.variacion_costos) <= 5 THEN 1 END) * 100.0 / COUNT(*)) / 80.0 * 100
-        )),
-        1
-    ) as kr1_progreso,
-    
-    -- KR2: Variación Presupuesto Promedio
-    ROUND(AVG(ABS(h.variacion_costos)), 1) as kr2_valor_observado,
-    ROUND(
-        LEAST(100, GREATEST(0,
-            CASE 
-                WHEN AVG(ABS(h.variacion_costos)) <= 10 THEN 100
-                WHEN AVG(ABS(h.variacion_costos)) >= 13 THEN 0
-                ELSE ((13 - AVG(ABS(h.variacion_costos))) / 3.0) * 100
-            END
-        )),
-        1
-    ) as kr2_progreso,
-    
-    -- KR3: Rentabilidad Promedio
-    ROUND(
-        AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100),
-        1
-    ) as kr3_valor_observado,
-    ROUND(
-        LEAST(100, GREATEST(0,
-            AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100) / 15.0 * 100
-        )),
-        1
-    ) as kr3_progreso,
-    
-    -- Cálculo consolidado
-    COUNT(CASE 
-        WHEN (COUNT(CASE WHEN ABS(h.variacion_costos) <= 5 THEN 1 END) * 100.0 / COUNT(*)) / 80.0 * 100 >= 100 
-            OR ((13 - AVG(ABS(h.variacion_costos))) / 3.0) * 100 >= 100
-            OR AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100) / 15.0 * 100 >= 100
-        THEN 1 
-    END) as krs_en_meta,
-    
-    ROUND(
-        (LEAST(100, (COUNT(CASE WHEN ABS(h.variacion_costos) <= 5 THEN 1 END) * 100.0 / COUNT(*)) / 80.0 * 100) * 1.0 +
-         LEAST(100, CASE WHEN AVG(ABS(h.variacion_costos)) <= 10 THEN 100 ELSE ((13 - AVG(ABS(h.variacion_costos))) / 3.0) * 100 END) * 0.8 +
-         LEAST(100, AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100) / 15.0 * 100) * 1.2) / 3.0,
-        1
-    ) as avance_objetivo_porcentaje,
-    
+    codigo_objetivo, objetivo_nombre, objetivo_descripcion, perspectiva, vision_componente,
+    owner_responsable, peso_ponderacion, total_krs,
+    kr1_valor_observado, kr1_progreso, kr2_valor_observado, kr2_progreso, kr3_valor_observado, kr3_progreso,
+    krs_en_meta,
+    ROUND((kr1_progreso * 1.0 + kr2_progreso * 0.8 + kr3_progreso * 1.2) / 3.0, 1) as avance_objetivo_porcentaje,
     CASE 
-        WHEN ROUND((LEAST(100, (COUNT(CASE WHEN ABS(h.variacion_costos) <= 5 THEN 1 END) * 100.0 / COUNT(*)) / 80.0 * 100) * 1.0 +
-                    LEAST(100, CASE WHEN AVG(ABS(h.variacion_costos)) <= 10 THEN 100 ELSE ((13 - AVG(ABS(h.variacion_costos))) / 3.0) * 100 END) * 0.8 +
-                    LEAST(100, AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100) / 15.0 * 100) * 1.2) / 3.0, 1) >= 85 THEN 'Verde'
-        WHEN ROUND((LEAST(100, (COUNT(CASE WHEN ABS(h.variacion_costos) <= 5 THEN 1 END) * 100.0 / COUNT(*)) / 80.0 * 100) * 1.0 +
-                    LEAST(100, CASE WHEN AVG(ABS(h.variacion_costos)) <= 10 THEN 100 ELSE ((13 - AVG(ABS(h.variacion_costos))) / 3.0) * 100 END) * 0.8 +
-                    LEAST(100, AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100) / 15.0 * 100) * 1.2) / 3.0, 1) >= 70 THEN 'Amarillo'
+        WHEN ROUND((kr1_progreso * 1.0 + kr2_progreso * 0.8 + kr3_progreso * 1.2) / 3.0, 1) >= 85 THEN 'Verde'
+        WHEN ROUND((kr1_progreso * 1.0 + kr2_progreso * 0.8 + kr3_progreso * 1.2) / 3.0, 1) >= 70 THEN 'Amarillo'
         ELSE 'Rojo'
     END as estado_objetivo,
-    
-    CURDATE() as ultima_actualizacion
-FROM HechoProyecto h
-WHERE h.presupuesto > 0 AND h.tareas_total > 0;
+    ultima_actualizacion
+FROM (
+    SELECT 
+        'FIN-001' as codigo_objetivo,
+        'Maximizar Rentabilidad de Proyectos' as objetivo_nombre,
+        'Aumentar margen de ganancia y control de costos' as objetivo_descripcion,
+        'Financiera' as perspectiva,
+        'Crecimiento y Rentabilidad' as vision_componente,
+        'CFO' as owner_responsable,
+        3.0 as peso_ponderacion,
+        3 as total_krs,
+        
+        -- KR1: % Proyectos en Presupuesto
+        ROUND(SUM(h.cumplimiento_presupuesto) * 100.0 / COUNT(*), 1) as kr1_valor_observado,
+        ROUND(LEAST(100, GREATEST(0, (SUM(h.cumplimiento_presupuesto) * 100.0 / COUNT(*)) / 80.0 * 100)), 1) as kr1_progreso,
+        
+        -- KR2: Variación Presupuesto Promedio (en miles de dólares)
+        ROUND(AVG(ABS(h.variacion_costos)) / 1000, 1) as kr2_valor_observado,
+        ROUND(LEAST(100, GREATEST(0,
+            CASE 
+                WHEN AVG(ABS(h.variacion_costos)) / 1000 <= 10 THEN 100
+                WHEN AVG(ABS(h.variacion_costos)) / 1000 >= 100 THEN 0
+                ELSE ((100 - AVG(ABS(h.variacion_costos)) / 1000) / 90.0) * 100
+            END
+        )), 1) as kr2_progreso,
+        
+        -- KR3: Rentabilidad Promedio
+        ROUND(AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100), 1) as kr3_valor_observado,
+        ROUND(LEAST(100, GREATEST(0, AVG((h.presupuesto - h.costo_real_proy) / NULLIF(h.presupuesto, 0) * 100) / 15.0 * 100)), 1) as kr3_progreso,
+        
+        0 as krs_en_meta,
+        CURDATE() as ultima_actualizacion
+    FROM HechoProyecto h
+    WHERE h.presupuesto > 0 AND h.tareas_total > 0
+) AS base;
 
 -- =============================================================================
 -- 3. BSC PERSPECTIVA CLIENTES
@@ -162,11 +133,7 @@ SELECT
         1
     ) as kr2_progreso,
     
-    COUNT(CASE 
-        WHEN AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100 >= 100
-            OR ((7.5 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma END)) / 2.5) * 100 >= 100
-        THEN 1 
-    END) as krs_en_meta,
+    0 as krs_en_meta,
     
     ROUND(
         (LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 1.0 +
@@ -205,12 +172,12 @@ SELECT
     
     -- KR1: % Proyectos a Tiempo
     ROUND(
-        COUNT(CASE WHEN h.variacion_cronograma <= 0 THEN 1 END) * 100.0 / COUNT(*),
+        SUM(h.cumplimiento_tiempo) * 100.0 / COUNT(*),
         1
     ) as kr1_valor_observado,
     ROUND(
         LEAST(100, GREATEST(0,
-            (COUNT(CASE WHEN h.variacion_cronograma <= 0 THEN 1 END) * 100.0 / COUNT(*)) / 85.0 * 100
+            (SUM(h.cumplimiento_tiempo) * 100.0 / COUNT(*)) / 85.0 * 100
         )),
         1
     ) as kr1_progreso,
@@ -237,25 +204,20 @@ SELECT
         1
     ) as kr3_progreso,
     
-    COUNT(CASE 
-        WHEN (COUNT(CASE WHEN h.variacion_cronograma <= 0 THEN 1 END) * 100.0 / COUNT(*)) / 85.0 * 100 >= 100
-            OR AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100 >= 100
-            OR ((72 - AVG(h.duracion_real)) / 12.0) * 100 >= 100
-        THEN 1 
-    END) as krs_en_meta,
+    0 as krs_en_meta,
     
     ROUND(
-        (LEAST(100, (COUNT(CASE WHEN h.variacion_cronograma <= 0 THEN 1 END) * 100.0 / COUNT(*)) / 85.0 * 100) * 1.0 +
+        (LEAST(100, (SUM(h.cumplimiento_tiempo) * 100.0 / COUNT(*)) / 85.0 * 100) * 1.0 +
          LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 1.0 +
          LEAST(100, CASE WHEN AVG(h.duracion_real) <= 60 THEN 100 ELSE ((72 - AVG(h.duracion_real)) / 12.0) * 100 END) * 0.8) / 2.8,
         1
     ) as avance_objetivo_porcentaje,
     
     CASE 
-        WHEN ROUND((LEAST(100, (COUNT(CASE WHEN h.variacion_cronograma <= 0 THEN 1 END) * 100.0 / COUNT(*)) / 85.0 * 100) * 1.0 +
+        WHEN ROUND((LEAST(100, (SUM(h.cumplimiento_tiempo) * 100.0 / COUNT(*)) / 85.0 * 100) * 1.0 +
                     LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 1.0 +
                     LEAST(100, CASE WHEN AVG(h.duracion_real) <= 60 THEN 100 ELSE ((72 - AVG(h.duracion_real)) / 12.0) * 100 END) * 0.8) / 2.8, 1) >= 85 THEN 'Verde'
-        WHEN ROUND((LEAST(100, (COUNT(CASE WHEN h.variacion_cronograma <= 0 THEN 1 END) * 100.0 / COUNT(*)) / 85.0 * 100) * 1.0 +
+        WHEN ROUND((LEAST(100, (SUM(h.cumplimiento_tiempo) * 100.0 / COUNT(*)) / 85.0 * 100) * 1.0 +
                     LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 1.0 +
                     LEAST(100, CASE WHEN AVG(h.duracion_real) <= 60 THEN 100 ELSE ((72 - AVG(h.duracion_real)) / 12.0) * 100 END) * 0.8) / 2.8, 1) >= 70 THEN 'Amarillo'
         ELSE 'Rojo'
@@ -309,11 +271,7 @@ SELECT
         1
     ) as kr2_progreso,
     
-    COUNT(CASE 
-        WHEN ((18 - AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0))) / 3.0) * 100 >= 100
-            OR (COUNT(DISTINCT h.id_empleado_gerente) * 100.0 / (SELECT COUNT(*) FROM DimEmpleado)) / 80.0 * 100 >= 100
-        THEN 1 
-    END) as krs_en_meta,
+    0 as krs_en_meta,
     
     ROUND(
         (LEAST(100, CASE WHEN AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((18 - AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0))) / 3.0) * 100 END) * 1.0 +

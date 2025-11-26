@@ -62,6 +62,7 @@ try:
 except ImportError:
     # Fallback a configuración local si no se puede importar
     print("⚠️ No se pudo importar configuración ETL, usando configuración local")
+    AMBIENTE = 'local'  # Set default environment
     DB_CONFIG = {
         'host_origen': 'localhost',
         'port_origen': 3306,
@@ -361,12 +362,13 @@ def datos_datawarehouse():
             conn_origen = get_connection('origen')
             cursor_origen = conn_origen.cursor(buffered=True)  # buffered para evitar errores
             
-            # Mapeo de id_estado a nombre_estado
+            # Mapeo de id_estado a nombre_estado (actualizado)
             mapeo_estados = {
-                1: 'Pendiente',
+                1: 'Planificación',
                 2: 'En Progreso',
-                3: 'Completado',
-                4: 'Cancelado'
+                3: 'En Pausa',
+                4: 'Completado',
+                5: 'Cancelado'
             }
             
             for row in proyectos_dw_rows:
@@ -430,16 +432,12 @@ def datos_datawarehouse():
             proyectos_a_tiempo = sum(1 for p in proyectos_dw if p.get('cumplimiento_tiempo') == 'Sí')
             metricas['proyectos_a_tiempo'] = proyectos_a_tiempo
             
-            # Calcular total de tareas (completadas + canceladas)
-            total_tareas = sum(
-                (p.get('tareas_completadas', 0) or 0) + (p.get('tareas_canceladas', 0) or 0) 
-                for p in proyectos_dw
-            )
-            metricas['total_tareas'] = total_tareas
+            # Total de tareas desde HechoTarea (valor real)
+            metricas['total_tareas'] = stats['hechotarea']
         else:
             metricas['dias_promedio'] = 0
             metricas['proyectos_a_tiempo'] = 0
-            metricas['total_tareas'] = 0
+            metricas['total_tareas'] = stats.get('hechotarea', 0)
         
         return jsonify({
             'status': 'success',
@@ -484,43 +482,213 @@ def insertar_datos():
 
 @app.route('/ejecutar-etl', methods=['POST'])
 def ejecutar_etl():
-    """Ejecutar proceso ETL incremental con fallback a procedimiento almacenado.
+    """Ejecutar proceso ETL usando script SQL manual (fixed schema).
     Flujo:
-      1. Intentar ejecución Python incremental (etl_incremental.py)
-      2. Si falla, ejecutar CALL sp_ejecutar_etl_completo()
-      3. Retornar métricas básicas post-carga
+      1. Limpiar HechoProyecto y dimensiones
+      2. Cargar dimensiones desde origen
+      3. Cargar HechoProyecto con id_equipo desde TareaEquipoHist
     """
     try:
-        print("🚀 Iniciando proceso ETL incremental...")
-        from etl.etl_incremental import ejecutar_etl_incremental
-        resultado_proc = None
-        success = ejecutar_etl_incremental()
+        print("🚀 Iniciando proceso ETL manual...")
+        
+        # Get project root
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        
+        # Execute ETL SQL script
+        import subprocess
+        etl_script = """
+-- Clear DW
+TRUNCATE TABLE HechoTarea;
+TRUNCATE TABLE HechoProyecto;
+DELETE FROM DimCliente;
+DELETE FROM DimEmpleado;
+DELETE FROM DimEquipo;
+DELETE FROM DimProyecto;
 
-        if not success:
-            print("⚠️ ETL incremental Python falló. Intentando fallback a procedimiento almacenado...")
-            connection_params = {
-                'user': DB_CONFIG['user_destino'],
-                'password': DB_CONFIG['password_destino'],
-                'database': DB_CONFIG['db_destino']
-            }
-            if DB_CONFIG.get('unix_socket') and DB_CONFIG['host_destino'] == 'localhost':
-                connection_params['unix_socket'] = DB_CONFIG['unix_socket']
-            else:
-                connection_params['host'] = DB_CONFIG['host_destino']
-                connection_params['port'] = DB_CONFIG['port_destino']
+-- Populate DimTiempo with all dates needed
+INSERT IGNORE INTO DimTiempo (id_tiempo, fecha, anio, mes, trimestre)
+SELECT DISTINCT
+    fecha_fin_real,
+    fecha_fin_real,
+    YEAR(fecha_fin_real),
+    MONTH(fecha_fin_real),
+    QUARTER(fecha_fin_real)
+FROM gestionproyectos_hist.Proyecto
+WHERE fecha_fin_real IS NOT NULL
+UNION
+SELECT DISTINCT
+    fecha_fin_real,
+    fecha_fin_real,
+    YEAR(fecha_fin_real),
+    MONTH(fecha_fin_real),
+    QUARTER(fecha_fin_real)
+FROM gestionproyectos_hist.Tarea
+WHERE fecha_fin_real IS NOT NULL;
 
-            conn_destino = mysql.connector.connect(**connection_params)
-            cursor = conn_destino.cursor(dictionary=True)
-            cursor.execute("CALL sp_ejecutar_etl_completo()")
-            resultado_proc = cursor.fetchone() or {}
-            cursor.close(); conn_destino.close()
-            if resultado_proc.get('estado') == 'ERROR':
-                return jsonify({'success': False,'message': resultado_proc.get('mensaje','Error desconocido en ETL'),'detalle': resultado_proc}), 500
-            success = True
+-- Load dimensions
+INSERT INTO DimCliente (id_cliente, nombre, sector)
+SELECT id_cliente, nombre, sector
+FROM gestionproyectos_hist.Cliente;
 
-        if not success:
-            return jsonify({'success': False,'message': 'Error en ejecución ETL'}), 500
+INSERT INTO DimEmpleado (id_empleado, nombre, puesto)
+SELECT id_empleado, nombre, puesto
+FROM gestionproyectos_hist.Empleado;
 
+INSERT INTO DimEquipo (id_equipo, nombre_equipo, descripcion)
+SELECT id_equipo, nombre_equipo, descripcion
+FROM gestionproyectos_hist.Equipo;
+
+-- Load DimProyecto (SOLO proyectos Completados o Cancelados)
+INSERT INTO DimProyecto (id_proyecto, nombre_proyecto, fecha_inicio_plan, fecha_fin_plan, presupuesto, estado, progreso_porcentaje)
+SELECT 
+    p.id_proyecto, 
+    p.nombre, 
+    p.fecha_inicio, 
+    p.fecha_fin_plan, 
+    p.presupuesto,
+    e.nombre_estado,
+    CASE
+        WHEN e.id_estado = 4 THEN 100.0  -- Completado
+        WHEN e.id_estado = 5 THEN 0.0    -- Cancelado
+        ELSE (
+            SELECT (COUNT(CASE WHEN t.id_estado = 4 THEN 1 END) * 100.0 / COUNT(*))
+            FROM gestionproyectos_hist.Tarea t
+            WHERE t.id_proyecto = p.id_proyecto
+        )
+    END as progreso_porcentaje
+FROM gestionproyectos_hist.Proyecto p
+LEFT JOIN gestionproyectos_hist.Estado e ON p.id_estado = e.id_estado
+WHERE p.id_estado IN (4, 5);  -- Solo Completados y Cancelados
+
+-- Load HechoProyecto WITH id_equipo (SOLO proyectos Completados o Cancelados)
+INSERT INTO HechoProyecto (
+    id_proyecto, id_cliente, id_empleado_gerente, id_equipo,
+    id_tiempo_fin_real, presupuesto, costo_real_proy,
+    duracion_planificada, duracion_real, tareas_total,
+    tareas_completadas, tareas_canceladas,
+    horas_plan_total, horas_reales_total,
+    cumplimiento_tiempo, cumplimiento_presupuesto, variacion_costos, variacion_cronograma
+)
+SELECT 
+    p.id_proyecto,
+    p.id_cliente,
+    p.id_empleado_gerente,
+    (
+        SELECT teh.id_equipo
+        FROM gestionproyectos_hist.Tarea t
+        JOIN gestionproyectos_hist.TareaEquipoHist teh ON t.id_tarea = teh.id_tarea
+        WHERE t.id_proyecto = p.id_proyecto
+        GROUP BY teh.id_equipo
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    ) as id_equipo,
+    COALESCE(p.fecha_fin_real, p.fecha_fin_plan, CURRENT_DATE),
+    p.presupuesto,
+    p.costo_real,
+    DATEDIFF(p.fecha_fin_plan, p.fecha_inicio) as duracion_planificada,
+    DATEDIFF(COALESCE(p.fecha_fin_real, CURRENT_DATE), p.fecha_inicio) as duracion_real,
+    (SELECT COUNT(*) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto),
+    (SELECT COUNT(*) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto AND t.id_estado = 4),
+    (SELECT COUNT(*) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto AND t.id_estado = 5),
+    (SELECT COALESCE(SUM(horas_plan), 0) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto),
+    (SELECT COALESCE(SUM(horas_reales), 0) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto),
+    -- Cumplimiento de tiempo: 1 si terminó a tiempo o antes, 0 si se retrasó
+    CASE 
+        WHEN DATEDIFF(COALESCE(p.fecha_fin_real, CURRENT_DATE), p.fecha_inicio) <= DATEDIFF(p.fecha_fin_plan, p.fecha_inicio) 
+        THEN 1 
+        ELSE 0 
+    END as cumplimiento_tiempo,
+    -- Cumplimiento de presupuesto: 1 si gastó igual o menos, 0 si se excedió
+    CASE 
+        WHEN p.costo_real <= p.presupuesto 
+        THEN 1 
+        ELSE 0 
+    END as cumplimiento_presupuesto,
+    -- Variación de costos: diferencia entre costo real y presupuesto
+    (p.costo_real - p.presupuesto) as variacion_costos,
+    -- Variación de cronograma: diferencia en días entre duración real y planificada
+    (DATEDIFF(COALESCE(p.fecha_fin_real, CURRENT_DATE), p.fecha_inicio) - DATEDIFF(p.fecha_fin_plan, p.fecha_inicio)) as variacion_cronograma
+FROM gestionproyectos_hist.Proyecto p
+WHERE p.id_estado IN (4, 5)  -- Solo Completados y Cancelados
+  AND p.fecha_fin_real IS NOT NULL;  -- Solo con fecha de finalización
+
+-- Load HechoTarea (tareas de proyectos finalizados)
+INSERT INTO HechoTarea (
+    id_tarea, id_proyecto, id_equipo, id_tiempo_fin_real,
+    horas_plan, horas_reales, variacion_horas, cumplimiento_tiempo
+)
+SELECT 
+    t.id_tarea,
+    t.id_proyecto,
+    (
+        SELECT teh.id_equipo
+        FROM gestionproyectos_hist.TareaEquipoHist teh
+        WHERE teh.id_tarea = t.id_tarea
+        LIMIT 1
+    ) as id_equipo,
+    COALESCE(t.fecha_fin_real, t.fecha_fin_plan, CURRENT_DATE),
+    t.horas_plan,
+    t.horas_reales,
+    (t.horas_reales - t.horas_plan) as variacion_horas,
+    -- Cumplimiento: 1 si terminó a tiempo, 0 si se retrasó
+    CASE 
+        WHEN t.fecha_fin_real IS NOT NULL 
+             AND t.fecha_fin_real <= t.fecha_fin_plan 
+        THEN 1 
+        ELSE 0 
+    END as cumplimiento_tiempo
+FROM gestionproyectos_hist.Tarea t
+WHERE t.id_proyecto IN (
+    SELECT id_proyecto 
+    FROM gestionproyectos_hist.Proyecto 
+    WHERE id_estado IN (4, 5)
+);
+
+SELECT 
+    COUNT(*) as total_proyectos,
+    COUNT(id_equipo) as con_equipo
+FROM HechoProyecto;
+"""
+        
+        # Write script to temp file
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
+            f.write(etl_script)
+            temp_sql = f.name
+        
+        try:
+            # Execute via mysql command
+            env = os.environ.copy()
+            env['MYSQL_PWD'] = DB_CONFIG.get('password_destino', '')
+            
+            result = subprocess.run(
+                [
+                    'mysql',
+                    '-u', DB_CONFIG.get('user_destino', 'root'),
+                    '-h', DB_CONFIG.get('host_destino', 'localhost'),
+                    '-P', str(DB_CONFIG.get('port_destino', 3306)),
+                    DB_CONFIG.get('db_destino', 'dw_proyectos_hist')
+                ],
+                stdin=open(temp_sql, 'r'),
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=120
+            )
+            
+            if result.returncode != 0:
+                print(f"❌ ETL SQL failed: {result.stderr}")
+                return jsonify({
+                    'success': False,
+                    'message': f'ETL failed: {result.stderr[-200:]}',
+                    'returncode': result.returncode
+                }), 500
+            
+            print("✅ ETL completado exitosamente")
+            
+        finally:
+            os.unlink(temp_sql)
+        
         # Estadísticas post-carga
         try:
             conn = get_connection('destino'); cursor = conn.cursor()
@@ -533,7 +701,8 @@ def ejecutar_etl():
                 'HechoProyecto': _count('SELECT COUNT(*) FROM HechoProyecto'),
                 'HechoTarea': _count('SELECT COUNT(*) FROM HechoTarea'),
                 'DimCliente': _count('SELECT COUNT(*) FROM DimCliente'),
-                'DimTiempo': _count('SELECT COUNT(*) FROM DimTiempo')
+                'DimEquipo': _count('SELECT COUNT(*) FROM DimEquipo'),
+                'proyectos_con_equipo': _count('SELECT COUNT(*) FROM HechoProyecto WHERE id_equipo IS NOT NULL')
             }
             cursor.close(); conn.close()
         except Exception as db_error:
@@ -542,7 +711,7 @@ def ejecutar_etl():
 
         return jsonify({
             'success': True,
-            'message': resultado_proc.get('mensaje','ETL incremental ejecutado') if resultado_proc else 'ETL incremental ejecutado',
+            'message': 'ETL completado exitosamente',
             'registros_procesados': stats,
             'total': sum(stats.values()) if stats else 0
         })
@@ -680,20 +849,76 @@ def limpiar_datos():
 
 @app.route('/generar-datos', methods=['POST'])
 def generar_datos_personalizados():
-    """Generar datos de prueba personalizados usando el nuevo script centralizado.
-    Parámetros JSON: proyectos, empleados_por_proyecto, tareas_por_proyecto, limpiar (bool)
+    """Generar datos de prueba personalizados usando generar_datos_final.py (fixed schema).
+    Parámetros JSON: 
+      - proyectos: número de proyectos (requerido)
+      - empleados: total empleados O empleados_por_proyecto (opcional)
+      - tareas_por_proyecto: tareas por proyecto (opcional, default 10)
+      - limpiar: bool (opcional, default False)
     """
     try:
         data = request.get_json() or {}
+        
+        # Obtener proyectos (siempre requerido)
         proyectos = int(data.get('proyectos', 25))
-        empleados_pp = int(data.get('empleados_por_proyecto', 5))
-        tareas_pp = int(data.get('tareas_por_proyecto', 8))
+        
+        # Si viene 'empleados' (total), calcular empleados_por_proyecto
+        if 'empleados' in data:
+            empleados_total = int(data['empleados'])
+            empleados_pp = max(1, empleados_total // proyectos) if proyectos > 0 else 5
+        else:
+            empleados_pp = int(data.get('empleados_por_proyecto', 5))
+        
+        tareas_pp = int(data.get('tareas_por_proyecto', 10))
         limpiar = bool(data.get('limpiar', False))
-        ambiente = os.getenv('ETL_AMBIENTE', 'local')
-        print(f"📊 Generación personalizada: proyectos={proyectos} empleados_pp={empleados_pp} tareas_pp={tareas_pp} limpiar={limpiar} ambiente={ambiente}")
-        from src.origen.generar_datos import generar_datos
-        resumen = generar_datos(proyectos=proyectos, empleados_por_proyecto=empleados_pp, tareas_por_proyecto=tareas_pp, limpiar=limpiar, ambiente=ambiente)
-        return jsonify({'success': True,'message': 'Generación completada','stats': resumen})
+        
+        print(f"📊 Generación: {proyectos} proyectos × {empleados_pp} empleados × {tareas_pp} tareas (limpiar={limpiar})")
+        
+        # Call fixed generator via subprocess (from project root)
+        import subprocess
+        import json
+        
+        # Get project root (2 levels up from backend/)
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        generator_path = os.path.join(project_root, '01_GestionProyectos', 'datos', 'generar_datos_final.py')
+        
+        # Set environment variables for generator
+        env = os.environ.copy()
+        env['CANTIDAD_PROYECTOS'] = str(proyectos)
+        env['EMPLEADOS_POR_PROYECTO'] = str(empleados_pp)
+        env['TAREAS_POR_PROYECTO'] = str(tareas_pp)
+        env['LIMPIAR_TABLAS'] = 'true' if limpiar else 'false'
+        
+        result = subprocess.run(
+            ['python3', generator_path],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=600,  # Aumentado timeout para 650 proyectos
+            cwd=project_root
+        )
+        
+        if result.returncode == 0:
+            # Parse output for stats
+            output = result.stdout
+            stats = {
+                'proyectos': proyectos,
+                'empleados': proyectos * empleados_pp,
+                'tareas': proyectos * tareas_pp,
+                'equipos': proyectos
+            }
+            return jsonify({
+                'success': True,
+                'message': 'Generación completada',
+                'stats': stats,
+                'output': output[-500:] if len(output) > 500 else output
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Generator failed: {result.stderr[-500:]}',
+                'returncode': result.returncode
+            }), 500
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
@@ -734,9 +959,174 @@ def buscar_trazabilidad():
         
         # PROYECTOS
         if tipo == 'proyecto':
-            # Por ahora sólo soportado en endpoint específico /trazabilidad/tarea/<id>
-            resultado['success'] = False
-            resultado['mensaje'] = 'Trazabilidad de proyectos no implementada en este endpoint'
+            if criterio == 'id':
+                cursor_origen.execute("""
+                    SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente, 
+                           est.nombre_estado
+                    FROM Proyecto p
+                    LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
+                    LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
+                    LEFT JOIN Estado est ON p.id_estado = est.id_estado
+                    WHERE p.id_proyecto = %s
+                """, (valor,))
+            else:
+                cursor_origen.execute("""
+                    SELECT p.*, c.nombre as nombre_cliente, e.nombre as nombre_gerente,
+                           est.nombre_estado
+                    FROM Proyecto p
+                    LEFT JOIN Cliente c ON p.id_cliente = c.id_cliente
+                    LEFT JOIN Empleado e ON p.id_empleado_gerente = e.id_empleado
+                    LEFT JOIN Estado est ON p.id_estado = est.id_estado
+                    WHERE p.nombre LIKE %s
+                """, (f'%{valor}%',))
+            
+            proyecto_origen = cursor_origen.fetchone()
+            
+            if proyecto_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in proyecto_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        proyecto_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        proyecto_origen[key] = float(val)
+                resultado['datos_origen'] = proyecto_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("""
+                    SELECT hp.*, dp.nombre_proyecto
+                    FROM HechoProyecto hp
+                    LEFT JOIN DimProyecto dp ON hp.id_proyecto = dp.id_proyecto
+                    WHERE hp.id_proyecto = %s
+                """, (proyecto_origen['id_proyecto'],))
+                proyecto_dw = cursor_destino.fetchone()
+                
+                if proyecto_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in proyecto_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            proyecto_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            proyecto_dw[key] = float(val)
+                    resultado['datos_dw'] = proyecto_dw
+                    resultado['mensaje'] = '✓ Proyecto encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = 'Proyecto en Origen pero no en DW (solo se cargan proyectos Completados o Cancelados)'
+            else:
+                resultado['mensaje'] = 'Proyecto no encontrado en Base Origen'
+        
+        # CLIENTES
+        elif tipo == 'cliente':
+            if criterio == 'id':
+                cursor_origen.execute("SELECT * FROM Cliente WHERE id_cliente = %s", (valor,))
+            else:
+                cursor_origen.execute("SELECT * FROM Cliente WHERE nombre LIKE %s", (f'%{valor}%',))
+            
+            cliente_origen = cursor_origen.fetchone()
+            
+            if cliente_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in cliente_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        cliente_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        cliente_origen[key] = float(val)
+                resultado['datos_origen'] = cliente_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("""
+                    SELECT * FROM DimCliente WHERE id_cliente = %s
+                """, (cliente_origen['id_cliente'],))
+                cliente_dw = cursor_destino.fetchone()
+                
+                if cliente_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in cliente_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            cliente_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            cliente_dw[key] = float(val)
+                    resultado['datos_dw'] = cliente_dw
+                    resultado['mensaje'] = '✓ Cliente encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = 'Cliente en Origen pero no en DW'
+            else:
+                resultado['mensaje'] = 'Cliente no encontrado en Base Origen'
+        
+        # EMPLEADOS
+        elif tipo == 'empleado':
+            if criterio == 'id':
+                cursor_origen.execute("SELECT * FROM Empleado WHERE id_empleado = %s", (valor,))
+            else:
+                cursor_origen.execute("SELECT * FROM Empleado WHERE nombre LIKE %s", (f'%{valor}%',))
+            
+            empleado_origen = cursor_origen.fetchone()
+            
+            if empleado_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in empleado_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        empleado_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        empleado_origen[key] = float(val)
+                resultado['datos_origen'] = empleado_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("""
+                    SELECT * FROM DimEmpleado WHERE id_empleado = %s
+                """, (empleado_origen['id_empleado'],))
+                empleado_dw = cursor_destino.fetchone()
+                
+                if empleado_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in empleado_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            empleado_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            empleado_dw[key] = float(val)
+                    resultado['datos_dw'] = empleado_dw
+                    resultado['mensaje'] = '✓ Empleado encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = 'Empleado en Origen pero no en DW'
+            else:
+                resultado['mensaje'] = 'Empleado no encontrado en Base Origen'
+        
+        # EQUIPOS
+        elif tipo == 'equipo':
+            if criterio == 'id':
+                cursor_origen.execute("SELECT * FROM Equipo WHERE id_equipo = %s", (valor,))
+            else:
+                cursor_origen.execute("SELECT * FROM Equipo WHERE nombre_equipo LIKE %s", (f'%{valor}%',))
+            
+            equipo_origen = cursor_origen.fetchone()
+            
+            if equipo_origen:
+                resultado['encontrado_origen'] = True
+                for key, val in equipo_origen.items():
+                    if isinstance(val, (date, datetime)):
+                        equipo_origen[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        equipo_origen[key] = float(val)
+                resultado['datos_origen'] = equipo_origen
+                
+                # Buscar en DW
+                cursor_destino.execute("""
+                    SELECT * FROM DimEquipo WHERE id_equipo = %s
+                """, (equipo_origen['id_equipo'],))
+                equipo_dw = cursor_destino.fetchone()
+                
+                if equipo_dw:
+                    resultado['encontrado_dw'] = True
+                    for key, val in equipo_dw.items():
+                        if isinstance(val, (date, datetime)):
+                            equipo_dw[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            equipo_dw[key] = float(val)
+                    resultado['datos_dw'] = equipo_dw
+                    resultado['mensaje'] = '✓ Equipo encontrado en ambas bases de datos'
+                else:
+                    resultado['mensaje'] = 'Equipo en Origen pero no en DW'
+            else:
+                resultado['mensaje'] = 'Equipo no encontrado en Base Origen'
         
         # TAREAS
         elif tipo == 'tarea':
@@ -887,13 +1277,20 @@ def get_olap_kpis():
         cursor_destino = conn_destino.cursor(dictionary=True)
         
         # Construir consulta dinámica usando el procedimiento OLAP
+        import sys
+        print(f"DEBUG: Llamando SP con: nivel={nivel}, cliente={cliente_id}, equipo={equipo_id}, anio={anio}, trimestre={trimestre}", flush=True, file=sys.stderr)
         cursor_destino.callproc('sp_olap_drill_down_proyectos', [
             nivel, cliente_id, equipo_id, anio, trimestre
         ])
         
         resultados = []
         for result in cursor_destino.stored_results():
-            resultados.extend(result.fetchall())
+            rows = result.fetchall()
+            print(f"DEBUG: Recibidas {len(rows)} filas del SP", flush=True, file=sys.stderr)
+            if rows:
+                first_row = dict(rows[0])
+                print(f"DEBUG: Primera fila - Completados: {first_row.get('proyectos_completados')}, Progreso: {first_row.get('progreso_promedio')}", flush=True, file=sys.stderr)
+            resultados.extend(rows)
         
         # Convertir Decimal a float para JSON
         for row in resultados:
@@ -1177,6 +1574,8 @@ def get_bsc_okr():
             perspectiva = objetivo['perspectiva']
             if perspectiva not in perspectivas:
                 perspectivas[perspectiva] = {
+                    'nombre': perspectiva,
+                    'avance_global': 0,
                     'objetivos': [],
                     'resumen': {
                         'total_objetivos': 0,
@@ -1193,6 +1592,11 @@ def get_bsc_okr():
                     objetivo[key] = float(value)
                 elif isinstance(value, date):
                     objetivo[key] = value.isoformat()
+            
+            # Mapear campos a los nombres esperados por el frontend
+            objetivo['nombre'] = objetivo.get('objetivo_nombre', '')
+            objetivo['descripcion'] = objetivo.get('objetivo_descripcion', '')
+            objetivo['avance'] = objetivo.get('avance_objetivo_porcentaje', 0)
             
             # Agregar KRs al objetivo
             objetivo['krs'] = []
@@ -1221,10 +1625,11 @@ def get_bsc_okr():
             if objetivo['avance_objetivo_porcentaje']:
                 resumen['avance_promedio'] += objetivo['avance_objetivo_porcentaje']
         
-        # Calcular promedios
+        # Calcular promedios y avance global
         for perspectiva in perspectivas.values():
             if perspectiva['resumen']['total_objetivos'] > 0:
                 perspectiva['resumen']['avance_promedio'] /= perspectiva['resumen']['total_objetivos']
+                perspectiva['avance_global'] = perspectiva['resumen']['avance_promedio']
         
         cursor_destino.close()
         conn_destino.close()

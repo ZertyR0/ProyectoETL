@@ -7,7 +7,7 @@
 -- para análisis multidimensional con capacidades de drill-down
 --
 
-USE datawarehouse;
+USE dw_proyectos_hist;
 
 -- ========================================
 -- 1. VISTA OLAP: ANÁLISIS DE PROYECTOS POR DIMENSIONES

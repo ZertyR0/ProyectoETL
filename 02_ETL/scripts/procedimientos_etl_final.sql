@@ -136,7 +136,7 @@ BEGIN
     
     -- HechoProyecto con todas las métricas
     INSERT INTO HechoProyecto (
-        id_proyecto, id_cliente, id_empleado_gerente,
+        id_proyecto, id_cliente, id_empleado_gerente, id_equipo,
         id_tiempo_inicio, id_tiempo_fin_plan, id_tiempo_fin_real,
         duracion_planificada, duracion_real, variacion_cronograma,
         cumplimiento_tiempo, presupuesto, costo_real,
@@ -150,6 +150,15 @@ BEGIN
         p.id_proyecto,
         p.id_cliente,
         p.id_empleado_gerente,
+        -- Equipo principal: el más usado en las tareas del proyecto
+        (SELECT teh.id_equipo 
+         FROM gestionproyectos_hist.TareaEquipoHist teh
+         INNER JOIN gestionproyectos_hist.Tarea t ON teh.id_tarea = t.id_tarea
+         WHERE t.id_proyecto = p.id_proyecto
+         GROUP BY teh.id_equipo
+         ORDER BY COUNT(*) DESC, MAX(teh.fecha_asignacion) DESC
+         LIMIT 1
+        ) as id_equipo,
         -- Convertir fechas a IDs de tiempo
         YEAR(p.fecha_inicio)*10000 + MONTH(p.fecha_inicio)*100 + DAY(p.fecha_inicio),
         YEAR(p.fecha_fin_plan)*10000 + MONTH(p.fecha_fin_plan)*100 + DAY(p.fecha_fin_plan),

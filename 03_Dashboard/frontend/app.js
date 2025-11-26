@@ -1406,6 +1406,14 @@ function mostrarPerspectivasBSC(perspectivas) {
         const icono = iconosPerspectivas[nombrePerspectiva] || 'fa-star';
         const descripcion = descripcionesPerspectivas[nombrePerspectiva] || '';
         
+        // Mapeo de clase CSS por perspectiva
+        const clasePerspectiva = {
+            'Financiera': 'perspectiva-financiera',
+            'Clientes': 'perspectiva-clientes',
+            'Procesos Internos': 'perspectiva-procesos',
+            'Aprendizaje y Innovación': 'perspectiva-aprendizaje'
+        }[nombrePerspectiva] || '';
+        
         let objetivosHtml = '';
         perspectiva.objetivos.forEach(objetivo => {
             const estadoColor = {
@@ -1431,43 +1439,104 @@ function mostrarPerspectivasBSC(perspectivas) {
                     : 'N/A';
                 const metaObjetivo = kr.meta_objetivo || 'N/A';
                 
+                // Calcular porcentaje de la meta alcanzado
+                const porcentajeMeta = valorObservado !== 'N/A' && metaObjetivo !== 'N/A' 
+                    ? (valorObservado / metaObjetivo * 100).toFixed(1)
+                    : 0;
+                
+                // Generar mini gráfico de comparación
+                const valorWidth = Math.min((valorObservado / metaObjetivo * 100), 150);
+                const metaWidth = 100;
+                
                 krsHtml += `
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center mb-1">
-                                    <i class="fas fa-key text-muted me-2" style="font-size: 0.8rem;"></i>
-                                    <small class="fw-bold">${kr.kr_nombre}</small>
+                    <li class="list-group-item kr-item">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="kr-icon-circle bg-${krColor} bg-opacity-10 me-3">
+                                        <i class="fas fa-chart-line text-${krColor}"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 fw-bold">${kr.kr_nombre}</h6>
+                                        <small class="text-muted">${kr.kr_descripcion || 'Sin descripción'}</small>
+                                    </div>
+                                    <span class="badge bg-${krColor} fs-6 px-3 py-2">${progreso.toFixed(1)}%</span>
                                 </div>
-                                <div class="ms-4">
-                                    <small class="text-muted">
-                                        <strong>Actual:</strong> ${valorObservado} ${kr.unidad_medida} 
-                                        <span class="mx-2">|</span>
-                                        <strong>Meta:</strong> ${metaObjetivo} ${kr.unidad_medida}
-                                    </small>
+                                
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <div class="metric-box">
+                                            <i class="fas fa-tachometer-alt text-primary me-1"></i>
+                                            <small class="text-muted d-block">Valor Actual</small>
+                                            <strong class="fs-5 text-primary">${valorObservado} ${kr.unidad_medida}</strong>
+                                        </div>
+                                        <div class="metric-box text-center">
+                                            <i class="fas fa-arrow-right text-secondary me-1"></i>
+                                            <small class="text-muted d-block">Progreso</small>
+                                            <strong class="fs-5 text-${krColor}">${porcentajeMeta}%</strong>
+                                        </div>
+                                        <div class="metric-box text-end">
+                                            <i class="fas fa-bullseye text-success me-1"></i>
+                                            <small class="text-muted d-block">Meta</small>
+                                            <strong class="fs-5 text-success">${metaObjetivo} ${kr.unidad_medida}</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Mini gráfico de comparación -->
+                                    <div class="mini-chart-container mb-2">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <small class="text-muted me-2" style="width: 60px;">Actual:</small>
+                                            <div class="mini-bar bg-primary bg-opacity-75" style="width: ${valorWidth}%; height: 20px; border-radius: 4px;"></div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <small class="text-muted me-2" style="width: 60px;">Meta:</small>
+                                            <div class="mini-bar bg-success bg-opacity-50" style="width: ${metaWidth}%; height: 20px; border-radius: 4px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="progress" style="height: 16px; background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);">
+                                    <div class="progress-bar bg-gradient bg-${krColor}" 
+                                         role="progressbar" 
+                                         style="width: ${progresoWidth}%; background: linear-gradient(90deg, var(--bs-${krColor}) 0%, var(--bs-${krColor}) 100%);" 
+                                         aria-valuenow="${progreso}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"
+                                         title="${progreso.toFixed(1)}% de cumplimiento">
+                                        <small class="fw-bold px-2">${progreso.toFixed(0)}%</small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="ms-2 text-end">
-                                <span class="badge bg-${krColor} mb-1">${progreso.toFixed(1)}%</span>
-                                <button class="btn btn-sm btn-outline-primary d-block" 
-                                        onclick="abrirModalMedicion('${kr.id_kr}', '${kr.kr_nombre}')"
-                                        title="Registrar nueva medición para actualizar este KR">
-                                    <i class="fas fa-plus"></i> Medir
-                                </button>
-                            </div>
-                        </div>
-                        <div class="progress" style="height: 10px;">
-                            <div class="progress-bar bg-${krColor}" 
-                                 role="progressbar" 
-                                 style="width: ${progresoWidth}%;" 
-                                 aria-valuenow="${progreso}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100"
-                                 title="${progreso.toFixed(1)}% de cumplimiento">
+                            
+                            <div class="col-lg-4 border-start">
+                                <div class="d-flex flex-column h-100 justify-content-between">
+                                    <div>
+                                        <small class="text-muted d-block mb-2">
+                                            <i class="fas fa-info-circle me-1"></i> Detalles
+                                        </small>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Tipo:</small>
+                                            <span class="badge bg-secondary ms-1">${kr.tipo_metrica}</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Umbral Verde:</small>
+                                            <span class="text-success fw-bold">${kr.umbral_verde} ${kr.unidad_medida}</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Umbral Amarillo:</small>
+                                            <span class="text-warning fw-bold">${kr.umbral_amarillo} ${kr.unidad_medida}</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm w-100" 
+                                            onclick="abrirModalMedicion('${kr.id_kr}', '${kr.kr_nombre}')"
+                                            title="Registrar nueva medición">
+                                        <i class="fas fa-plus-circle me-1"></i> Registrar Medición
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         ${valorObservado === 'N/A' ? 
-                            '<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sin mediciones registradas</small>' 
+                            '<div class="alert alert-warning mt-2 mb-0 py-2"><i class="fas fa-exclamation-triangle me-2"></i> <small>Sin mediciones registradas. Haz clic en "Registrar Medición" para comenzar.</small></div>' 
                             : ''}
                     </li>
                 `;
@@ -1476,8 +1545,8 @@ function mostrarPerspectivasBSC(perspectivas) {
             const avanceObjetivo = objetivo.avance_objetivo_porcentaje || 0;
             
             objetivosHtml += `
-                <div class="card mb-3 shadow-sm">
-                    <div class="card-header bg-${estadoColor} text-white">
+                <div class="card mb-3 shadow-sm ${clasePerspectiva}">
+                    <div class="card-header text-white">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="flex-grow-1">
                                 <h6 class="mb-1">
@@ -1704,65 +1773,120 @@ function mostrarResultadosPrediccion(data) {
     // Mostrar sección de resultados
     document.getElementById('resultados-prediccion').style.display = 'block';
     
-    // Resumen ejecutivo
+    // Resumen ejecutivo con diseño mejorado
     const resumenContainer = document.getElementById('resumen-ejecutivo-cards');
     const resumen = data.resumen_ejecutivo;
     const metricas = data.metricas_proyecto;
     
+    // Determinar clase de riesgo
+    const riesgoBadgeClass = resumen.nivel_riesgo === 'Alto' ? 'riesgo-badge-alto' : 
+                             resumen.nivel_riesgo === 'Medio' ? 'riesgo-badge-medio' : 
+                             'riesgo-badge-bajo';
+    
     resumenContainer.innerHTML = `
         <div class="col-md-3">
-            <div class="card text-center">
+            <div class="card prediccion-metric-card">
                 <div class="card-body">
-                    <h4 class="text-primary">${metricas.total_defectos_estimado}</h4>
-                    <p class="mb-0">Defectos Estimados</p>
+                    <div class="prediccion-icon-circle prediccion-icon-defectos">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <div class="prediccion-metric-value">${Math.round(metricas.total_defectos_estimado)}</div>
+                    <div class="prediccion-metric-label">Defectos Estimados</div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle me-1"></i>Total esperado
+                    </small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center">
+            <div class="card prediccion-metric-card">
                 <div class="card-body">
-                    <h4 class="text-warning">${metricas.tiempo_pico_semanas}</h4>
-                    <p class="mb-0">Semana Pico</p>
+                    <div class="prediccion-icon-circle prediccion-icon-pico">
+                        <i class="fas fa-mountain"></i>
+                    </div>
+                    <div class="prediccion-metric-value">${Math.round(metricas.tiempo_pico_semanas * 10) / 10}</div>
+                    <div class="prediccion-metric-label">Semana Pico</div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-clock me-1"></i>Máxima intensidad
+                    </small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center">
+            <div class="card prediccion-metric-card">
                 <div class="card-body">
-                    <h4 class="text-info">${metricas.defectos_al_50_pct}</h4>
-                    <p class="mb-0">Defectos al 50%</p>
+                    <div class="prediccion-icon-circle prediccion-icon-50pct">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="prediccion-metric-value">${Math.round(metricas.defectos_al_50_pct)}</div>
+                    <div class="prediccion-metric-label">Defectos al 50%</div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-chart-line me-1"></i>Mitad del ciclo
+                    </small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center ${resumen.nivel_riesgo === 'Alto' ? 'border-danger' : resumen.nivel_riesgo === 'Medio' ? 'border-warning' : 'border-success'}">
+            <div class="card prediccion-metric-card">
                 <div class="card-body">
-                    <h4 class="${resumen.nivel_riesgo === 'Alto' ? 'text-danger' : resumen.nivel_riesgo === 'Medio' ? 'text-warning' : 'text-success'}">${resumen.nivel_riesgo}</h4>
-                    <p class="mb-0">Nivel de Riesgo</p>
+                    <div class="prediccion-icon-circle prediccion-icon-riesgo">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="prediccion-metric-value">
+                        <span class="${riesgoBadgeClass}">${resumen.nivel_riesgo}</span>
+                    </div>
+                    <div class="prediccion-metric-label">Nivel de Riesgo</div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-shield-alt me-1"></i>${Math.round(resumen.densidad_defectos * 10) / 10} defectos/unidad
+                    </small>
                 </div>
             </div>
         </div>
     `;
     
-    // Tabla de predicción semanal
+    // Generar gráfica de Rayleigh
+    generarGraficaRayleigh(data);
+    
+    // Tabla de predicción semanal con mejoras visuales
     const tbody = document.querySelector('#tabla-prediccion-semanal tbody');
     tbody.innerHTML = '';
+    
+    const semanaPico = Math.round(metricas.tiempo_pico_semanas);
     
     data.predicciones_semanales.forEach((prediccion, index) => {
         const cronogramaTesting = data.cronograma_testing[index];
         const tr = document.createElement('tr');
         
+        // Destacar semana pico
+        if (prediccion.semana === semanaPico) {
+            tr.classList.add('semana-pico-row');
+        }
+        
+        // Progress bar para porcentaje completado
+        const progressBar = `
+            <div class="tabla-progress-bar">
+                <div class="tabla-progress-fill" style="width: ${prediccion.porcentaje_completado}%"></div>
+            </div>
+        `;
+        
+        // Badge de intensidad
+        const intensidadBadge = cronogramaTesting?.intensidad_recomendada || 'Baja';
+        const badgeClass = intensidadBadge === 'Alta' ? 'bg-danger' : 
+                          intensidadBadge === 'Media' ? 'bg-warning' : 'bg-success';
+        
         tr.innerHTML = `
-            <td>${prediccion.semana}</td>
-            <td>${prediccion.defectos_esperados_semana}</td>
-            <td>${prediccion.defectos_acumulados}</td>
-            <td>${prediccion.porcentaje_completado}%</td>
-            <td>${prediccion.tasa_instantanea}</td>
-            <td>${cronogramaTesting?.esfuerzo_testing_horas || 0}</td>
+            <td class="fw-bold">${prediccion.semana === semanaPico ? '🏔️ ' : ''}Semana ${prediccion.semana}</td>
+            <td><strong>${Math.round(prediccion.defectos_esperados_semana * 10) / 10}</strong></td>
+            <td class="text-primary"><strong>${Math.round(prediccion.defectos_acumulados * 10) / 10}</strong></td>
             <td>
-                <span class="badge ${cronogramaTesting?.intensidad_recomendada === 'Alta' ? 'bg-danger' : 
-                                    cronogramaTesting?.intensidad_recomendada === 'Media' ? 'bg-warning' : 'bg-success'}">
-                    ${cronogramaTesting?.intensidad_recomendada || 'Baja'}
+                ${progressBar}
+                <small class="text-muted">${Math.round(prediccion.porcentaje_completado * 10) / 10}%</small>
+            </td>
+            <td><span class="badge bg-secondary">${Math.round(prediccion.tasa_instantanea * 10000) / 10000}</span></td>
+            <td>${Math.round((cronogramaTesting?.esfuerzo_testing_horas || 0) * 10) / 10}h</td>
+            <td>
+                <span class="badge ${badgeClass}">
+                    ${intensidadBadge}
                 </span>
             </td>
         `;
@@ -1770,8 +1894,139 @@ function mostrarResultadosPrediccion(data) {
         tbody.appendChild(tr);
     });
     
+    // Actualizar info adicional del chart
+    document.getElementById('chart-info-pico').textContent = `Semana ${semanaPico}`;
+    document.getElementById('chart-info-total').textContent = Math.round(metricas.total_defectos_estimado);
+    document.getElementById('chart-info-semanas').textContent = data.predicciones_semanales.length;
+    
     // Scroll hacia los resultados
     document.getElementById('resultados-prediccion').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Variable global para almacenar el chart de Rayleigh
+let chartRayleighInstance = null;
+
+function generarGraficaRayleigh(data) {
+    try {
+        const canvas = document.getElementById('chart-rayleigh');
+        if (!canvas) {
+            console.error('Canvas chart-rayleigh no encontrado');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Destruir chart anterior si existe
+        if (chartRayleighInstance) {
+            chartRayleighInstance.destroy();
+        }
+        
+        const predicciones = data.predicciones_semanales;
+        const semanas = predicciones.map(p => p.semana);
+        const defectosPorSemana = predicciones.map(p => p.defectos_esperados_semana);
+        const defectosAcumulados = predicciones.map(p => p.defectos_acumulados);
+        const semanaPico = Math.round(data.metricas_proyecto.tiempo_pico_semanas);
+        
+        console.log('Generando gráfica con:', { semanas, defectosPorSemana, semanaPico });
+        
+        chartRayleighInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: semanas.map(s => `S${s}`),
+                datasets: [
+                    {
+                        label: 'Defectos por Semana',
+                        data: defectosPorSemana,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.3)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: semanas.map(s => s === semanaPico ? 10 : 5),
+                        pointBackgroundColor: semanas.map(s => s === semanaPico ? '#f59e0b' : '#dc2626'),
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 10
+                    },
+                    {
+                        label: 'Defectos Acumulados',
+                        data: defectosAcumulados,
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.3)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#06b6d4',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1
+                    }
+                ]
+            },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 13,
+                            weight: '600'
+                        },
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    callbacks: {
+                        title: function(context) {
+                            const semana = context[0].label;
+                            return semana === `S${semanaPico}` ? `${semana} 🏔️ (Pico)` : semana;
+                        },
+                        label: function(context) {
+                            const valor = Math.round(context.parsed.y * 100) / 100;
+                            return `${context.dataset.label}: ${valor}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        font: { size: 12 }
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        font: { size: 12 }
+                    }
+                }
+            }
+        }
+    });
+        
+        console.log('Chart Rayleigh creado exitosamente');
+    } catch (error) {
+        console.error('Error generando gráfica Rayleigh:', error);
+        showToast('Error al generar la gráfica', 'error');
+    }
 }
 
 // ========================================

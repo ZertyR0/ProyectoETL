@@ -25,11 +25,14 @@ import hashlib
 fake = Faker('es_MX')
 Faker.seed(42)
 
-# Cantidades configurables
-CANTIDAD_PROYECTOS = 50  # Número de proyectos a generar
-EMPLEADOS_POR_PROYECTO = 5  # Cada proyecto tendrá su equipo exclusivo
+import os
+
+# Cantidades configurables (con soporte de variables de entorno)
+CANTIDAD_PROYECTOS = int(os.getenv('CANTIDAD_PROYECTOS', '50'))
+EMPLEADOS_POR_PROYECTO = int(os.getenv('EMPLEADOS_POR_PROYECTO', '5'))
 EQUIPOS_POR_PROYECTO = 1  # Cada proyecto tendrá su equipo propio
-TAREAS_POR_PROYECTO = 10  # Tareas por proyecto
+TAREAS_POR_PROYECTO = int(os.getenv('TAREAS_POR_PROYECTO', '10'))
+LIMPIAR_TABLAS = os.getenv('LIMPIAR_TABLAS', 'true').lower() in ('true', '1', 'yes')
 
 # Sets para control de duplicados
 nombres_unicos = {
@@ -126,6 +129,37 @@ class GeneradorDatosFinal:
             self.conn.rollback()
             return False
     
+    def inicializar_estados(self):
+        """Inicializar/actualizar tabla Estado con los 5 estados requeridos"""
+        print("\n🔧 Verificando estados del sistema...")
+        
+        try:
+            # Estados requeridos: 1=Planificación, 2=En Progreso, 3=En Pausa, 4=Completado, 5=Cancelado
+            estados_requeridos = [
+                (1, 'Planificación'),
+                (2, 'En Progreso'),
+                (3, 'En Pausa'),
+                (4, 'Completado'),
+                (5, 'Cancelado')
+            ]
+            
+            for id_estado, nombre in estados_requeridos:
+                self.cursor.execute("""
+                    INSERT INTO Estado (id_estado, nombre_estado)
+                    VALUES (%s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                        nombre_estado = VALUES(nombre_estado)
+                """, (id_estado, nombre))
+            
+            self.conn.commit()
+            print("  ✓ Estados inicializados correctamente")
+            return True
+            
+        except Exception as e:
+            print(f"  ✗ Error inicializando estados: {e}")
+            self.conn.rollback()
+            return False
+    
     def _cargar_nombres_existentes(self):
         """Cargar nombres existentes en la BD para evitar duplicados en modo incremental"""
         print("📚 Cargando nombres existentes para evitar duplicados...")
@@ -212,12 +246,11 @@ class GeneradorDatosFinal:
             contacto = fake.name()
             telefono = fake.phone_number()[:20]
             email = self.generar_email_unico(nombre)
-            direccion = fake.address().replace('\n', ', ')[:200]
             
             self.cursor.execute("""
-                INSERT INTO Cliente (nombre, sector, contacto, telefono, email, direccion)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (nombre, sector, contacto, telefono, email, direccion))
+                INSERT INTO Cliente (nombre, sector, contacto, telefono, email)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (nombre, sector, contacto, telefono, email))
             
             clientes_ids.append(self.cursor.lastrowid)
             self.stats['clientes'] += 1
@@ -249,13 +282,11 @@ class GeneradorDatosFinal:
         
         for puesto, departamento, (sal_min, sal_max) in puestos_proyecto:
             nombre = self.generar_nombre_unico('empleados', fake.name)
-            salario = random.randint(sal_min, sal_max)
-            fecha_ingreso = fake.date_between(start_date='-3y', end_date='-6m')
             
             self.cursor.execute("""
-                INSERT INTO Empleado (nombre, puesto, departamento, salario_base, fecha_ingreso)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (nombre, puesto, departamento, salario, fecha_ingreso))
+                INSERT INTO Empleado (nombre, puesto)
+                VALUES (%s, %s)
+            """, (nombre, puesto))
             
             empleados_proyecto.append({
                 'id': self.cursor.lastrowid,
@@ -295,21 +326,18 @@ class GeneradorDatosFinal:
             rol = 'Team Lead' if empleado['es_gerente'] else random.choice(roles)
             fecha_inicio = fake.date_between(start_date='-2y', end_date='-1m')
             
-            # Si el proyecto está completado/cancelado, el equipo también debe tener fecha_fin
+            # Si el proyecto está completado/cancelado, fecha_hasta
             if estado_proyecto in [3, 4] and fecha_fin_proyecto:
-                # Fecha fin del equipo cercana a la fecha fin del proyecto
                 dias_variacion = random.randint(-5, 10)
-                fecha_fin = fecha_fin_proyecto + timedelta(days=dias_variacion)
-                activo = 0  # Equipo inactivo
+                fecha_hasta = fecha_fin_proyecto + timedelta(days=dias_variacion)
             else:
-                fecha_fin = None  # Equipo activo
-                activo = 1
+                fecha_hasta = None
             
             self.cursor.execute("""
-                INSERT INTO MiembroEquipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, 
-                                          rol_miembro, activo)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (id_equipo, empleado['id'], fecha_inicio, fecha_fin, rol, activo))
+                INSERT INTO MiembroEquipo (id_equipo, id_empleado, fecha_inicio, fecha_hasta, 
+                                          rol_miembro)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (id_equipo, empleado['id'], fecha_inicio, fecha_hasta, rol))
             
             self.stats['asignaciones'] += 1
         
@@ -321,60 +349,164 @@ class GeneradorDatosFinal:
         Returns:
             tuple: (id_proyecto, fecha_fin_real, estado)
         """
+        # Tipos de proyecto y sus posibles nombres creativos
         tipos_proyecto = [
-            'Sistema Web', 'Aplicación Móvil', 'Plataforma E-commerce',
-            'Sistema CRM', 'Portal Corporativo', 'API REST', 
-            'Dashboard Analytics', 'Sistema ERP', 'App IoT',
-            'Plataforma Cloud', 'Sistema de Facturación', 'Portal de Servicios'
+            ('Sistema Web', ['Portal', 'Plataforma', 'Sistema', 'Aplicación Web']),
+            ('Aplicación Móvil', ['App', 'Aplicación', 'Mobile App', 'Sistema Móvil']),
+            ('E-commerce', ['Tienda Online', 'Marketplace', 'Portal de Ventas', 'E-Shop']),
+            ('CRM', ['Sistema CRM', 'Plataforma de Clientes', 'Gestor CRM', 'Portal CRM']),
+            ('ERP', ['Sistema ERP', 'Plataforma Empresarial', 'Suite Corporativa', 'Sistema Integrado']),
+            ('Dashboard', ['Panel de Control', 'Dashboard Analytics', 'Portal de Métricas', 'Centro de Análisis']),
+            ('API', ['API REST', 'Servicio Web', 'Microservicio', 'API Gateway']),
+            ('IoT', ['Plataforma IoT', 'Sistema de Sensores', 'Hub IoT', 'Control de Dispositivos']),
         ]
         
-        tipo = random.choice(tipos_proyecto)
+        tipo_categoria, variantes = random.choice(tipos_proyecto)
+        tipo_nombre = random.choice(variantes)
         
-        # Obtener el nombre del cliente de la BD en lugar del set
+        # Obtener el nombre del cliente de la BD
         cursor_temp = self.conn.cursor()
         cursor_temp.execute("SELECT nombre FROM Cliente WHERE id_cliente = %s", (id_cliente,))
         result = cursor_temp.fetchone()
         cliente_nombre = result[0] if result else "Cliente"
         cursor_temp.close()
         
-        nombre = self.generar_nombre_unico('proyectos', 
-            lambda: f"{tipo} - {cliente_nombre.split()[0]}")
+        # Generar nombre creativo del proyecto
+        adjetivos = ['Integral', 'Avanzado', 'Corporativo', 'Digital', 'Inteligente', 'Cloud', 
+                     'Empresarial', 'Automatizado', 'Optimizado', 'Moderno', 'Next-Gen']
         
-        descripcion = fake.text(max_nb_chars=300)
+        # 60% con adjetivo, 40% simple
+        if random.random() < 0.6:
+            nombre = self.generar_nombre_unico('proyectos', 
+                lambda: f"{tipo_nombre} {random.choice(adjetivos)} {cliente_nombre.split()[0]}")
+        else:
+            nombre = self.generar_nombre_unico('proyectos', 
+                lambda: f"{tipo_nombre} para {cliente_nombre.split()[0]}")
+        
+        # Generar descripción contextual basada en el tipo de proyecto
+        descripciones_base = {
+            'Sistema Web': [
+                "Desarrollo de plataforma web escalable con arquitectura moderna",
+                "Implementación de portal web responsive con gestión de contenidos",
+                "Creación de sistema web empresarial con módulos integrados"
+            ],
+            'Aplicación Móvil': [
+                "Desarrollo de aplicación móvil nativa para iOS y Android",
+                "Implementación de app móvil multiplataforma con React Native",
+                "Creación de aplicación móvil con integración a servicios cloud"
+            ],
+            'E-commerce': [
+                "Desarrollo de plataforma e-commerce con pasarela de pagos",
+                "Implementación de marketplace con gestión de inventarios",
+                "Creación de tienda online con carrito inteligente y analytics"
+            ],
+            'CRM': [
+                "Implementación de sistema CRM con automatización de ventas",
+                "Desarrollo de plataforma de gestión de clientes y seguimiento",
+                "Creación de CRM personalizado con inteligencia de negocios"
+            ],
+            'ERP': [
+                "Implementación de sistema ERP integral para gestión empresarial",
+                "Desarrollo de solución ERP modular con control financiero",
+                "Creación de plataforma ERP cloud con reportería avanzada"
+            ],
+            'Dashboard': [
+                "Desarrollo de dashboard analytics con visualización de datos",
+                "Implementación de panel de control ejecutivo con KPIs",
+                "Creación de centro de métricas con reportes en tiempo real"
+            ],
+            'API': [
+                "Desarrollo de API REST con arquitectura de microservicios",
+                "Implementación de servicio web escalable con documentación Swagger",
+                "Creación de API Gateway con autenticación OAuth2"
+            ],
+            'IoT': [
+                "Desarrollo de plataforma IoT para monitoreo de sensores",
+                "Implementación de hub IoT con gestión de dispositivos",
+                "Creación de sistema de control IoT con analytics predictivo"
+            ]
+        }
+        
+        # Seleccionar descripción base según categoría
+        desc_base = random.choice(descripciones_base.get(tipo_categoria, [
+            "Desarrollo de solución tecnológica empresarial",
+            "Implementación de sistema digital corporativo"
+        ]))
+        
+        # Agregar detalles contextuales
+        detalles = [
+            "con enfoque en experiencia de usuario",
+            "orientado a optimización de procesos",
+            "con integración a sistemas legacy",
+            "utilizando tecnologías de vanguardia",
+            "con soporte 24/7 y documentación completa",
+            "incluyendo capacitación y transferencia de conocimiento",
+            "con garantía de calidad y pruebas exhaustivas"
+        ]
+        
+        descripcion = f"{desc_base}, {random.choice(detalles)}."
         
         # Fechas del proyecto
         fecha_inicio = fake.date_between(start_date='-1y', end_date='+30d')
         duracion_plan = random.randint(60, 180)
         fecha_fin_plan = fecha_inicio + timedelta(days=duracion_plan)
         
-        # Estado: 60% Completado/Cancelado (para el ETL), 40% otros
-        if random.random() < 0.6:
-            estado = random.choice([3, 4])  # Completado o Cancelado
+        # Distribución realista de estados:
+        # 35% Completado (4) - proyectos finalizados exitosamente
+        # 10% Cancelado (5) - proyectos cancelados
+        # 25% En Progreso (2) - proyectos activos
+        # 20% Planificación (1) - proyectos iniciando
+        # 10% En Pausa (3) - proyectos pausados
+        rand_estado = random.random()
+        if rand_estado < 0.35:
+            estado = 4  # Completado
             variacion = random.randint(-15, 30)
             fecha_fin_real = fecha_fin_plan + timedelta(days=variacion)
+        elif rand_estado < 0.45:
+            estado = 5  # Cancelado
+            # Cancelado antes de terminar
+            dias_transcurridos = random.randint(30, duracion_plan - 10)
+            fecha_fin_real = fecha_inicio + timedelta(days=dias_transcurridos)
+        elif rand_estado < 0.70:
+            estado = 2  # En Progreso
+            fecha_fin_real = None
+        elif rand_estado < 0.90:
+            estado = 1  # Planificación
+            fecha_fin_real = None
         else:
-            estado = random.choice([1, 2])  # Pendiente o En Progreso
+            estado = 3  # En Pausa
             fecha_fin_real = None
         
         presupuesto = random.randint(100000, 800000)
-        costo_real = presupuesto + random.randint(-30000, 50000) if fecha_fin_real else 0
+        
+        # Costo real según estado:
+        # - Completado: 80-120% del presupuesto
+        # - Cancelado: 30-70% del presupuesto (gasto parcial)
+        # - En Progreso: 20-80% del presupuesto (avance parcial)
+        # - En Pausa: 10-50% del presupuesto (algo ejecutado antes de pausar)
+        # - Planificación: 0-10% del presupuesto (costos iniciales mínimos)
+        if estado == 4:  # Completado
+            costo_real = int(presupuesto * random.uniform(0.80, 1.20))
+        elif estado == 5:  # Cancelado
+            costo_real = int(presupuesto * random.uniform(0.30, 0.70))
+        elif estado == 2:  # En Progreso
+            costo_real = int(presupuesto * random.uniform(0.20, 0.80))
+        elif estado == 3:  # En Pausa
+            costo_real = int(presupuesto * random.uniform(0.10, 0.50))
+        else:  # Planificación
+            costo_real = int(presupuesto * random.uniform(0.0, 0.10))
         
         # Gerente del proyecto (el primer empleado con puesto de gerente)
         gerente = next((e for e in empleados if e['es_gerente']), empleados[0])
         
-        prioridades = ['Baja', 'Media', 'Alta', 'Crítica']
-        prioridad = random.choice(prioridades)
-        progreso = 100 if estado == 3 else (random.randint(10, 90) if estado == 2 else 0)
-        
-        # Insertar proyecto SIN id_equipo (se actualizará después)
+        # Insertar proyecto
         self.cursor.execute("""
             INSERT INTO Proyecto (nombre, descripcion, fecha_inicio, fecha_fin_plan, 
                                 fecha_fin_real, presupuesto, costo_real, id_cliente, 
-                                id_estado, id_empleado_gerente, prioridad, progreso_porcentaje)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                id_estado, id_empleado_gerente)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (nombre, descripcion, fecha_inicio, fecha_fin_plan, fecha_fin_real,
-              presupuesto, costo_real, id_cliente, estado, gerente['id'],
-              prioridad, progreso))
+              presupuesto, costo_real, id_cliente, estado, gerente['id']))
         
         id_proyecto = self.cursor.lastrowid
         self.stats['proyectos'] += 1
@@ -425,56 +557,83 @@ class GeneradorDatosFinal:
             duracion = random.randint(5, 21)
             fecha_fin_plan = fecha_inicio_plan + timedelta(days=duracion)
             
-            # Estado de la tarea similar al proyecto
-            if estado_proyecto in [3, 4]:
-                estado = random.choice([3, 4])
+            # Estado de la tarea coherente con el proyecto:
+            # 1=Planificación, 2=En Progreso, 3=En Pausa, 4=Completado, 5=Cancelado
+            if estado_proyecto == 4:  # Proyecto Completado
+                # La mayoría de tareas completadas, algunas canceladas
+                estado = random.choices([4, 5], weights=[85, 15])[0]
                 fecha_inicio_real = fecha_inicio_plan + timedelta(days=random.randint(-2, 3))
                 variacion = random.randint(-3, 7)
                 fecha_fin_real = fecha_fin_plan + timedelta(days=variacion)
-            elif estado_proyecto == 2:
-                estado = random.choice([2, 3])
-                fecha_inicio_real = fecha_inicio_plan if estado == 2 else None
-                fecha_fin_real = None
-            else:
+            elif estado_proyecto == 5:  # Proyecto Cancelado
+                # Mix de estados (algunas completadas antes de cancelar)
+                estado = random.choices([4, 5, 2, 3], weights=[30, 40, 20, 10])[0]
+                if estado in [4, 5]:  # Completada o cancelada
+                    fecha_inicio_real = fecha_inicio_plan + timedelta(days=random.randint(-2, 3))
+                    fecha_fin_real = fecha_fin_plan + timedelta(days=random.randint(-3, 7))
+                else:
+                    fecha_inicio_real = fecha_inicio_plan if estado == 2 else None
+                    fecha_fin_real = None
+            elif estado_proyecto == 2:  # Proyecto En Progreso
+                # Mix de estados activos
+                estado = random.choices([4, 2, 1], weights=[40, 50, 10])[0]
+                if estado == 4:  # Algunas ya completadas
+                    fecha_inicio_real = fecha_inicio_plan + timedelta(days=random.randint(-2, 3))
+                    fecha_fin_real = fecha_fin_plan + timedelta(days=random.randint(-3, 7))
+                elif estado == 2:  # En progreso
+                    fecha_inicio_real = fecha_inicio_plan
+                    fecha_fin_real = None
+                else:  # Planificación
+                    fecha_inicio_real = None
+                    fecha_fin_real = None
+            elif estado_proyecto == 3:  # Proyecto En Pausa
+                # Tareas pausadas o algunas completadas antes
+                estado = random.choices([3, 4, 2], weights=[60, 30, 10])[0]
+                if estado == 4:
+                    fecha_inicio_real = fecha_inicio_plan + timedelta(days=random.randint(-2, 3))
+                    fecha_fin_real = fecha_fin_plan + timedelta(days=random.randint(-3, 7))
+                else:
+                    fecha_inicio_real = fecha_inicio_plan if estado == 2 else None
+                    fecha_fin_real = None
+            else:  # Proyecto en Planificación (1)
                 estado = 1
                 fecha_inicio_real = None
                 fecha_fin_real = None
             
             horas_plan = random.randint(16, 120)
-            horas_reales = horas_plan + random.randint(-10, 30) if estado in [3, 4] else 0
-            
-            # Asignar a un empleado del equipo del proyecto
-            empleado = random.choice(empleados)
-            prioridad = random.choice(prioridades)
-            progreso = 100 if estado == 3 else (random.randint(20, 80) if estado == 2 else 0)
-            
-            costo_estimado = horas_plan * random.randint(600, 1800)
-            costo_real = horas_reales * random.randint(600, 1800) if horas_reales > 0 else 0
+            # Horas reales según estado de la tarea
+            if estado == 4:  # Completado
+                horas_reales = horas_plan + random.randint(-10, 30)
+            elif estado == 5:  # Cancelado
+                horas_reales = int(horas_plan * random.uniform(0.3, 0.8))
+            elif estado == 2:  # En Progreso
+                horas_reales = int(horas_plan * random.uniform(0.2, 0.7))
+            elif estado == 3:  # En Pausa
+                horas_reales = int(horas_plan * random.uniform(0.1, 0.5))
+            else:  # Planificación
+                horas_reales = 0
             
             self.cursor.execute("""
-                INSERT INTO Tarea (nombre_tarea, descripcion, fecha_inicio_plan, fecha_fin_plan,
-                                 fecha_inicio_real, fecha_fin_real, horas_plan, horas_reales,
-                                 id_proyecto, id_empleado, id_estado, prioridad, 
-                                 progreso_porcentaje, costo_estimado, costo_real)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (nombre_completo, descripcion, fecha_inicio_plan, fecha_fin_plan,
-                  fecha_inicio_real, fecha_fin_real, horas_plan, horas_reales,
-                  id_proyecto, empleado['id'], estado, prioridad, progreso,
-                  costo_estimado, costo_real))
+                INSERT INTO Tarea (nombre_tarea, fecha_inicio_plan, fecha_fin_plan,
+                                 fecha_fin_real, horas_plan, horas_reales,
+                                 id_proyecto, id_estado)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (nombre_completo, fecha_inicio_plan, fecha_fin_plan,
+                  fecha_fin_real, horas_plan, horas_reales,
+                  id_proyecto, estado))
             
             id_tarea = self.cursor.lastrowid
             self.stats['tareas'] += 1
             
-            # Asignar tarea al equipo del proyecto
+            # Asignar tarea al equipo del proyecto (CRITICAL)
             fecha_asignacion = fecha_inicio_plan
             fecha_liberacion = fecha_fin_real if estado in [3, 4] else None
             
             self.cursor.execute("""
                 INSERT INTO TareaEquipoHist (id_tarea, id_equipo, fecha_asignacion, 
-                                            fecha_liberacion, horas_asignadas, notas)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion, 
-                  horas_plan, f"Asignado a {nombre_tarea}"))
+                                            fecha_liberacion)
+                VALUES (%s, %s, %s, %s)
+            """, (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion))
     
     def validar_integridad(self):
         """Validar integridad y unicidad de los datos"""
@@ -499,23 +658,6 @@ class GeneradorDatosFinal:
             print(f"  {icono} {nombre}: {unicos}/{total}")
             if not ok:
                 todas_ok = False
-        
-        # Validar que no haya empleados compartidos entre proyectos
-        self.cursor.execute("""
-            SELECT e.nombre, COUNT(DISTINCT p.id_proyecto) as proyectos
-            FROM Empleado e
-            JOIN Tarea t ON t.id_empleado = e.id_empleado
-            JOIN Proyecto p ON p.id_proyecto = t.id_proyecto
-            GROUP BY e.id_empleado
-            HAVING proyectos > 1
-        """)
-        empleados_compartidos = self.cursor.fetchall()
-        
-        if empleados_compartidos:
-            print(f"  ⚠️  {len(empleados_compartidos)} empleados están en múltiples proyectos")
-            todas_ok = False
-        else:
-            print(f"   Sin empleados compartidos entre proyectos")
         
         return todas_ok
     
@@ -553,16 +695,14 @@ class GeneradorDatosFinal:
         # Distribución por estado
         print("\n📊 Proyectos por estado:")
         self.cursor.execute("""
-            SELECT e.nombre_estado, COUNT(*) as cantidad,
-                   ROUND(AVG(p.progreso_porcentaje), 1) as progreso_avg
+            SELECT e.nombre_estado, COUNT(*) as cantidad
             FROM Proyecto p
             JOIN Estado e ON p.id_estado = e.id_estado
             GROUP BY e.id_estado, e.nombre_estado
             ORDER BY e.id_estado
         """)
         for row in self.cursor.fetchall():
-            print(f"  • {row['nombre_estado']:15} {row['cantidad']:>3} proyectos "
-                  f"(progreso: {row['progreso_avg']}%)")
+            print(f"  • {row['nombre_estado']:15} {row['cantidad']:>3} proyectos")
     
     def ejecutar(self, limpiar=True, num_proyectos=None, num_clientes=None, num_empleados=None, num_equipos=None):
         """Ejecutar el proceso completo de generación
@@ -607,6 +747,10 @@ class GeneradorDatosFinal:
             return False
         
         try:
+            # 0. Inicializar/verificar estados (SIEMPRE, antes de cualquier operación)
+            if not self.inicializar_estados():
+                return False
+            
             # 1. Limpiar (solo si se solicita)
             if limpiar:
                 if not self.limpiar_tablas():
@@ -701,7 +845,8 @@ class GeneradorDatosFinal:
 def main():
     """Función principal"""
     generador = GeneradorDatosFinal()
-    exito = generador.ejecutar()
+    # Usar variable de entorno LIMPIAR_TABLAS
+    exito = generador.ejecutar(limpiar=LIMPIAR_TABLAS)
     sys.exit(0 if exito else 1)
 
 if __name__ == "__main__":
