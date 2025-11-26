@@ -16,7 +16,7 @@ CONFIG_LOCAL = {
     'user_origen': 'root',
     'password_origen': '',
     'database_origen': 'gestionproyectos_hist',
-    'unix_socket': '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock',
+    # 'unix_socket': '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock',  # Deshabilitado - usar TCP
     
     # Para desarrollo local, usar mismo servidor para ambas BD
     'host_destino': 'localhost',
@@ -82,7 +82,7 @@ def get_config(ambiente: str = 'local') -> Dict[str, Any]:
     ambiente_env = os.getenv('ETL_AMBIENTE', ambiente)
     
     if ambiente_env not in configs:
-        print(f"⚠️ Ambiente '{ambiente_env}' no reconocido, usando 'local'")
+        print(f" Ambiente '{ambiente_env}' no reconocido, usando 'local'")
         ambiente_env = 'local'
     
     config = configs[ambiente_env].copy()
@@ -140,7 +140,7 @@ def test_conexiones(ambiente: str = 'local') -> bool:
     
     try:
         # Probar conexión origen
-        print(f"🔍 Probando conexión origen ({config['host_origen']}:{config['port_origen']})...")
+        print(f" Probando conexión origen ({config['host_origen']}:{config['port_origen']})...")
         conn_origen = mysql.connector.connect(
             host=config['host_origen'],
             port=config['port_origen'],
@@ -152,7 +152,7 @@ def test_conexiones(ambiente: str = 'local') -> bool:
         print("   Conexión origen exitosa")
         
         # Probar conexión destino
-        print(f"🔍 Probando conexión destino ({config['host_destino']}:{config['port_destino']})...")
+        print(f" Probando conexión destino ({config['host_destino']}:{config['port_destino']})...")
         conn_destino = mysql.connector.connect(
             host=config['host_destino'],
             port=config['port_destino'],
@@ -163,7 +163,7 @@ def test_conexiones(ambiente: str = 'local') -> bool:
         conn_destino.close()
         print("   Conexión destino exitosa")
         
-        print("🎉 Todas las conexiones funcionan correctamente")
+        print(" Todas las conexiones funcionan correctamente")
         return True
         
     except Exception as e:
@@ -176,11 +176,11 @@ if __name__ == "__main__":
     
     ambiente = sys.argv[1] if len(sys.argv) > 1 else 'local'
     
-    print(f"🚀 Probando configuración ETL - Ambiente: {ambiente}")
+    print(f" Probando configuración ETL - Ambiente: {ambiente}")
     print("=" * 50)
     
     config = get_config(ambiente)
-    print("📋 Configuración actual:")
+    print(" Configuración actual:")
     for key, value in config.items():
         if 'password' in key:
             print(f"  {key}: {'*' * len(str(value))}")

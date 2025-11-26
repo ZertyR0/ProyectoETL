@@ -85,7 +85,7 @@ def ejecutar_sql_file(conn, sql_file_path):
 def main():
     """Función principal"""
     print("=" * 80)
-    print("  🔧 CREAR TABLA ESTADO EN BASE DE DATOS REMOTA")
+    print("   CREAR TABLA ESTADO EN BASE DE DATOS REMOTA")
     print("=" * 80)
     
     config = {
@@ -97,7 +97,7 @@ def main():
     }
     
     print(f"\n📍 Conectando a: {config['host']}:{config['port']}")
-    print(f"📊 Base de datos: {config['database']}")
+    print(f" Base de datos: {config['database']}")
     print(f"👤 Usuario: {config['user']}")
     
     try:
@@ -119,14 +119,14 @@ def main():
         resultados = ejecutar_sql_file(conn, sql_file)
         
         print("\n" + "─" * 80)
-        print("📊 RESUMEN DE EJECUCIÓN:")
+        print(" RESUMEN DE EJECUCIÓN:")
         for resultado in resultados:
             print(f"   {resultado}")
         
         conn.close()
         
         print("\n" + "=" * 80)
-        print("🎉 ¡TABLA ESTADO CREADA EXITOSAMENTE!")
+        print(" ¡TABLA ESTADO CREADA EXITOSAMENTE!")
         print("=" * 80)
         print("\n Ahora puedes:")
         print("   1. Ejecutar el proceso ETL desde el dashboard")

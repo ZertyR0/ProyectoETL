@@ -1,138 +1,302 @@
-# 📚 Documentación del Proyecto ETL
+# Documentación del Proyecto ETL
 
-Bienvenido a la documentación completa del Sistema ETL de Gestión de Proyectos.
-
----
-
-## 📖 Índice de Documentación
-
-### 🚀 Guías de Usuario
-
-Documentación práctica para usuarios del sistema.
-
-| Documento | Descripción | Nivel |
-|-----------|-------------|-------|
-| [INICIO_RAPIDO.md](guias/INICIO_RAPIDO.md) | Guía de inicio rápido en 5 minutos | ⭐ Básico |
-| [GUIA_PRUEBA_LOCAL.md](guias/GUIA_PRUEBA_LOCAL.md) | Instalación y prueba en ambiente local | ⭐⭐ Intermedio |
-| [GUIA_DESPLIEGUE_3_MAQUINAS.md](guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) | Despliegue distribuido en 3 máquinas | ⭐⭐⭐ Avanzado |
-| [GUIA_DATOS_ORIGEN.md](guias/GUIA_DATOS_ORIGEN.md) | Estructura de datos de origen | ⭐⭐ Intermedio |
-| [EJEMPLOS_USO.md](guias/EJEMPLOS_USO.md) | Casos de uso y ejemplos prácticos | ⭐ Básico |
-
-### 📋 Análisis y Mejoras
-
-Documentación de análisis técnico y mejoras implementadas.
-
-| Documento | Descripción |
-|-----------|-------------|
-| [ANALISIS_CONSISTENCIA_BD.md](analisis/ANALISIS_CONSISTENCIA_BD.md) | Análisis de consistencia de bases de datos |
-| [CORRECCIONES_NOMBRES_BD.md](analisis/CORRECCIONES_NOMBRES_BD.md) | Correcciones de nomenclatura en BD |
-| [CORRECCIONES_REALIZADAS.md](analisis/CORRECCIONES_REALIZADAS.md) | Log de correcciones aplicadas |
-| [FILTROS_ETL_DATAWAREHOUSE.md](analisis/FILTROS_ETL_DATAWAREHOUSE.md) | Filtros y transformaciones del ETL |
-| [MEJORAS_DATOS_REALES.md](analisis/MEJORAS_DATOS_REALES.md) | Mejoras para datos reales de producción |
-
-### ⚙️ Configuración
-
-Documentación técnica de configuración del sistema.
-
-| Documento | Descripción |
-|-----------|-------------|
-| [README_COMPLETO.md](configuracion/README_COMPLETO.md) | Documentación completa y detallada |
-| [README_CONFIGURACION.md](configuracion/README_CONFIGURACION.md) | Guía de configuración avanzada |
-| [README_PRINCIPAL.md](configuracion/README_PRINCIPAL.md) | Documentación principal del proyecto |
-
-### 📊 Resumen Ejecutivo
-
-Resúmenes y documentación de alto nivel.
-
-| Documento | Descripción |
-|-----------|-------------|
-| [RESUMEN_ARCHIVOS.md](resumen/RESUMEN_ARCHIVOS.md) | Resumen de todos los archivos del proyecto |
-| [RESUMEN_IMPLEMENTACION.md](resumen/RESUMEN_IMPLEMENTACION.md) | Resumen de implementación y arquitectura |
+Bienvenido a la documentación del Sistema ETL de Gestión de Proyectos.
 
 ---
 
-## 🎯 Navegación Rápida
+## Documentación por Módulo
 
-### Por Rol de Usuario
+Cada módulo del proyecto tiene su propia documentación:
 
-#### 👨‍💼 Para Usuarios Finales
-1. Comienza con [INICIO_RAPIDO.md](guias/INICIO_RAPIDO.md)
-2. Revisa [EJEMPLOS_USO.md](guias/EJEMPLOS_USO.md)
-3. Consulta el dashboard en http://localhost:8080
+### 01_GestionProyectos - Base de Datos Origen
+**Documentación:** [01_GestionProyectos/README.md](../01_GestionProyectos/README.md)
 
-#### 👨‍💻 Para Desarrolladores
-1. Lee [GUIA_PRUEBA_LOCAL.md](guias/GUIA_PRUEBA_LOCAL.md)
-2. Revisa [RESUMEN_IMPLEMENTACION.md](resumen/RESUMEN_IMPLEMENTACION.md)
-3. Consulta [FILTROS_ETL_DATAWAREHOUSE.md](analisis/FILTROS_ETL_DATAWAREHOUSE.md)
+- Base de datos transaccional (OLTP)
+- Scripts de creación de BD
+- Generación de datos de prueba
+- Procedimientos almacenados seguros
 
-#### 👨‍🔧 Para Administradores
-1. Comienza con [README_CONFIGURACION.md](configuracion/README_CONFIGURACION.md)
-2. Lee [GUIA_DESPLIEGUE_3_MAQUINAS.md](guias/GUIA_DESPLIEGUE_3_MAQUINAS.md)
-3. Revisa [ANALISIS_CONSISTENCIA_BD.md](analisis/ANALISIS_CONSISTENCIA_BD.md)
+### 02_ETL - Proceso ETL
+**Documentación:** [02_ETL/README.md](../02_ETL/README.md)
 
-### Por Tarea
+- Scripts ETL (incremental y procedimientos)
+- Configuración de conexiones
+- Transformación de datos
 
-#### 🚀 Instalar el Sistema
-1. [INICIO_RAPIDO.md](guias/INICIO_RAPIDO.md) - Para instalación rápida
-2. [GUIA_PRUEBA_LOCAL.md](guias/GUIA_PRUEBA_LOCAL.md) - Para instalación detallada
-3. [GUIA_DESPLIEGUE_3_MAQUINAS.md](guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) - Para producción
+### 03_Dashboard - Dashboard Web
+**Documentación:** [03_Dashboard/README.md](../03_Dashboard/README.md)
 
-#### 📊 Usar el Dashboard
-1. [INICIO_RAPIDO.md](guias/INICIO_RAPIDO.md) - Acceso básico
-2. [EJEMPLOS_USO.md](guias/EJEMPLOS_USO.md) - Casos de uso
-3. [README.md](../03_Dashboard/README.md) - Documentación del dashboard
+- Backend Flask con API REST
+- Frontend HTML/CSS/JS
+- Cubo OLAP
+- Balanced Scorecard (BSC/OKR)
+- Predicción Rayleigh
+- Scripts de inicio/parada
 
-#### ⚙️ Configurar el Sistema
-1. [README_CONFIGURACION.md](configuracion/README_CONFIGURACION.md) - Configuración general
-2. [README.md](../02_ETL/README.md) - Configuración del ETL
-3. [GUIA_DATOS_ORIGEN.md](guias/GUIA_DATOS_ORIGEN.md) - Estructura de datos
+### 04_Datawarehouse - Data Warehouse
+**Documentación:** [04_Datawarehouse/README.md](../04_Datawarehouse/README.md)
 
-#### 🔍 Solucionar Problemas
-1. [ANALISIS_CONSISTENCIA_BD.md](analisis/ANALISIS_CONSISTENCIA_BD.md) - Problemas de BD
-2. [CORRECCIONES_REALIZADAS.md](analisis/CORRECCIONES_REALIZADAS.md) - Correcciones conocidas
-3. [README_COMPLETO.md](configuracion/README_COMPLETO.md) - Troubleshooting
+- Esquema estrella
+- Vistas OLAP
+- Tablas BSC/OKR
+- Consultas de análisis
+- Procedimientos seguros
 
 ---
 
-## 📂 Estructura de Documentación
+## Inicio Rápido
 
-```
-docs/
-├── README.md                    # Este archivo - Índice principal
-│
-├── guias/                       # Guías de usuario
-│   ├── INICIO_RAPIDO.md        # Guía rápida de inicio
-│   ├── GUIA_PRUEBA_LOCAL.md    # Instalación local
-│   ├── GUIA_DESPLIEGUE_3_MAQUINAS.md  # Despliegue distribuido
-│   ├── GUIA_DATOS_ORIGEN.md    # Estructura de datos
-│   └── EJEMPLOS_USO.md         # Casos de uso
-│
-├── analisis/                    # Análisis técnico
-│   ├── ANALISIS_CONSISTENCIA_BD.md    # Análisis de BD
-│   ├── CORRECCIONES_NOMBRES_BD.md     # Correcciones de nomenclatura
-│   ├── CORRECCIONES_REALIZADAS.md     # Log de correcciones
-│   ├── FILTROS_ETL_DATAWAREHOUSE.md   # Filtros del ETL
-│   └── MEJORAS_DATOS_REALES.md        # Mejoras para producción
-│
-├── configuracion/               # Configuración técnica
-│   ├── README_COMPLETO.md      # Documentación completa
-│   ├── README_CONFIGURACION.md # Configuración avanzada
-│   └── README_PRINCIPAL.md     # Documentación principal
-│
-├── resumen/                     # Resúmenes ejecutivos
-│   ├── RESUMEN_ARCHIVOS.md     # Resumen de archivos
-│   └── RESUMEN_IMPLEMENTACION.md  # Resumen de implementación
-│
-├── seguridad/                   # Documentación de seguridad
-│   └── (Documentación de seguridad futura)
-│
-└── trazabilidad/               # Documentación de trazabilidad
-    └── (Documentación de auditoría futura)
+Para empezar con el sistema:
+
+1. **Lee el README principal:** [../README.md](../README.md)
+2. **Instala dependencias:** `pip install -r requirements.txt`
+3. **Configura las bases de datos:**
+   ```bash
+   mysql -u root -p < 01_GestionProyectos/scripts/crear_bd_origen.sql
+   mysql -u root -p < 04_Datawarehouse/scripts/crear_datawarehouse.sql
+   ```
+4. **Genera datos:** `python 01_GestionProyectos/datos/generar_datos_final.py`
+5. **Ejecuta ETL:** `python src/etl/etl_incremental.py`
+6. **Inicia Dashboard:** `cd 03_Dashboard && ./iniciar_dashboard.sh`
+7. **Accede:** http://localhost:8080
+
+---
+
+## Navegación Rápida por Tarea
+
+### Instalación y Configuración
+- **README Principal:** [../README.md](../README.md) - Guía completa de instalación
+- **Configuración ETL:** [../src/config/config_conexion.py](../src/config/config_conexion.py) - Variables de ambiente
+
+### Usar el Sistema
+- **Dashboard:** http://localhost:8080 (después de iniciar)
+- **API Backend:** http://localhost:5001/status
+- **Generar Datos:** `python 01_GestionProyectos/datos/generar_datos_final.py`
+- **Ejecutar ETL:** `python src/etl/etl_incremental.py`
+
+### Scripts Disponibles
+```bash
+# Iniciar Dashboard
+cd 03_Dashboard
+./iniciar_dashboard.sh
+
+# Detener Dashboard
+cd 03_Dashboard
+./detener_dashboard.sh
+
+# ETL Incremental
+python src/etl/etl_incremental.py
+
+# ETL con Procedimiento Almacenado
+python 02_ETL/scripts/etl_final.py
+
+# Generar Datos
+python 01_GestionProyectos/datos/generar_datos_final.py
 ```
 
 ---
 
-## 🔍 Búsqueda de Información
+## Estructura del Proyecto
+
+```
+ProyectoETL/
+├── README.md                    # Documentación principal
+├── requirements.txt             # Dependencias consolidadas
+│
+├── src/                         # Código fuente principal
+│   ├── config/
+│   │   └── config_conexion.py  # Configuración centralizada
+│   ├── etl/
+│   │   └── etl_incremental.py  # ETL incremental
+│   └── origen/
+│       └── generar_datos.py    # Generador de datos
+│
+├── 01_GestionProyectos/         # BD Origen (OLTP)
+│   ├── README.md
+│   ├── datos/
+│   └── scripts/
+│
+├── 02_ETL/                      # Proceso ETL
+│   ├── README.md
+│   └── scripts/
+│
+├── 03_Dashboard/                # Dashboard DSS
+│   ├── README.md
+│   ├── iniciar_dashboard.sh
+│   ├── detener_dashboard.sh
+│   ├── backend/
+│   └── frontend/
+│
+├── 04_Datawarehouse/            # Data Warehouse + OLAP
+│   ├── README.md
+│   └── scripts/
+│
+├── docs/                        # Documentación (este archivo)
+│   └── README.md
+│
+└── logs/                        # Logs del sistema
+```
+
+---
+
+## Componentes Principales
+
+### Variables de Entorno
+
+El sistema utiliza variables de entorno para configuración:
+
+| Variable | Valores | Default | Descripción |
+|----------|---------|---------|-------------|
+| `ETL_AMBIENTE` | local, distribuido, test | local | Configuración de conexiones |
+| `ETL_DRY_RUN` | 0, 1 | 0 | Modo simulación (sin escritura) |
+| `ETL_LOG_LEVEL` | DEBUG, INFO, WARNING, ERROR | INFO | Nivel de detalle de logs |
+
+### Archivos Clave
+
+- **Configuración:** `src/config/config_conexion.py`
+- **ETL Incremental:** `src/etl/etl_incremental.py`
+- **ETL Procedimientos:** `02_ETL/scripts/etl_final.py`
+- **Backend API:** `03_Dashboard/backend/app.py`
+- **Frontend:** `03_Dashboard/frontend/index.html`
+
+---
+
+## Niveles de Conocimiento
+
+### Nivel Básico (5-10 minutos)
+1. Lee [../README.md](../README.md) - Inicio Rápido
+2. Sigue los pasos de instalación
+3. Accede al Dashboard en http://localhost:8080
+
+### Nivel Intermedio (20-30 minutos)
+1. Revisa cada README de módulo
+2. Explora la configuración en `src/config/config_conexion.py`
+3. Examina el código ETL en `src/etl/etl_incremental.py`
+
+### Nivel Avanzado (1-2 horas)
+1. Estudia los procedimientos almacenados SQL
+2. Analiza el esquema del Data Warehouse
+3. Explora el código del backend y frontend
+4. Modifica y extiende el sistema
+
+---
+
+## Solución de Problemas
+
+### Error de Conexión a MySQL
+```bash
+# Verificar que MySQL está corriendo
+mysql -u root -p
+
+# Verificar configuración
+cat src/config/config_conexion.py
+```
+
+### Dashboard no Inicia
+```bash
+# Verificar puertos ocupados
+lsof -i :5001  # Backend
+lsof -i :8080  # Frontend
+
+# Matar procesos si es necesario
+cd 03_Dashboard
+./detener_dashboard.sh
+./iniciar_dashboard.sh
+```
+
+### ETL Falla
+```bash
+# Verificar logs
+tail -f 03_Dashboard/logs/backend.log
+
+# Ejecutar con más detalle
+ETL_LOG_LEVEL=DEBUG python src/etl/etl_incremental.py
+```
+
+### Sin Datos
+```bash
+# Generar datos de prueba
+python 01_GestionProyectos/datos/generar_datos_final.py
+
+# Verificar en BD
+mysql -u root -p gestionproyectos_hist -e "SELECT COUNT(*) FROM Proyecto;"
+```
+
+---
+
+## API Endpoints Principales
+
+El backend expone los siguientes endpoints:
+
+### Estado y Monitoreo
+- `GET /status` - Estado de conexiones
+- `GET /datos-origen` - Datos de la BD origen
+- `GET /datos-datawarehouse` - Datos del DW
+
+### Operaciones ETL
+- `POST /ejecutar-etl` - Ejecutar proceso ETL
+- `POST /generar-datos` - Generar datos de prueba
+- `DELETE /limpiar-datos` - Limpiar bases de datos
+
+### Análisis OLAP
+- `GET /olap/kpis` - KPIs con filtros multidimensionales
+- `GET /olap/series` - Series temporales
+- `GET /olap/kpis-ejecutivos` - Dashboard ejecutivo
+
+### BSC/OKR
+- `GET /bsc/okr` - Tablero BSC completo
+- `POST /bsc/medicion` - Registrar mediciones
+- `GET /bsc/vision-estrategica` - Resumen de visión
+
+### Predicción Rayleigh
+- `POST /prediccion/defectos-rayleigh` - Generar predicción
+- `GET /prediccion/historico` - Histórico de predicciones
+
+---
+
+## 🤝 Contribuir
+
+Para contribuir al proyecto:
+
+1. Fork del repositorio
+2. Crea una rama de feature
+3. Realiza tus cambios
+4. Actualiza la documentación relevante
+5. Envía un Pull Request
+
+---
+
+## Soporte
+
+Para soporte técnico:
+
+1. **Primero:** Revisa esta documentación
+2. **Segundo:** Consulta los READMEs de cada módulo
+3. **Tercero:** Verifica los logs del sistema
+4. **Último:** Contacta al equipo de desarrollo
+
+---
+
+## • Actualizaciones
+
+**Última actualización:** Noviembre 2025
+
+### Cambios Recientes
+-  Limpieza de archivos obsoletos
+-  Centralización de configuración en `src/config/`
+-  Actualización de dependencias
+-  Simplificación de documentación
+-  Eliminación de referencias a modo distribuido no usado
+
+---
+
+**Para volver al README principal:** [../README.md](../README.md)
+
+**Gracias por usar nuestro Sistema ETL.**
+
+---
+
+## • Búsqueda de Información
 
 ### Por Palabra Clave
 
@@ -177,19 +341,19 @@ docs/
 ## 🎓 Tutoriales y Guías de Aprendizaje
 
 ### Nivel Principiante
-1. 📖 [INICIO_RAPIDO.md](guias/INICIO_RAPIDO.md) - 5 minutos
-2. 📊 [EJEMPLOS_USO.md](guias/EJEMPLOS_USO.md) - 10 minutos
+1. • [INICIO_RAPIDO.md](guias/INICIO_RAPIDO.md) - 5 minutos
+2. • [EJEMPLOS_USO.md](guias/EJEMPLOS_USO.md) - 10 minutos
 3. 🎮 Usa el dashboard en http://localhost:8080
 
 ### Nivel Intermedio
-1. 🔧 [GUIA_PRUEBA_LOCAL.md](guias/GUIA_PRUEBA_LOCAL.md) - 20 minutos
-2. 📋 [GUIA_DATOS_ORIGEN.md](guias/GUIA_DATOS_ORIGEN.md) - 15 minutos
-3. ⚙️ [FILTROS_ETL_DATAWAREHOUSE.md](analisis/FILTROS_ETL_DATAWAREHOUSE.md) - 30 minutos
+1. • [GUIA_PRUEBA_LOCAL.md](guias/GUIA_PRUEBA_LOCAL.md) - 20 minutos
+2. • [GUIA_DATOS_ORIGEN.md](guias/GUIA_DATOS_ORIGEN.md) - 15 minutos
+3. • [FILTROS_ETL_DATAWAREHOUSE.md](analisis/FILTROS_ETL_DATAWAREHOUSE.md) - 30 minutos
 
 ### Nivel Avanzado
-1. 🌐 [GUIA_DESPLIEGUE_3_MAQUINAS.md](guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) - 45 minutos
-2. 📚 [README_COMPLETO.md](configuracion/README_COMPLETO.md) - 1 hora
-3. 🔍 [RESUMEN_IMPLEMENTACION.md](resumen/RESUMEN_IMPLEMENTACION.md) - 30 minutos
+1. • [GUIA_DESPLIEGUE_3_MAQUINAS.md](guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) - 45 minutos
+2. • [README_COMPLETO.md](configuracion/README_COMPLETO.md) - 1 hora
+3. • [RESUMEN_IMPLEMENTACION.md](resumen/RESUMEN_IMPLEMENTACION.md) - 30 minutos
 
 ---
 
@@ -212,7 +376,7 @@ Si encuentras un problema:
 
 ---
 
-## 🔄 Actualizaciones de Documentación
+## • Actualizaciones de Documentación
 
 **Última actualización**: Enero 2025
 
@@ -235,6 +399,6 @@ Para mejorar esta documentación:
 
 ---
 
-**Gracias por usar nuestro Sistema ETL de Gestión de Proyectos** 🚀
+**Gracias por usar nuestro Sistema ETL de Gestión de Proyectos** 
 
 Para volver al README principal: [../README.md](../README.md)

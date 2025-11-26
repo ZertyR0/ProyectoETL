@@ -1,1033 +1,709 @@
-# 🏢 Sistema de Soporte de Decisiones (DSS) - ProyectoETL
-# ProyectoETL (Versión Simplificada)
+# 🚀 Sistema ETL + DataWarehouse + BSC Dashboard# Sistema de Soporte de Decisiones (DSS) - ProyectoETL
 
-Reestructuración enfocada en los componentes activos. La documentación extensa original permanece debajo como referencia histórica.
 
-## Resumen Minimal
-```
-src/
-    config/                # config_conexion.py
-    etl/                   # etl_incremental.py / etl_final.py
-    dw/sql/                # SQL esenciales DW
-    origen/sql/            # SQL creación origen
-01_GestionProyectos/     # Scripts y generación de datos
-03_Dashboard/            # Backend Flask + Frontend
-04_Datawarehouse/        # Scripts DW completos (histórico)
-requirements.txt         # Dependencias raíz
-```
 
-## Variables de Entorno ETL
-Estas variables permiten controlar comportamiento del proceso sin modificar código.
+Sistema completo de **ETL**, **DataWarehouse** y **Balanced Scorecard** para gestión de proyectos con métricas calculadas en tiempo real.**Sistema Integral de Business Intelligence con Cubo OLAP, BSC/OKR y Modelo de Predicción Rayleigh**
 
-| Variable | Valores | Default | Descripción |
-|----------|---------|---------|-------------|
-| ETL_AMBIENTE | local, distribuido | local | Selecciona configuración de conexiones (host/socket vs IP remota). |
-| ETL_DRY_RUN | 0, 1 | 0 | Si es 1, muestra pasos y consultas clave sin realizar escrituras (modo simulación). |
-| ETL_LOG_LEVEL | DEBUG, INFO, WARNING, ERROR | INFO | Nivel de detalle de logs del ETL y endpoints. |
 
-Ejemplo (macOS / zsh):
-```bash
-export ETL_AMBIENTE=local
-export ETL_DRY_RUN=0
-export ETL_LOG_LEVEL=DEBUG
-python src/etl/etl_incremental.py
-```
 
-Para una sola ejecución sin persistir en la sesión:
-```bash
-ETL_LOG_LEVEL=WARNING ETL_DRY_RUN=1 python src/etl/etl_incremental.py
-```
+[![MySQL](https://img.shields.io/badge/MySQL-8.0+-blue.svg)](https://www.mysql.com/)Sistema completo de ETL (Extract, Transform, Load) con **Data Warehouse**, **Cubo OLAP**, **Balanced Scorecard/OKR** y **Modelo de Predicción de Defectos** usando distribución de Rayleigh. Diseñado para la **transformación digital** y **excelencia operacional**.
 
-El backend también lee estas variables al iniciar para ajustar comportamiento de `/ejecutar-etl`.
+[![Python](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/)
 
-## Comandos Clave
-```bash
-python 01_GestionProyectos/datos/generar_datos_final.py      # Generar datos
-python src/etl/etl_incremental.py                            # ETL incremental
-python src/etl/etl_final.py                                  # ETL procedimiento
-./iniciar_dashboard.sh                                       # Dashboard
-```
+[![Flask](https://img.shields.io/badge/Flask-Latest-red.svg)](https://flask.palletsprojects.com/)## INICIO RÁPIDO - CONFIGURACIÓN LOCAL
 
-## Endpoints Principales
-/status, /ejecutar-etl, /datos-origen, /datos-datawarehouse,
-/trazabilidad/tarea/<id>, /olap/*, /bsc/okr, /prediccion/defectos-rayleigh
 
-## Trazabilidad
-Las tareas de proyectos no finalizados/cancelados no aparecen en el DW. Usa `/trazabilidad/tarea/<id>` para ver motivo.
 
-## Próximos Pasos Recomendados
-1. Usuario MySQL de sólo lectura para la BD origen.
-2. Conteos de verificación pre/post ETL.
-3. Limpieza de imports de rutas antiguas.
-4. Timestamp de última ejecución ETL incremental.
+---```bash
 
----
-# 🏢 Sistema de Soporte de Decisiones (DSS) - ProyectoETL
-
-**Sistema Integral de Business Intelligence con Cubo OLAP, BSC/OKR y Modelo de Predicción Rayleigh**
-
-Sistema completo de ETL (Extract, Transform, Load) con **Data Warehouse**, **Cubo OLAP**, **Balanced Scorecard/OKR** y **Modelo de Predicción de Defectos** usando distribución de Rayleigh. Diseñado para la **transformación digital** y **excelencia operacional**.
-
-## ⚡ INICIO RÁPIDO - CONFIGURACIÓN LOCAL
-
-```bash
 # 1. Clonar el repositorio
-git clone [url-del-repo]
+
+## 📋 Características Principalesgit clone [url-del-repo]
+
 cd ProyectoETL
 
-# 2. Ejecutar configuración automática completa
-./configurar_local_completo.sh
+✅ **Sistema ETL Completo** - Extracción, transformación y carga automatizada  
 
-# 3. Iniciar el Dashboard DSS
-./iniciar_dashboard.sh
+✅ **DataWarehouse Dimensional** - Modelo estrella con 12 dimensiones y 8 hechos  # 2. Instalar dependencias
 
-# 4. Acceder al sistema
-open http://localhost:8080
-```
+✅ **Balanced Scorecard** - 5 objetivos estratégicos, 10 KRs calculados desde métricas reales  pip install -r requirements.txt
 
-**¡En 3 comandos tienes el DSS completo funcionando! 🎉**
+✅ **Dashboard Interactivo** - Visualización en tiempo real con Flask + HTML/JS  
 
-## 🎯 Visión Estratégica
+✅ **100% Calculado** - Sin valores hardcodeados, todas las métricas desde el DW  # 3. Configurar bases de datos MySQL
 
-**"Transformación Digital para la Excelencia Operacional"**
+✅ **Completamente Portable** - Inicialización con 1 comando  mysql -u root -p < 01_GestionProyectos/scripts/crear_bd_origen.sql
 
-Liderar la transformación digital mediante sistemas de soporte de decisiones, procesos automatizados y analítica avanzada para entregar valor superior a nuestros clientes.
+mysql -u root -p < 04_Datawarehouse/scripts/crear_datawarehouse.sql
 
-### 🏗️ Arquitectura del Sistema de Soporte de Decisiones (DSS)
+---mysql -u root -p < 04_Datawarehouse/scripts/olap_views.sql
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    DASHBOARD DSS INTEGRADO                         │
-├─────────────────┬─────────────────┬─────────────────┬──────────────┤
-│   📊 CUBO OLAP  │   🎯 BSC/OKR   │  📈 PREDICCIÓN  │   🔍 ETL     │
-│                 │                 │   (Rayleigh)    │              │
-│ • Drill-down    │ • 4 Perspectivas│ • Modelo        │ • Monitoreo  │
-│ • Roll-up       │ • Objetivos     │   Estadístico   │ • Control    │
-│ • Filtros       │ • Key Results   │ • Control PM    │ • Trazab.    │
-│ • Series Temp.  │ • Semáforos     │ • Cronograma    │              │
-└─────────────────┴─────────────────┴─────────────────┴──────────────┘
-                                │
-                    ┌───────────────────────┐
-                    │    DATA WAREHOUSE     │
-                    │   Esquema Estrella    │
-                    ├───────────────────────┤
-                    │ • Dimensiones         │
-                    │ • Tablas de Hechos    │
-                    │ • Vistas OLAP         │
-                    │ • Tablas BSC/OKR      │
-                    │ • Procedimientos      │
-                    └───────────────────────┘
-                                │
-                    ┌───────────────────────┐
-                    │     PROCESO ETL       │
-                    │   (02_ETL/scripts/)   │
-                    └───────────────────────┘
-                                │
-                    ┌───────────────────────┐
-                    │   BASE DE DATOS       │
-                    │      ORIGEN           │
-                    │ (01_GestionProyectos) │
-                    └───────────────────────┘
-```
-
-## 🚀 Componentes del DSS
-
-### 1. 📊 **Cubo OLAP** - Análisis Multidimensional
-- **Vistas Materializadas** con `ROLLUP` para agregaciones
-- **Drill-down** por Cliente, Equipo, Tiempo
-- **Roll-up** automático con niveles de agregación
-- **Series Temporales** (mensual, trimestral, anual)
-- **KPIs Ejecutivos** en tiempo real
-
-**Endpoints:**
-- `GET /olap/kpis` - KPIs con filtros multidimensionales
-- `GET /olap/series` - Series temporales configurables
-- `GET /olap/kpis-ejecutivos` - Dashboard ejecutivo
-- `GET /olap/dimensiones` - Valores para filtros
-
-### 2. 🎯 **BSC/OKR** - Balanced Scorecard con Objectives & Key Results
-- **4 Perspectivas del BSC**: Financiera, Clientes, Procesos Internos, Aprendizaje/Innovación  
-- **Objetivos Estratégicos** vinculados con la visión
-- **Key Results** con semáforos (🟢🟡🔴)
-- **Seguimiento** automático con umbrales
-- **Mapa Estratégico** visual interactivo
-
-**Componentes de la Visión:**
-- Transformación Digital
-- Confiabilidad y Calidad  
-- Analítica Avanzada
-- Automatización de Procesos
-- Excelencia Operacional
-
-**Endpoints:**
-- `GET /bsc/okr` - Tablero BSC consolidado
-- `POST /bsc/medicion` - Registrar mediciones
-- `GET /bsc/vision-estrategica` - Resumen de visión
-- `GET /bsc/historico-kr/{id}` - Histórico de KRs
-
-### 3. 📈 **Modelo de Predicción Rayleigh** - Predicción de Defectos
-- **Distribución de Rayleigh** para modelado de defectos en software
-- **Control de Acceso** - Solo Project Managers
-- **Predicción Semanal** de defectos esperados
-- **Cronograma de Testing** optimizado
-- **Métricas de Riesgo** del proyecto
-
-**Fórmulas Implementadas:**
-- Función de densidad: `f(t) = (t/σ²) * exp(-t²/(2σ²))`
-- Función acumulativa: `F(t) = 1 - exp(-t²/(2σ²))`
-- Tasa de fallas: `h(t) = t/σ²`
-
-**Endpoints:**
-- `POST /prediccion/defectos-rayleigh` - Generar predicción (requiere PM)
-- `GET /prediccion/historico` - Histórico de predicciones
-- `GET /prediccion/validar-acceso` - Validar permisos PM
-
-### 4. 🔍 **ETL y Monitoreo** - Proceso de Datos
-- **Monitoreo ETL** en tiempo real
-- **Trazabilidad** completa de datos
-- **Control de Calidad** automatizado
-- **Alertas** y notificaciones
-
-## 📦 Arquitectura Modular
-
-El sistema está estructurado en **4 módulos independientes**:
-
-| Módulo | Carpeta | Descripción | Tecnología |
-|--------|---------|-------------|------------|
-| **1** | `01_GestionProyectos/` | BD Transaccional (OLTP) | MySQL + Python |
-| **2** | `02_ETL/` | Proceso ETL | Python + SQL |
-| **3** | `03_Dashboard/` | Dashboard DSS | Flask + HTML/JS |
-| **4** | `04_Datawarehouse/` | Data Warehouse + OLAP | MySQL + SQL |
-
-### 📖 Documentación de Módulos:
-
-- **[RESUMEN_MODULAR.md](RESUMEN_MODULAR.md)** - ⭐ Empieza aquí: Resumen ejecutivo
-- **[GUIA_MODULOS_INDEPENDIENTES.md](GUIA_MODULOS_INDEPENDIENTES.md)** - Guía completa de uso
-- **[VERIFICACION_MODULOS.md](VERIFICACION_MODULOS.md)** - Checklist de independencia
-- **[INDICE_MODULAR.md](INDICE_MODULAR.md)** - Índice completo de documentación
-
----
+mysql -u root -p < 04_Datawarehouse/scripts/crear_bsc.sql
 
 ## ⚡ Inicio Rápido
 
-# Sistema ETL de Gestión de Proyectos con Seguridad Avanzada
+# 4. Generar datos de demostración
 
-## 🎯 Descripción del Proyecto
+### Opción 1: Inicialización Automática (Recomendada)python 01_GestionProyectos/datos/generar_datos_final.py
 
-Sistema completo de **ETL (Extract, Transform, Load)** para gestión de proyectos históricos con implementación de seguridad mediante **Stored Procedures** y **Triggers**, incluyendo un **Dashboard Web** interactivo para monitoreo y análisis.
 
-### Características Principales
 
--  **Seguridad por Diseño**: Todo el acceso a datos mediante stored procedures
--  **Trazabilidad Completa**: Sistema de auditoría con triggers automáticos
--  **ETL Robusto**: Transformación y carga de datos con validaciones
--  **Dashboard Interactivo**: Visualización en tiempo real con gráficos
--  **Multi-entorno**: Configuración para desarrollo y producción
+```bash# 5. Ejecutar ETL inicial
 
----
-
-## 📁 Estructura del Proyecto
+./inicializar_sistema_completo.shpython src/etl/etl_incremental.py
 
 ```
-ProyectoETL/ - Sistema de Soporte de Decisiones (DSS)
-│
-├── 01_GestionProyectos/        # 🗄️ Base de datos origen (OLTP)
-│   ├── scripts/
-│   │   ├── crear_bd_origen.sql
-│   │   ├── crear_estado_remoto.py
-│   │   └── crear_tabla_estado.sql
-│   └── datos/
-│       └── generar_datos_final.py
-│
-├── 02_ETL/                      # ⚙️ Proceso ETL
-│   ├── config/
-│   │   └── config_conexion.py  # Multi-ambiente
-│   └── scripts/
-│       ├── etl_final.py                # Ejecución por procedimiento almacenado
-│       ├── procedimientos_etl_completo.sql
-│       └── procedimientos_etl_final.sql
-│
-├── 03_Dashboard/               # 🖥️ Dashboard DSS Completo
-│   ├── backend/
-│   │   ├── app.py              # Flask API con todos los endpoints
-│   │   ├── rayleigh.py         # 📊 Modelo de Predicción Rayleigh
-│   │   └── requirements.txt
-│   └── frontend/
-│       ├── index.html          # UI con 7 módulos integrados
-│       ├── app.js              # JavaScript para DSS
-│       └── styles.css
-│
-├── 04_Datawarehouse/           # 🏢 Data Warehouse + OLAP + BSC
-│   └── scripts/
-│       ├── crear_datawarehouse.sql    # Esquema estrella
-│       ├── olap_views.sql            # 📊 Cubo OLAP con ROLLUP
-│       ├── crear_bsc.sql             # 🎯 Tablas BSC/OKR
-│       └── procedimientos_seguros_dw.sql
-│
-├── docs/                       # 📚 Documentación DSS
-│   └── README.md
-│
-├── (eliminado) generar_datos_completos.py  # Código legacy retirado (unificado en src/origen/generar_datos.py / generar_datos_final.py)
-├── iniciar_dashboard.sh        # 🚀 Script de inicio
-├── detener_dashboard.sh        # ⏹️ Script de parada
-└── requirements.txt            # 📦 Dependencias del sistema
-```
-
----
-
-## 🚀 Instalación y Uso del DSS
-
-### Pre-requisitos
-
-- **Python 3.8+**
-- **MySQL 8.0+** 
-- **pip** (gestor de paquetes Python)
-- **Navegador Web** moderno (Chrome, Firefox, Safari)
-
-### 🔧 Instalación Rápida (5 minutos)
-
-```bash
-# 1. Clonar repositorio
-git clone https://github.com/usuario/ProyectoETL.git
-cd ProyectoETL
-
-# 2. Instalar dependencias Python
-pip install -r requirements.txt
-
-# 3. Configurar MySQL (crear bases de datos)
-mysql -u root -p < 01_GestionProyectos/scripts/crear_bd_origen.sql
-mysql -u root -p < 04_Datawarehouse/scripts/crear_datawarehouse.sql
-
-# 4. Configurar el DSS completo
-mysql -u root -p datawarehouse < 04_Datawarehouse/scripts/olap_views.sql
-mysql -u root -p datawarehouse < 04_Datawarehouse/scripts/crear_bsc.sql
-
-# 5. Generar datos de demostración
-python 01_GestionProyectos/datos/generar_datos_final.py
 
 # 6. Iniciar Dashboard DSS
-chmod +x iniciar_dashboard.sh
-./iniciar_dashboard.sh
-```
 
-### 🌐 Acceder al Dashboard DSS
+**Tiempo:** 30-60 segundos  cd 03_Dashboard
 
-Una vez instalado, abrir navegador en: **http://localhost:5001**
+**Resultado:** Sistema completo funcionando en http://localhost:3000./iniciar_dashboard.sh
 
-#### 🧭 Navegación del Dashboard:
 
-1. **📊 Dashboard** - Vista general del sistema
-2. **🗄️ Datos Origen** - Monitoreo BD transaccional  
-3. **⚙️ Control ETL** - Ejecución y monitoreo procesos
-4. **🏢 DataWarehouse** - Visualización DW
-5. **📈 Análisis** - Reportes tradicionales
-6. **📊 KPIs OLAP** - Análisis multidimensional (NUEVO)
-7. **🎯 BSC/OKR** - Balanced Scorecard (NUEVO)
-8. **📈 Predicción** - Modelo Rayleigh para PMs (NUEVO)
-9. **🔍 Trazabilidad** - Seguimiento de datos
 
-### 🎯 Uso de Componentes DSS
+### Opción 2: Verificación del Sistema# 7. Acceder al sistema
 
-#### 1. **Cubo OLAP** - Análisis Multidimensional
+open http://localhost:8080
 
-```
-📊 KPIs OLAP → Aplicar Filtros → Ver Resultados
-```
+```bash```
 
-**Funcionalidades:**
--  Filtrar por Cliente, Equipo, Año
--  Cambiar nivel de agregación (Detallado → Total)
--  Drill-down automático
--  Series temporales configurables
--  Exportar resultados
-
-#### 2. **BSC/OKR** - Gestión Estratégica  
-
-```
-🎯 BSC/OKR → Ver Objetivos → Registrar Mediciones
-```
-
-**Perspectivas Implementadas:**
-- 💰 **Financiera**: Rentabilidad, costos
-- 👥 **Clientes**: Satisfacción, expansión
-- ⚙️ **Procesos Internos**: Automatización, calidad
-- 🧠 **Aprendizaje/Innovación**: Capacitación, cultura
-
-#### 3. **Predicción Rayleigh** - Solo Project Managers
-
-```
-📈 Predicción → Simular Acceso PM → Configurar Proyecto → Generar
-```
-
-**Control de Acceso:**
-- 🔒 Requiere permisos PM
-- 🔑 Para demo: usar botón "Simular Acceso PM"
-- 📊 Genera curva de defectos + cronograma de testing
-
-### 📊 Datos de Demostración
-
-El sistema incluye **datos realistas** generados automáticamente:
-
-- **300 Proyectos** (completados/cancelados)
-- **1,500 Empleados** en equipos
-- **3,000 Tareas** con métricas
-- **Objetivos BSC** pre-configurados
-- **Mediciones OKR** de ejemplo
-
-### 🔗 API Endpoints del DSS
-
-#### OLAP Endpoints:
-- `GET /olap/kpis?dim=cliente,equipo&nivel=DETALLADO`
-- `GET /olap/series?granularidad=mes&metrica=proyectos`
-- `GET /olap/kpis-ejecutivos`
-- `GET /olap/dimensiones`
-
-#### BSC/OKR Endpoints:
-- `GET /bsc/okr`
-- `POST /bsc/medicion`
-- `GET /bsc/vision-estrategica`
-- `GET /bsc/historico-kr/{id}`
-
-#### Rayleigh Endpoints:
-- `POST /prediccion/defectos-rayleigh` (requiere X-ROLE: pm)
-- `GET /prediccion/historico`
-- `GET /prediccion/validar-acceso`
-
-### Instalación Rápida
-
-```bash
-# 1. Clonar el repositorio
-git clone <repository-url>
-cd ProyectoETL
-
-# 2. Instalar dependencias
-pip install -r requirements.txt
-
-# 3. Configurar base de datos
-./setup_local.sh
-
-# 4. Iniciar el dashboard
-./iniciar_dashboard.sh
-```
-
-### Acceso al Dashboard
-
-Después de iniciar, accede a:
-- **Frontend**: http://localhost:8080/index.html
-- **Backend API**: http://localhost:5001
-
----
-
-## 📚 Documentación
-
-### Guías Principales
-
-| Documento | Descripción | Ubicación |
-|-----------|-------------|-----------|
-| **Inicio Rápido** | Guía para empezar en 5 minutos | [docs/guias/INICIO_RAPIDO.md](docs/guias/INICIO_RAPIDO.md) |
-| **Guía Local** | Instalación y prueba local | [docs/guias/GUIA_PRUEBA_LOCAL.md](docs/guias/GUIA_PRUEBA_LOCAL.md) |
-| **Guía Distribuida** | Despliegue en 3 máquinas | [docs/guias/GUIA_DESPLIEGUE_3_MAQUINAS.md](docs/guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) |
-| **Ejemplos de Uso** | Casos prácticos | [docs/guias/EJEMPLOS_USO.md](docs/guias/EJEMPLOS_USO.md) |
-| **Guía de Datos** | Estructura de datos origen | [docs/guias/GUIA_DATOS_ORIGEN.md](docs/guias/GUIA_DATOS_ORIGEN.md) |
-
-### Documentación Técnica
-
-| Categoría | Documentos | Ubicación |
-|-----------|-----------|-----------|
-| **Configuración** | README completo, configuración avanzada | [docs/configuracion/](docs/configuracion/) |
-| **Análisis** | Consistencia BD, correcciones, filtros | [docs/analisis/](docs/analisis/) |
-| **Resumen** | Resumen de archivos e implementación | [docs/resumen/](docs/resumen/) |
-
-### Documentación por Componente
-
-- **01_GestionProyectos**: [01_GestionProyectos/README.md](01_GestionProyectos/README.md)
-- **02_ETL**: [02_ETL/README.md](02_ETL/README.md)
-- **03_Dashboard**: [03_Dashboard/README.md](03_Dashboard/README.md)
-- **04_Datawarehouse**: [04_Datawarehouse/README.md](04_Datawarehouse/README.md)
-
----
-
-## 🔐 Seguridad
-
-El sistema implementa múltiples capas de seguridad:
-
-1. **Stored Procedures**: Todo el acceso a datos es mediante procedures
-2. **Triggers de Auditoría**: Registro automático de todas las operaciones
-3. **Validación de Datos**: Validaciones antes de insertar/actualizar
-4. **Control de Acceso**: Permisos granulares por tabla y operación
-5. **Trazabilidad**: Logs completos de todas las transacciones
-
-### Scripts de Seguridad
-
-- `01_GestionProyectos/scripts/procedimientos_seguros.sql` - Procedures BD origen
-- `02_ETL/scripts/procedimientos_etl.sql` - Procedures para ETL
-- `04_Datawarehouse/scripts/procedimientos_seguros_dw.sql` - Procedures DW
-- `verificar_trazabilidad_seguro.py` - Verificación de auditoría
-
----
-
-## 📊 Funcionalidades del Dashboard
-
-### Visualizaciones Disponibles
-
-- 📈 **Estadísticas Generales**: Total de proyectos, empleados, tareas
-- 📊 **Gráficos Interactivos**: 
-  - Distribución de proyectos por estado
-  - Asignación de empleados por departamento
-  - Evolución temporal de proyectos
-- 🔄 **Operaciones ETL**: Ejecución y monitoreo en tiempo real
-- 🗄️ **Gestión de Datos**: Generación y limpieza de datos de prueba
-
-### Operaciones Disponibles
-
--  Visualizar datos de origen y Data Warehouse
--  Ejecutar proceso ETL manualmente
--  Generar datos de prueba
--  Limpiar bases de datos
--  Monitorear estado del sistema
-
----
-
-## 🛠️ Scripts de Utilidad
-
-### Scripts de Instalación
-
-| Script | Descripción | Uso |
-|--------|-------------|-----|
-| `setup_local.sh` | Configuración completa local | `./setup_local.sh` |
-| `setup_proyecto.py` | Instalación automatizada Python | `python setup_proyecto.py` |
-| `instalar_sistema_seguro.sh` | Instalación con seguridad | `./instalar_sistema_seguro.sh` |
-
-### Scripts de Operación
-
-| Script | Descripción | Uso |
-|--------|-------------|-----|
-| `iniciar_dashboard.sh` | Iniciar backend y frontend | `./iniciar_dashboard.sh` |
-| `detener_dashboard.sh` | Detener todos los servicios | `./detener_dashboard.sh` |
-| `verificar_sistema.sh` | Verificar estado del sistema | `./verificar_sistema.sh` |
-| `configurar_distribuido.sh` | Configurar ambiente distribuido | `./configurar_distribuido.sh` |
-
-### Scripts de Validación
-
-| Script | Descripción | Uso |
-|--------|-------------|-----|
-| `validar_consistencia.py` | Validar consistencia de datos | `python validar_consistencia.py` |
-| `verificar_distribuido.py` | Verificar configuración distribuida | `python verificar_distribuido.py` |
-| `verificar_trazabilidad_seguro.py` | Verificar auditoría | `python verificar_trazabilidad_seguro.py` |
-
----
-
-## 📋 Flujo de Trabajo Típico
-
-### 1. Instalación Inicial
-
-```bash
-# Instalar sistema completo
-./setup_local.sh
-
-# O usar el instalador Python
-python setup_proyecto.py
-```
-
-### 2. Generar Datos de Prueba
-
-```bash
-# Opción A: Usar script directo
-cd 01_GestionProyectos/scripts
-python generar_datos_seguro.py
-
-# Opción B: Desde el dashboard
-# Acceder a http://localhost:8080 y usar "Generar Datos"
-```
-
-### 3. Ejecutar ETL
-
-```bash
-# Opción A: Script directo
-cd 02_ETL/scripts
-python etl_principal_seguro.py
-
-# Opción B: Desde el dashboard
-# Usar el botón "Ejecutar ETL"
-```
-
-### 4. Analizar Resultados
-
-```bash
-# Ver dashboard
-http://localhost:8080/index.html
-
-# O ejecutar consultas SQL directamente
-mysql -u root -p < 04_Datawarehouse/scripts/consultas_analisis.sql
-```
-
-### 5. Verificar Trazabilidad
-
-```bash
-# Verificar auditoría
-python verificar_trazabilidad_seguro.py
-```
-
----
-
-## 🔧 Configuración
-
-### Configuración de Base de Datos
-
-Editar: `02_ETL/config/config_conexion.py`
-
-```python
-ORIGEN_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'tu_password',
-    'database': 'gestionproyectos_hist'
-}
-
-DESTINO_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'tu_password',
-    'database': 'dw_proyectos_hist'
-}
-```
-
-### Configuración del Dashboard
-
-Editar: `03_Dashboard/frontend/app.js`
-
-```javascript
-const API_BASE_URL = 'http://localhost:5001';
-```
-
----
-
-##  Mantenimiento
-
-### Limpieza de Datos
-
-```bash
-# Desde el dashboard: Usar botón "Limpiar Datos"
-
-# O desde terminal
-mysql -u root -p gestionproyectos_hist -e "
-CALL LimpiarProyectos();
-CALL LimpiarEmpleados();
-CALL LimpiarClientes();
-"
-```
-
-### Actualización de Dependencias
-
-```bash
-pip install -r requirements.txt --upgrade
-```
-
-### Backup de Base de Datos
-
-```bash
-# Backup BD Origen
-mysqldump -u root -p gestionproyectos_hist > backup_origen.sql
-
-# Backup Data Warehouse
-mysqldump -u root -p dw_proyectos_hist > backup_dw.sql
-```
-
----
-
-## 🐛 Solución de Problemas
-
-### El Dashboard no Inicia
-
-```bash
-# Verificar que los puertos estén libres
-lsof -i :5001  # Backend
-lsof -i :8080  # Frontend
-
-# Si están ocupados, matar procesos
-lsof -ti:5001 | xargs kill -9
-lsof -ti:8080 | xargs kill -9
-
-# Reiniciar dashboard
-./iniciar_dashboard.sh
-```
-
-### Error de Conexión a MySQL
-
-```bash
-# Verificar que MySQL esté corriendo
-mysql -u root -p
-
-# Verificar configuración
-cat 02_ETL/config/config_conexion.py
-```
-
-### ETL Falla
-
-```bash
-# Verificar logs
-tail -f /tmp/backend_flask.log
-
-# Verificar datos de origen
-python validar_consistencia.py
-```
-
----
-
-## 📈 Métricas del Sistema
-
-### Base de Datos Origen
-
-- Proyectos históricos con múltiples versiones
-- Empleados con roles y departamentos
-- Clientes con información de contacto
-- Tareas con asignaciones y estados
-
-### Data Warehouse
-
-- Dimensiones: Proyectos, Empleados, Clientes, Tiempo
-- Hechos: Proyectos, Tareas
-- Agregaciones y métricas calculadas
-
-### Dashboard
-
-- Visualizaciones en tiempo real
-- Gráficos interactivos con Chart.js
-- API RESTful con Flask
-- Frontend responsivo con Bootstrap
-
----
-
-## 🤝 Contribución
-
-Para contribuir al proyecto:
-
-1. Fork del repositorio
-2. Crear rama de feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit de cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crear Pull Request
-
----
-
-## 📞 Soporte
-
-Para reportar problemas o solicitar ayuda:
-
-1. Revisar la documentación en [docs/](docs/)
-2. Consultar ejemplos en [docs/guias/EJEMPLOS_USO.md](docs/guias/EJEMPLOS_USO.md)
-3. Verificar logs del sistema
-4. Contactar al equipo de desarrollo
-
----
-
-## 🎓 Recursos Adicionales
-
-### Tutoriales
-
-- [Guía de Inicio Rápido](docs/guias/INICIO_RAPIDO.md) - 5 minutos
-- [Guía de Prueba Local](docs/guias/GUIA_PRUEBA_LOCAL.md) - 15 minutos
-- [Guía de Despliegue Distribuido](docs/guias/GUIA_DESPLIEGUE_3_MAQUINAS.md) - 30 minutos
-
-### Referencias
-
-- [Resumen de Implementación](docs/resumen/RESUMEN_IMPLEMENTACION.md)
-- [Análisis de Consistencia](docs/analisis/ANALISIS_CONSISTENCIA_BD.md)
-- [Filtros ETL](docs/analisis/FILTROS_ETL_DATAWAREHOUSE.md)
-
----
-
-## ✨ Últimas Actualizaciones
-
--  Sistema de seguridad con stored procedures
--  Dashboard web completo
--  Documentación reorganizada
--  Scripts de instalación automatizados
--  Sistema de trazabilidad completo
-
----
-
-## 📄 Licencia
-
-Este proyecto es parte de un sistema académico/empresarial de gestión de proyectos.
-
----
-
-**¡Gracias por usar nuestro Sistema ETL de Gestión de Proyectos!** 🚀
-
-**[📖 Ver Guía de Inicio Rápido Completa →](INICIO_RAPIDO.md)**
-
----
-
-## � Instalación por Módulos
-
-### Opción 1: Instalación de Todos los Módulos (Local)
-
-```bash
-# Módulo 1: Base de Datos
-cd 01_GestionProyectos
-./setup_bd_origen.sh
-
-# Módulo 3: Data Warehouse (requiere Módulo 1)
-cd ../04_Datawarehouse
-./setup_dw.sh
-python etl/etl_principal.py  # Cargar datos
-
-# Módulo 2: Dashboard (requiere Módulos 1 y 3)
-cd ../03_Dashboard
-./setup_dashboard.sh
-./iniciar_dashboard.sh
-```
-
-Acceder al dashboard: **http://localhost:8080/index.html**
-
-### Opción 2: Instalación Individual
-
-#### Solo Módulo 1 (BD Origen):
-```bash
-cd 01_GestionProyectos
-./setup_bd_origen.sh
-```
-Ver: **[01_GestionProyectos/INSTALACION.md](01_GestionProyectos/INSTALACION.md)**
-
-#### Solo Módulo 2 (Dashboard):
-```bash
-cd 03_Dashboard
-./setup_dashboard.sh
-# Configurar .env con IPs de Módulos 1 y 3
-./iniciar_dashboard.sh
-```
-Ver: **[03_Dashboard/INSTALACION.md](03_Dashboard/INSTALACION.md)**
-
-#### Solo Módulo 3 (Data Warehouse):
-```bash
-cd 04_Datawarehouse
-./setup_dw.sh
-# Configurar .env con IP de Módulo 1
-python etl/etl_principal.py
-```
-Ver: **[04_Datawarehouse/INSTALACION.md](04_Datawarehouse/INSTALACION.md)**
-
-### Opción 3: Empaquetar para Envío
-
-```bash
-# Crear ZIPs de cada módulo
-./empaquetar_modulos.sh
-
-# Se crean en: modulos_empaquetados/
-# - Modulo1_BD_Origen.zip
-# - Modulo2_Dashboard.zip
-# - Modulo3_DataWarehouse.zip
-```
-
----
-
-## �📚 Documentación
-
-| Documento | Descripción |
-|-----------|-------------|
-| **[INICIO_RAPIDO.md](INICIO_RAPIDO.md)** | ⚡ Guía rápida de 5 minutos |
-| **[README_COMPLETO.md](README_COMPLETO.md)** | 📖 Documentación completa del proyecto |
-| **[GUIA_PRUEBA_LOCAL.md](GUIA_PRUEBA_LOCAL.md)** | 🔧 Guía detallada de configuración |
-| **[GUIA_DESPLIEGUE_3_MAQUINAS.md](GUIA_DESPLIEGUE_3_MAQUINAS.md)** | 🌐 Configuración distribuida |
-
----
-
-## 🎯 ¿Qué es este proyecto?
-
-Un sistema ETL completo que incluye:
-
-- **📊 Base de Datos Origen** - Sistema transaccional (OLTP)
-- **⚙️ Proceso ETL** - Extracción, transformación y carga automatizada
-- **🏢 Data Warehouse** - Modelo dimensional para análisis
-- **📈 Dashboard Web** - Interfaz interactiva para visualización y control
-
----
-
-## 🔧 Requisitos
-
-- Python 3.8+
-- MySQL 5.7+ o MariaDB 10.3+
-- Navegador web moderno
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-ProyectoETL/
-├── 01_GestionProyectos/    # BD Origen
-├── 02_ETL/                  # Proceso ETL
-├── 03_Dashboard/            # Dashboard Web
-├── 04_Datawarehouse/        # Data Warehouse
-├── setup_local.sh           # Configuración automática ⚡
-├── iniciar_dashboard.sh     # Iniciar sistema
-├── detener_dashboard.sh     # Detener sistema
-└── verificar_sistema.sh     # Verificar estado
-```
-
----
-
-## 🎓 Características
-
- ETL automatizado con Python  
- Modelo dimensional (esquema estrella)  
- Cálculo de KPIs y métricas  
- Dashboard web interactivo  
- API REST con Flask  
- Generación de datos de prueba  
- Scripts de automatización  
- Documentación completa  
-
----
-
-## 📊 Vista Previa del Dashboard
-
-El dashboard permite:
-
-- 🔍 Monitorear conexiones en tiempo real
-- 📊 Ver datos de origen y datawarehouse
-- ⚙️ Ejecutar el proceso ETL con un click
-- 📈 Visualizar métricas y KPIs
-- 🗑️ Gestionar datos de prueba
-
----
-
-## 🚀 Empezar Ahora
-
-### Opción 1: Configuración Automática (Recomendado)
-
-```bash
-./setup_local.sh
-./iniciar_dashboard.sh
-```
-
-Abre tu navegador en `http://localhost:8080`
-
-### Opción 2: Verificar Primero
-
-```bash
-./verificar_sistema.sh  # Ver estado del sistema
-./setup_local.sh        # Si es necesario
-./iniciar_dashboard.sh  # Iniciar
-```
-
----
-
-## 📖 Aprende Más
-
-- [Inicio Rápido](INICIO_RAPIDO.md) - Comienza en 5 minutos
-- [Documentación Completa](README_COMPLETO.md) - Toda la información
-- [Guía de Prueba Local](GUIA_PRUEBA_LOCAL.md) - Instrucciones detalladas
-
----
-
-## 🐛 Solución de Problemas
-
-```bash
-# Verificar estado del sistema
 ./verificar_sistema.sh
 
-# Reinstalar si hay problemas
-./detener_dashboard.sh
-rm -rf venv
-./setup_local.sh
+```**En pocos minutos tienes el DSS completo funcionando.**
+
+
+
+**Tests:** 23 verificaciones automáticas  ## Visión Estratégica
+
+**Validación:** Datos en origen, DW, BSC, vistas, y dashboard
+
+**"Transformación Digital para la Excelencia Operacional"**
+
+---
+
+Liderar la transformación digital mediante sistemas de soporte de decisiones, procesos automatizados y analítica avanzada para entregar valor superior a nuestros clientes.
+
+## 📊 Arquitectura del Sistema
+
+### Arquitectura del Sistema de Soporte de Decisiones (DSS)
+
+```
+
+┌─────────────────┐```
+
+│  ORIGEN (BD)    │  ← 8 tablas operacionales┌─────────────────────────────────────────────────────────────────────┐
+
+│  50 proyectos   │     • cliente, empleado, equipo, proyecto, tarea│                    DASHBOARD DSS INTEGRADO                          │
+
+│  135 defectos   │     • defecto, capacitacion, satisfaccion_cliente├─────────────────┬─────────────────┬─────────────────┬──────────────┤
+
+│  351 trainings  │     • movimiento_empleado│   CUBO OLAP     │   BSC/OKR       │  PREDICCIÓN     │   ETL        │
+
+└────────┬────────┘│                 │                 │   (Rayleigh)    │              │
+
+         ││ • Drill-down    │ • 4 Perspectivas│ • Modelo        │ • Monitoreo  │
+
+         ↓ ETL (sp_etl_completo_con_metricas)│ • Roll-up       │ • Objetivos     │   Estadístico   │ • Control    │
+
+         ││ • Filtros       │ • Key Results   │ • Control PM    │ • Trazab.    │
+
+┌────────┴────────┐│ • Series Temp.  │ • Semáforos     │ • Cronograma    │              │
+
+│  DATAWAREHOUSE  │  ← Modelo estrella└─────────────────┴─────────────────┴─────────────────┴──────────────┘
+
+│  26 proyectos   │     • 12 Dimensiones (Cliente, Empleado, Tiempo...)                                │
+
+│  260 tareas     │     • 8 Hechos (Proyecto, Tarea, Defecto, Capacitacion...)                    ┌───────────────────────┐
+
+│  135 defectos   │                    │    DATA WAREHOUSE     │
+
+└────────┬────────┘                    │   Esquema Estrella    │
+
+         │                    ├───────────────────────┤
+
+         ↓ Cálculo automático (poblar_bsc_automatico.sql)                    │ • Dimensiones         │
+
+         │                    │ • Tablas de Hechos    │
+
+┌────────┴────────┐                    │ • Vistas OLAP         │
+
+│  BSC + OKRs     │  ← 100% calculado desde DW                    │ • Tablas BSC/OKR      │
+
+│  5 objetivos    │     • Perspectiva Financiera                    │ • Procedimientos      │
+
+│  10 KRs         │     • Perspectiva de Clientes                    └───────────────────────┘
+
+│  10 mediciones  │     • Perspectiva de Procesos Internos                                │
+
+└────────┬────────┘     • Perspectiva de Aprendizaje e Innovación                    ┌───────────────────────┐
+
+         │                    │     PROCESO ETL       │
+
+         ↓ API REST (Flask) + Frontend                    │   (02_ETL/scripts/)   │
+
+         │                    └───────────────────────┘
+
+┌────────┴────────┐                                │
+
+│   DASHBOARD     │  ← http://localhost:3000                    ┌───────────────────────┐
+
+│   Visualización │     • Tablero consolidado                    │   BASE DE DATOS       │
+
+│   Tiempo real   │     • Semáforos (🟢 🟡 🔴)                    │      ORIGEN           │
+
+└─────────────────┘     • Progresos y tendencias                    │ (01_GestionProyectos) │
+
+```                    └───────────────────────┘
+
 ```
 
 ---
 
-## 📄 Licencia
+## Componentes del DSS
 
-Proyecto educativo para demostración de conceptos ETL y Data Warehouse.
+## 🎯 Métricas Calculadas (Ejemplos Reales)
 
----
+### 1. **Cubo OLAP** - Análisis Multidimensional
 
-## 🤝 Contribuciones
+| Métrica | Valor | Fuente |- **Vistas Materializadas** con `ROLLUP` para agregaciones
 
-Este es un proyecto educativo. Siéntete libre de usarlo para aprender.
+|---------|-------|--------|- **Drill-down** por Cliente, Equipo, Tiempo
 
----
+| Costo promedio proyecto | $340,079 | `AVG(costo_real_proy) FROM HechoProyecto` |- **Roll-up** automático con niveles de agregación
 
-**⭐ Si te resulta útil, dale una estrella al repositorio!** Distribuido - Sistema de 3 Máquinas
+| Rentabilidad promedio | 12.64% | `AVG((presupuesto - costo) / presupuesto * 100)` |- **Series Temporales** (mensual, trimestral, anual)
 
-Este proyecto implementa un sistema ETL (Extract, Transform, Load) distribuido que opera en 3 máquinas independientes para procesar datos de gestión de proyectos.
+| Defectos por proyecto | 5.19 | `COUNT(*) FROM HechoDefecto / COUNT(*) FROM HechoProyecto` |- **KPIs Ejecutivos** en tiempo real
 
-## 🏗️ Arquitectura del Sistema
+| Satisfacción cliente | 4.22/5.0 | `AVG(calificacion) FROM HechoSatisfaccion` |
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   MÁQUINA 1     │────▶│   MÁQUINA 2     │────▶│   MÁQUINA 3     │
-│ GestionProyectos│     │      ETL        │     │  Datawarehouse  │
-│                 │     │                 │     │                 │
-│ ┌─────────────┐ │     │ ┌─────────────┐ │     │ ┌─────────────┐ │
-│ │ MySQL       │ │     │ │ Python ETL  │ │     │ │ MySQL       │ │
-│ │ BD Origen   │ │     │ │ Procesador  │ │     │ │ BD Destino  │ │
-│ └─────────────┘ │     │ └─────────────┘ │     │ └─────────────┘ │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-      📊 Datos              ⚙️ Transformar           🏗️ Datawarehouse
-```
+| Horas capacitación/empleado | 33.87h | `AVG(horas_duracion) FROM HechoCapacitacion` |**Endpoints:**
 
-## 📁 Estructura del Proyecto
+| Rotación de personal | 12.80% | `(COUNT egresos / total_empleados) * 100` |- `GET /olap/kpis` - KPIs con filtros multidimensionales
 
-```
+- `GET /olap/series` - Series temporales configurables
+
+---- `GET /olap/kpis-ejecutivos` - Dashboard ejecutivo
+
+- `GET /olap/dimensiones` - Valores para filtros
+
+## 📂 Estructura del Proyecto
+
+### 2. **BSC/OKR** - Balanced Scorecard con Objectives & Key Results
+
+```- **4 Perspectivas del BSC**: Financiera, Clientes, Procesos Internos, Aprendizaje/Innovación  
+
+ProyectoETL/- **Objetivos Estratégicos** vinculados con la visión
+
+├── inicializar_sistema_completo.sh  ← Inicialización automática (1 comando)- **Key Results** con semáforos (verdeamarillorojo)
+
+├── verificar_sistema.sh             ← 23 tests de validación- **Seguimiento** automático con umbrales
+
+├── PORTABILIDAD.md                  ← Guía completa de transferencia- **Mapa Estratégico** visual interactivo
+
+├── RESUMEN_CAMBIOS.md               ← Changelog detallado
+
+│**Componentes de la Visión:**
+
+├── 01_GestionProyectos/- Transformación Digital
+
+│   ├── datos/- Confiabilidad y Calidad  
+
+│   │   └── generar_datos_final.py   ← Generador de datos sintéticos- Analítica Avanzada
+
+│   └── scripts/- Automatización de Procesos
+
+│       ├── crear_bd_origen.sql      ← Estructura de 8 tablas- Excelencia Operacional
+
+│       └── procedimientos_seguros.sql
+
+│**Endpoints:**
+
+├── 02_ETL/- `GET /bsc/okr` - Tablero BSC consolidado
+
+│   └── scripts/- `POST /bsc/medicion` - Registrar mediciones
+
+│       └── etl_completo_con_metricas.sql  ← ETL + métricas (350+ líneas)- `GET /bsc/vision-estrategica` - Resumen de visión
+
+│- `GET /bsc/historico-kr/{id}` - Histórico de KRs
+
+├── 03_Dashboard/
+
+│   ├── iniciar_dashboard.sh### 3. **Modelo de Predicción Rayleigh** - Predicción de Defectos
+
+│   ├── detener_dashboard.sh- **Distribución de Rayleigh** para modelado de defectos en software
+
+│   ├── backend/- **Control de Acceso** - Solo Project Managers
+
+│   │   └── app.py                   ← API Flask (endpoints REST)- **Predicción Semanal** de defectos esperados
+
+│   └── frontend/- **Cronograma de Testing** optimizado
+
+│       ├── index.html               ← Dashboard BSC- **Métricas de Riesgo** del proyecto
+
+│       ├── app.js
+
+│       └── styles.css**Fórmulas Implementadas:**
+
+│- Función de densidad: `f(t) = (t/σ²) * exp(-t²/(2σ²))`
+
+└── 04_Datawarehouse/- Función acumulativa: `F(t) = 1 - exp(-t²/(2σ²))`
+
+    └── scripts/- Tasa de fallas: `h(t) = t/σ²`
+
+        ├── crear_datawarehouse.sql        ← 12 dimensiones + hechos
+
+        ├── agregar_tablas_metricas.sql    ← HechoDefecto, HechoCapacitacion...**Endpoints:**
+
+        ├── crear_bsc.sql                  ← Estructura BSC- `POST /prediccion/defectos-rayleigh` - Generar predicción (requiere PM)
+
+        └── poblar_bsc_automatico.sql      ← OKRs calculados 100% reales- `GET /prediccion/historico` - Histórico de predicciones
+
+```- `GET /prediccion/validar-acceso` - Validar permisos PM
+
+
+
+---### 4. **ETL y Monitoreo** - Proceso de Datos
+
+- **Monitoreo ETL** en tiempo real
+
+## 🛠️ Requisitos- **Trazabilidad** completa de datos
+
+- **Control de Calidad** automatizado
+
+- **MySQL 8.0+**- **Alertas** y notificaciones
+
+- **Python 3.8+**
+
+- **Navegador web** (Chrome, Firefox, Safari)## Arquitectura Modular
+
+
+
+### Instalación de dependencias Python:El sistema está estructurado en **4 módulos independientes**:
+
+
+
+```bash| Módulo | Carpeta | Descripción | Tecnología |
+
+pip3 install -r requirements.txt|--------|---------|-------------|------------|
+
+```| **1** | `01_GestionProyectos/` | BD Transaccional (OLTP) | MySQL + Python |
+
+| **2** | `02_ETL/` | Scripts SQL y Procedimientos ETL | SQL |
+
+---| **3** | `03_Dashboard/` | Dashboard DSS | Flask + HTML/JS |
+
+| **4** | `04_Datawarehouse/` | Data Warehouse + OLAP | MySQL + SQL |
+
+## 📖 Documentación Detallada
+
+### Estructura Actualizada
+
+- **[PORTABILIDAD.md](PORTABILIDAD.md)** - Guía completa para transferir a otra máquina
+
+- **[RESUMEN_CAMBIOS.md](RESUMEN_CAMBIOS.md)** - Changelog con todas las actualizaciones```
+
 ProyectoETL/
-├── README.md                           # Este archivo
+
+---├── README.md                       # Este archivo
+
+├── requirements.txt                # Dependencias consolidadas
+
+## 🔄 Flujo de Actualización de Datos│
+
+├── src/                           # Código fuente principal
+
+Para regenerar datos y actualizar dashboard:│   ├── config/
+
+│   │   └── config_conexion.py    # Configuración centralizada
+
+```bash│   ├── etl/
+
+# 1. Regenerar datos en origen│   │   └── etl_incremental.py    # ETL incremental con logging
+
+cd 01_GestionProyectos/datos│   └── origen/
+
+python3 generar_datos_final.py│       └── generar_datos.py      # Generador de datos
+
+cd ../..│
+
+├── 01_GestionProyectos/          # BD Origen (OLTP)
+
+# 2. Re-ejecutar ETL│   ├── datos/
+
+echo "CALL sp_etl_completo_con_metricas();" | mysql -u root dw_proyectos_hist│   │   └── generar_datos_final.py
+
+│   └── scripts/
+
+# 3. Actualizar OKRs│       ├── crear_bd_origen.sql
+
+mysql -u root dw_proyectos_hist < 04_Datawarehouse/scripts/poblar_bsc_automatico.sql│       ├── crear_estado_remoto.py
+
+│       ├── crear_tabla_estado.sql
+
+# 4. Refrescar dashboard (Ctrl+R en navegador)│       └── procedimientos_seguros.sql
+
+```│
+
+├── 02_ETL/                        # Proceso ETL
+
+---│   ├── README.md
+
+│   └── scripts/
+
+## 🎯 10 Key Results (OKRs) Implementados│       ├── etl_final.py          # ETL con procedimiento almacenado
+
+│       ├── procedimientos_etl_completo.sql
+
+### Perspectiva Financiera 💰│       └── procedimientos_etl_final.sql
+
+1. **KR-FIN-01** - Reducir costos promedio en 15%│
+
+2. **KR-FIN-02** - Aumentar rentabilidad a 20%├── 03_Dashboard/                  # Dashboard DSS
+
+│   ├── README.md
+
+### Perspectiva de Clientes 😊│   ├── iniciar_dashboard.sh      # Script de inicio
+
+3. **KR-CLI-01** - Reducir defectos por proyecto en 30%│   ├── detener_dashboard.sh      # Script de parada
+
+4. **KR-CLI-02** - Aumentar satisfacción de cliente a 4.5/5│   ├── backend/
+
+│   │   ├── app.py               # Flask API con todos los endpoints
+
+### Perspectiva de Procesos Internos ⚙️│   │   ├── rayleigh.py          # Modelo de Predicción Rayleigh
+
+5. **KR-PRO-01** - Reducir horas promedio por tarea en 20%│   │   └── requirements.txt
+
+6. **KR-PRO-02** - Aumentar proyectos dentro de presupuesto a 90%│   └── frontend/
+
+7. **KR-PRO-03** - Reducir ciclo promedio de proyecto en 25%│       ├── index.html           # UI con módulos integrados
+
+8. **KR-PRO-04** - Aumentar proyectos entregados a tiempo a 85%│       ├── app.js
+
+│       └── styles.css
+
+### Perspectiva de Aprendizaje e Innovación 📚│
+
+9. **KR-APR-01** - Aumentar horas de capacitación a 40h/empleado├── 04_Datawarehouse/             #  Data Warehouse + OLAP + BSC
+
+10. **KR-APR-02** - Reducir rotación de personal a 8%│   ├── README.md
+
+│   └── scripts/
+
+---│       ├── crear_datawarehouse.sql
+
+│       ├── olap_views.sql       # Cubo OLAP con ROLLUP
+
+## 🌐 Endpoints API│       ├── crear_bsc.sql        # Tablas BSC/OKR
+
+│       ├── consultas_analisis.sql
+
+**Backend:** http://localhost:5000│       └── procedimientos_seguros_dw.sql
+
+│
+
+| Endpoint | Descripción |├── docs/                         # Documentación
+
+|----------|-------------|│   └── README.md
+
+| `/api/estado` | Estado del backend |│
+
+| `/api/tablero` | Tablero consolidado BSC |└── logs/                         #  Archivos de log
+
+| `/api/perspectivas/<nombre>` | Datos por perspectiva |```
+
+| `/api/okr/<codigo_kr>` | Detalle de un KR específico |
+
+| `/api/okr/<codigo_kr>/historial` | Historial de mediciones |---
+
+| `/api/okr/<codigo_kr>/registrar` | Registrar nueva medición |
+
+## Variables de Entorno
+
+---
+
+El sistema utiliza variables de entorno para controlar su comportamiento:
+
+## 🔍 Consultas Útiles
+
+| Variable | Valores | Default | Descripción |
+
+```sql|----------|---------|---------|-------------|
+
+-- Ver todos los OKRs con progreso| `ETL_AMBIENTE` | local, distribuido, test | local | Selecciona configuración de conexiones |
+
+SELECT | `ETL_DRY_RUN` | 0, 1 | 0 | Modo simulación (no escribe en BD) |
+
+    kr.codigo_kr,| `ETL_LOG_LEVEL` | DEBUG, INFO, WARNING, ERROR | INFO | Nivel de detalle de logs |
+
+    kr.nombre,
+
+    kr.valor_inicial,### Ejemplo de uso:
+
+    kr.meta_objetivo,
+
+    ho.valor_observado,```bash
+
+    ROUND(ho.progreso_hacia_meta, 2) as progreso_pct,# macOS / zsh
+
+    ho.estado_semaforoexport ETL_AMBIENTE=local
+
+FROM HechoOKR hoexport ETL_DRY_RUN=0
+
+INNER JOIN DimKR kr ON ho.id_kr = kr.id_kr;export ETL_LOG_LEVEL=DEBUG
+
+python src/etl/etl_incremental.py
+
+-- Ver resumen por perspectiva
+
+SELECT # Para una sola ejecución
+
+    perspectiva,ETL_LOG_LEVEL=WARNING ETL_DRY_RUN=1 python src/etl/etl_incremental.py
+
+    COUNT(*) as total_objetivos,```
+
+    ROUND(AVG(avance_objetivo_porcentaje), 2) as avance_promedio
+
+FROM vw_bsc_tablero_consolidado## Comandos Principales
+
+GROUP BY perspectiva;
+
+```bash
+
+-- Ver top defectos por proyecto# Generar datos de prueba
+
+SELECT python 01_GestionProyectos/datos/generar_datos_final.py
+
+    dp.nombre_proyecto,
+
+    COUNT(*) as total_defectos,# Ejecutar ETL incremental
+
+    SUM(CASE WHEN severidad = 'Crítica' THEN 1 ELSE 0 END) as criticospython src/etl/etl_incremental.py
+
+FROM HechoDefecto hd
+
+INNER JOIN DimProyecto dp ON hd.id_proyecto = dp.id_proyecto# Ejecutar ETL con procedimiento almacenado
+
+GROUP BY dp.nombre_proyectopython 02_ETL/scripts/etl_final.py
+
+ORDER BY total_defectos DESC
+
+LIMIT 10;# Iniciar Dashboard DSS
+
+```cd 03_Dashboard
+
+./iniciar_dashboard.sh
+
+---
+
+# Detener Dashboard
+
+## 🧪 Testingcd 03_Dashboard
+
+./detener_dashboard.sh
+
+Ejecuta el script de verificación completa:```
+
+
+
+```bash---
+
+./verificar_sistema.sh
+
+```## Documentación Adicional
+
+
+
+**Tests ejecutados:**Ver cada módulo para documentación específica:
+
+- ✅ 7 tests de base de datos origen- [01_GestionProyectos/README.md](01_GestionProyectos/README.md) - Base de datos origen
+
+- ✅ 7 tests de DataWarehouse- [02_ETL/README.md](02_ETL/README.md) - Proceso ETL
+
+- ✅ 4 tests de BSC y OKRs- [03_Dashboard/README.md](03_Dashboard/README.md) - Dashboard web
+
+- ✅ 2 tests de métricas calculadas- [04_Datawarehouse/README.md](04_Datawarehouse/README.md) - Data Warehouse
+
+- ✅ 2 tests de vistas
+
+- ✅ 1 test de dashboard---
+
+
+
+**Total:** 23 tests automatizados## Licencia
+
+
+
+---Proyecto educativo para demostración de conceptos ETL y Data Warehouse.
+
+
+
+## 🚨 Solución de Problemas---
+
+
+
+### Error: "Can't connect to MySQL server"**Si te resulta útil, dale una estrella al repositorio.**
+
+```bash
+
+# macOSEste proyecto implementa un sistema ETL (Extract, Transform, Load) distribuido que opera en 3 máquinas independientes para procesar datos de gestión de proyectos.
+
+brew services start mysql
+
+## 🏗 Arquitectura del Sistema
+
+# Linux
+
+sudo systemctl start mysql```
+
+```┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+
+│   MÁQUINA 1     │────▶│   MÁQUINA 2     │────▶│   MÁQUINA 3     │
+
+### Dashboard no carga│ GestionProyectos│     │      ETL        │     │  Datawarehouse  │
+
+```bash│                 │     │                 │     │                 │
+
+cd 03_Dashboard│ ┌─────────────┐ │     │ ┌─────────────┐ │     │ ┌─────────────┐ │
+
+./detener_dashboard.sh│ │ MySQL       │ │     │ │ Python ETL  │ │     │ │ MySQL       │ │
+
+./iniciar_dashboard.sh│ │ BD Origen   │ │     │ │ Procesador  │ │     │ │ BD Destino  │ │
+
+```│ └─────────────┘ │     │ └─────────────┘ │     │ └─────────────┘ │
+
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+
+### Ver logs      Datos              Transformar           Datawarehouse
+
+```bash```
+
+tail -f 03_Dashboard/logs/backend.log
+
+```## Estructura del Proyecto
+
+
+
+---```
+
+ProyectoETL/
+
+## 📊 Capturas de Dashboard├── README.md                           # Este archivo
+
 ├── README_CONFIGURACION.md             # Guía detallada de configuración
-├── requirements.txt                    # Dependencias Python
-│
-├── GestionProyectos/                   # 📊 MÁQUINA 1
-│   ├── config_conexion.py             # Configuración de conexiones
+
+**Vista Consolidada:**├── requirements.txt                    # Dependencias Python
+
+- Tablero con 5 objetivos estratégicos│
+
+- Progresos por perspectiva (🟢 🟡 🔴)├── GestionProyectos/                   #  MÁQUINA 1
+
+- Total de 10 Key Results monitoreados│   ├── config_conexion.py             # Configuración de conexiones
+
 │   └── setup_servidor_bd.py           # Configurador automático BD origen
-│
-├── ETL/                               # ⚙️ MÁQUINA 2
-│   ├── etl_distribuido.py             # ETL principal para 3 máquinas
-│   ├── etl_principal.py               # ETL original (mejorado)
+
+**Vista Detalle:**│
+
+- Valores inicial, meta, y observado├── ETL/                               # MÁQUINA 2
+
+- Cálculo automático de progreso│   ├── etl_distribuido.py             # ETL principal para 3 máquinas
+
+- Historial de mediciones│   ├── etl_principal.py               # ETL original (mejorado)
+
 │   ├── etl_remoto_portable.py         # ETL portable simplificado
-│   ├── servidor_etl_simple.py         # Servidor HTTP para ETL
+
+---│   ├── servidor_etl_simple.py         # Servidor HTTP para ETL
+
 │   ├── setup_etl.py                   # Configurador automático ETL
-│   ├── setup_local.py                 # 🧪 Setup para pruebas locales
-│   ├── api_backend.py                 # 🌐 API Flask para dashboard
-│   └── web-dashboard/                 # 📊 Dashboard Web
+
+## 🤝 Contribuciones│   ├── setup_local.py                 # 🧪 Setup para pruebas locales
+
+│   ├── api_backend.py                 # API Flask para dashboard
+
+Este proyecto es educativo y está abierto a mejoras:│   └── web-dashboard/                 #  Dashboard Web
+
 │       ├── index.html                 # Interface principal
-│       └── dashboard.js               # Lógica del dashboard
-│
-└── Datawarehouse/                     # 🏗️ MÁQUINA 3
-    ├── generacion_datos.py            # Generador de datos de prueba
-    ├── script_creacion_db.sql         # Script creación BD origen
+
+1. **Fork** el repositorio│       └── dashboard.js               # Lógica del dashboard
+
+2. **Crea** una rama feature (`git checkout -b feature/mejora`)│
+
+3. **Commit** tus cambios (`git commit -am 'Agregar nueva métrica'`)└── Datawarehouse/                     # 🏗 MÁQUINA 3
+
+4. **Push** a la rama (`git push origin feature/mejora`)    ├── generacion_datos.py            # Generador de datos de prueba
+
+5. **Abre** un Pull Request    ├── script_creacion_db.sql         # Script creación BD origen
+
     ├── script_datawarehouse.sql       # Script creación datawarehouse
-    └── setup_datawarehouse.py         # Configurador automático DW
+
+---    └── setup_datawarehouse.py         # Configurador automático DW
+
 ```
 
-## 🚀 Configuración Rápida
+## 📝 Licencia
+
+##  Configuración Rápida
+
+Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ### 🧪 Opción 1: Prueba Local (Recomendada para desarrollo)
 
+---
+
 **Una sola máquina - Todo local:**
-```bash
+
+## 👨‍💻 Autor```bash
+
 cd ETL
-python3 setup_local.py
-```
-Este comando:
--  Instala dependencias automáticamente
--  Configura bases de datos locales
--  Genera datos de prueba
+
+Proyecto desarrollado como demostración de:python3 setup_local.py
+
+- Arquitectura de DataWarehouse```
+
+- Implementación de ETLEste comando:
+
+- Balanced Scorecard (BSC)-  Instala dependencias automáticamente
+
+- Dashboard interactivo-  Configura bases de datos locales
+
+- Cálculo automático de métricas-  Genera datos de prueba
+
 -  Ejecuta ETL de prueba
--  Inicia dashboard web en http://localhost:5000
+
+----  Inicia dashboard web en http://localhost:5000
+
 -  Abre interfaz visual en navegador
 
-### 🏗️ Opción 2: Configuración Distribuida (3 máquinas)
+## 🎓 Uso Educativo
 
-**Máquina 1 (GestionProyectos):**
-```bash
-cd GestionProyectos
-python3 setup_servidor_bd.py
-```
+### 🏗 Opción 2: Configuración Distribuida (3 máquinas)
 
-**Máquina 2 (ETL):**
+Ideal para:
+
+- ✅ Aprender diseño de DataWarehouse**Máquina 1 (GestionProyectos):**
+
+- ✅ Practicar ETL y transformaciones```bash
+
+- ✅ Implementar BSC con OKRscd GestionProyectos
+
+- ✅ Desarrollar dashboards con Flaskpython3 setup_servidor_bd.py
+
+- ✅ Entender arquitectura estrella```
+
+
+
+---**Máquina 2 (ETL):**
+
 ```bash
-cd ETL
+
+**¡Sistema listo para producción o demostración!** 🚀cd ETL
+
 python3 setup_etl.py
-```
+
+Para transferir a otra máquina, consulta **[PORTABILIDAD.md](PORTABILIDAD.md)**```
+
 
 **Máquina 3 (Datawarehouse):**
 ```bash
@@ -1035,11 +711,11 @@ cd Datawarehouse
 python3 setup_datawarehouse.py
 ```
 
-### 📖 Opción 3: Configuración Manual
+###  Opción 3: Configuración Manual
 
 Ver [README_CONFIGURACION.md](README_CONFIGURACION.md) para pasos detallados.
 
-## ⚡ Ejecución del ETL
+##  Ejecución del ETL
 
 ### 🧪 Modo Local (Desarrollo):
 ```bash
@@ -1050,14 +726,14 @@ python3 api_backend.py    # Solo API backend
 python3 etl_principal.py  # Solo ETL
 ```
 
-### 🏗️ Modo Distribuido (Producción):
+### 🏗 Modo Distribuido (Producción):
 ```bash
 # Desde la Máquina ETL (Máquina 2):
 python3 etl_distribuido.py    # ETL distribuido
 python3 etl_remoto_portable.py # ETL portable alternativo
 ```
 
-### 🌐 Dashboard Web:
+###  Dashboard Web:
 - **Local:** http://localhost:5000 (se abre automáticamente)
 - **API Endpoints:** http://localhost:5000/api/status
 - **Dashboard:** Abrir `ETL/web-dashboard/index.html` en navegador
@@ -1071,7 +747,7 @@ python3 servidor_etl_simple.py
 curl -X POST http://IP_MAQUINA_2:8081/ejecutar-etl
 ```
 
-## 🔧 Configuración de Red
+## Configuración de Red
 
 ### IPs de Ejemplo:
 - **Máquina 1:** `192.168.1.100` (GestionProyectos)
@@ -1086,7 +762,7 @@ curl -X POST http://IP_MAQUINA_2:8081/ejecutar-etl
 - **Usuario:** `etl_user`
 - **Password:** `etl_password_123`
 
-## 📊 Bases de Datos
+##  Bases de Datos
 
 ### Base Origen (Máquina 1): `gestionproyectos_hist`
 - **Cliente:** Información de clientes
@@ -1104,7 +780,7 @@ curl -X POST http://IP_MAQUINA_2:8081/ejecutar-etl
 - **HechoProyecto:** Métricas de proyectos
 - **HechoTarea:** Métricas de tareas
 
-## 🔍 Verificación del Sistema
+##  Verificación del Sistema
 
 ### Comprobar Conectividad:
 ```bash
@@ -1124,7 +800,7 @@ SELECT COUNT(*) FROM gestionproyectos_hist.Proyecto;
 SELECT COUNT(*) FROM dw_proyectos_hist.HechoProyecto;
 ```
 
-## 📋 Requisitos
+##  Requisitos
 
 ### Software:
 - **Python 3.6+** (Máquina 2)
@@ -1141,7 +817,7 @@ pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors fake
 - Puertos MySQL (3306) abiertos
 - Permisos de firewall configurados
 
-## 🛠️ Solución de Problemas
+##  Solución de Problemas
 
 ### Error de Conexión:
 1. Verificar que MySQL esté funcionando
@@ -1160,9 +836,9 @@ pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors fake
 3. Revisar logs de error en consola
 4. Verificar estructura del datawarehouse
 
-## 🎯 Características del Dashboard Web
+##  Características del Dashboard Web
 
-### 📊 Interface Visual Completa:
+###  Interface Visual Completa:
 - **Dashboard Principal:** Métricas en tiempo real y gráficos
 - **Datos Origen:** Visualización de tablas de la BD transaccional
 - **Control ETL:** Ejecución visual del ETL con logs en tiempo real
@@ -1182,7 +858,7 @@ pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors fake
 - Gráficos interactivos con Chart.js
 - Bootstrap 5 para styling moderno
 
-## 🔒 Seguridad
+## * Seguridad
 
 - Cambiar passwords por defecto en producción
 - Usar VPN para conexiones entre máquinas
@@ -1190,7 +866,7 @@ pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors fake
 - Monitorear conexiones MySQL
 - Realizar backups regulares
 
-## 📚 Documentación Adicional
+## Documentación Adicional
 
 - [README_CONFIGURACION.md](README_CONFIGURACION.md) - Guía detallada de configuración
 - Comentarios en código fuente para lógica específica
@@ -1202,14 +878,14 @@ pip install pandas sqlalchemy mysql-connector-python numpy flask flask-cors fake
 **Autor:** Sistema ETL Distribuido  
 **Fecha:** Octubre 2025
 
-## 📋 Descripción
+##  Descripción
 
 Este proyecto implementa un sistema ETL completo que:
 - Extrae datos de una base de datos transaccional de gestión de proyectos
 - Transforma y limpia los datos 
 - Carga los datos en un Data Warehouse optimizado para análisis
 
-## 🏗️ Arquitectura
+## 🏗 Arquitectura
 
 ### Bases de Datos
 - **gestionproyectos_hist**: Base de datos transaccional (fuente)
@@ -1221,7 +897,7 @@ Este proyecto implementa un sistema ETL completo que:
 - **Servidor ETL**: API HTTP para ejecución remota del ETL
 - **Generación de Datos**: Script para poblar la base de datos de prueba
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 ProyectoETL/
@@ -1235,7 +911,7 @@ ProyectoETL/
 └── script_datawarehouse.sql     # Script de creación del Data Warehouse
 ```
 
-## 🚀 Instalación y Configuración
+##  Instalación y Configuración
 
 ### Prerrequisitos
 - Python 3.8+
@@ -1258,7 +934,7 @@ pip install pandas sqlalchemy mysql-connector-python
 2. **Configurar conexiones**:
    Editar `config_conexion.py` con tus credenciales de MySQL.
 
-## 📊 Uso
+##  Uso
 
 ### 1. Generación de Datos de Prueba
 ```bash
@@ -1281,7 +957,7 @@ python servidor_etl_simple.py
 ```
 Luego acceder a: `http://localhost:8081`
 
-## 📈 Data Warehouse - Esquema Dimensional
+##  Data Warehouse - Esquema Dimensional
 
 ### Tablas de Dimensiones
 - **DimCliente**: Información de clientes
@@ -1293,7 +969,7 @@ Luego acceder a: `http://localhost:8081`
 ### Tabla de Hechos
 - **FactTareas**: Métricas y KPIs de tareas
 
-## 🔧 Configuración Avanzada
+## Configuración Avanzada
 
 ### Conexión Remota
 Para habilitar conexiones remotas a MySQL:
@@ -1308,7 +984,7 @@ El sistema soporta configuración via variables de entorno:
 - `DB_USER`: Usuario de base de datos
 - `DB_PASSWORD`: Contraseña
 
-## 📋 Funcionalidades
+##  Funcionalidades
 
 ### ETL Principal
 -  Extracción de datos transaccionales
@@ -1329,7 +1005,7 @@ El sistema soporta configuración via variables de entorno:
 -  Logs de ejecución
 -  Estado de procesos
 
-## 🛠️ Tecnologías Utilizadas
+##  Tecnologías Utilizadas
 
 - **Python**: Lenguaje principal
 - **Pandas**: Manipulación de datos
@@ -1341,7 +1017,7 @@ El sistema soporta configuración via variables de entorno:
 
 Este proyecto está bajo la Licencia MIT - ver archivo LICENSE para detalles.
 
-## 👥 Contribución
+##  Contribución
 
 1. Fork del proyecto
 2. Crear rama de feature (`git checkout -b feature/nueva-funcionalidad`)

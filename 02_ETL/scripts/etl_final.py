@@ -84,7 +84,7 @@ def main():
         exito = ejecutar_etl()
         sys.exit(0 if exito else 1)
     except KeyboardInterrupt:
-        print(f"\n[{timestamp()}] ⚠️  Interrumpido por usuario")
+        print(f"\n[{timestamp()}]   Interrumpido por usuario")
         sys.exit(2)
 
 if __name__ == "__main__":

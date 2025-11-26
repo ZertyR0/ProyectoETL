@@ -1,8 +1,8 @@
-# 🏢 Datawarehouse - Análisis y Business Intelligence
+#  Datawarehouse - Análisis y Business Intelligence
 
 Esta carpeta contiene todos los elementos del datawarehouse del sistema ETL.
 
-## 📁 Estructura
+##  Estructura
 
 ```
 04_Datawarehouse/
@@ -12,22 +12,22 @@ Esta carpeta contiene todos los elementos del datawarehouse del sistema ETL.
     └── consultas_analisis.sql  # Consultas de análisis y reportes
 ```
 
-## 🎯 Propósito
+##  Propósito
 
 El datawarehouse **dw_proyectos_hist** almacena:
 
-### 📊 Dimensiones
+###  Dimensiones
 - **DimCliente**: Información de clientes
 - **DimEmpleado**: Datos de empleados
 - **DimEquipo**: Equipos de trabajo  
 - **DimProyecto**: Información de proyectos
 - **DimTiempo**: Dimensión temporal completa
 
-### 📈 Hechos
+###  Hechos
 - **HechoProyecto**: Métricas y KPIs de proyectos
 - **HechoTarea**: Métricas y KPIs de tareas
 
-## 🚀 Uso
+##  Uso
 
 1. **Crear el datawarehouse:**
    ```bash
@@ -39,7 +39,7 @@ El datawarehouse **dw_proyectos_hist** almacena:
    mysql -u root -p dw_proyectos_hist < scripts/consultas_analisis.sql
    ```
 
-## 📋 Esquema Estrella
+##  Esquema Estrella
 
 ```
          DimTiempo
@@ -57,7 +57,7 @@ DimEmpleado - HechoTarea - DimEquipo
          DimProyecto
 ```
 
-## 📊 Métricas Principales
+##  Métricas Principales
 
 ### Proyectos
 -  Cumplimiento de tiempo y presupuesto
@@ -72,7 +72,7 @@ DimEmpleado - HechoTarea - DimEquipo
 -  Productividad por empleado
 -  Utilización de equipos
 
-## 🔍 Consultas Comunes
+##  Consultas Comunes
 
 - **Top proyectos por rentabilidad**
 - **Empleados más productivos**
@@ -81,7 +81,7 @@ DimEmpleado - HechoTarea - DimEquipo
 - **Métricas de equipos**
 - **Reportes ejecutivos**
 
-## 📈 Business Intelligence
+##  Business Intelligence
 
 El datawarehouse soporta:
 -  Reportes ejecutivos

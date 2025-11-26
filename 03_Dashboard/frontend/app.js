@@ -44,7 +44,7 @@ function addLog(message, type = 'info') {
     const typeIcon = {
         'info': '',
         'success': '',
-        'warning': '⚠️',
+        'warning': '',
         'error': ''
     }[type] || '';
     
@@ -399,7 +399,7 @@ async function generarDatosPersonalizados() {
         const modal = bootstrap.Modal.getInstance(document.getElementById('generarDatosModal'));
         modal.hide();
         
-        addLog(`📊 Generando datos: ${clientes} clientes, ${empleados} empleados, ${equipos} equipos, ${proyectos} proyectos...`, 'info');
+        addLog(` Generando datos: ${clientes} clientes, ${empleados} empleados, ${equipos} equipos, ${proyectos} proyectos...`, 'info');
         showToast('Generando datos personalizados...', 'info');
         
         const result = await makeRequest('/generar-datos', {
@@ -470,7 +470,7 @@ async function ejecutarETL() {
         btnETL.disabled = true;
         btnETL.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ejecutando ETL...';
         
-        addLog('🚀 Iniciando proceso ETL...', 'info');
+        addLog(' Iniciando proceso ETL...', 'info');
         showToast('Ejecutando proceso ETL...', 'info');
         
         const result = await makeRequest('/ejecutar-etl', {
@@ -478,7 +478,7 @@ async function ejecutarETL() {
         });
         
         addLog(' Proceso ETL completado exitosamente', 'success');
-        addLog(`📊 Registros procesados: ${JSON.stringify(result.registros_procesados)}`, 'info');
+        addLog(` Registros procesados: ${JSON.stringify(result.registros_procesados)}`, 'info');
         showToast(result.message, 'success');
         
         // Recargar datos
@@ -729,7 +729,7 @@ async function buscarTrazabilidad(event) {
     }
     
     try {
-        addLog(`🔍 Buscando ${tipo} por ${criterio}: ${valor}...`, 'info');
+        addLog(` Buscando ${tipo} por ${criterio}: ${valor}...`, 'info');
         showToast('Buscando...', 'info');
         
         const resultado = await makeRequest('/buscar-trazabilidad', {
@@ -1038,7 +1038,8 @@ let tieneAccesoPM = false;
 
 async function cargarDimensionesOLAP() {
     try {
-        const response = await fetch(`${API_BASE}/olap/dimensiones`);
+        // Usar nuevo endpoint de filtros disponibles
+        const response = await fetch(`${API_BASE}/olap/filtros-disponibles`);
         const data = await response.json();
         
         if (data.success) {
@@ -1047,26 +1048,28 @@ async function cargarDimensionesOLAP() {
             const equipoSelect = document.getElementById('filtro-equipo');
             const anioSelect = document.getElementById('filtro-anio');
             
-            // Limpiar y poblar clientes
+            // Limpiar y poblar clientes con contador de proyectos
             clienteSelect.innerHTML = '<option value="">Todos los clientes</option>';
-            data.dimensiones.clientes.forEach(cliente => {
-                clienteSelect.innerHTML += `<option value="${cliente.id_cliente}">${cliente.nombre_cliente} (${cliente.sector})</option>`;
+            data.filtros.clientes.forEach(cliente => {
+                clienteSelect.innerHTML += `<option value="${cliente.id_cliente}">${cliente.nombre_cliente} - ${cliente.sector} (${cliente.total_proyectos} proy.)</option>`;
             });
             
-            // Limpiar y poblar equipos
+            // Limpiar y poblar equipos con contador de proyectos
             equipoSelect.innerHTML = '<option value="">Todos los equipos</option>';
-            data.dimensiones.equipos.forEach(equipo => {
-                equipoSelect.innerHTML += `<option value="${equipo.id_equipo}">${equipo.nombre_equipo} (${equipo.tipo})</option>`;
+            data.filtros.equipos.forEach(equipo => {
+                equipoSelect.innerHTML += `<option value="${equipo.id_equipo}">${equipo.nombre_equipo} (${equipo.total_proyectos} proy.)</option>`;
             });
             
-            // Limpiar y poblar años
+            // Limpiar y poblar años con contador de proyectos
             anioSelect.innerHTML = '<option value="">Todos los años</option>';
-            data.dimensiones.anios.forEach(anio => {
-                anioSelect.innerHTML += `<option value="${anio.anio}">${anio.anio}</option>`;
+            data.filtros.anios.forEach(anio => {
+                anioSelect.innerHTML += `<option value="${anio.anio}">${anio.anio} (${anio.total_proyectos} proy.)</option>`;
             });
             
             // Cargar KPIs ejecutivos
             await cargarKPIsEjecutivos();
+            
+            showToast(`Filtros cargados: ${data.filtros.clientes.length} clientes, ${data.filtros.equipos.length} equipos, ${data.filtros.anios.length} años`, 'success');
         }
     } catch (error) {
         console.error('Error cargando dimensiones OLAP:', error);
@@ -1145,13 +1148,15 @@ async function aplicarFiltrosOLAP() {
         if (anio) params.append('anio', anio);
         params.append('nivel', nivel);
         
-        const response = await fetch(`${API_BASE}/olap/kpis?${params}`);
+        // Usar nuevo endpoint v2 con vistas optimizadas
+        const response = await fetch(`${API_BASE}/olap/kpis-v2?${params}`);
         const data = await response.json();
         
         if (data.success) {
-            mostrarResultadosOLAP(data.data);
+            mostrarResultadosOLAP(data.data, nivel);
+            showToast(`${data.total_resultados} resultados encontrados (${nivel})`, 'success');
         } else {
-            showToast('Error aplicando filtros OLAP: ' + data.message, 'error');
+            showToast('Error aplicando filtros OLAP: ' + (data.error || data.message), 'error');
         }
     } catch (error) {
         console.error('Error aplicando filtros OLAP:', error);
@@ -1159,23 +1164,143 @@ async function aplicarFiltrosOLAP() {
     }
 }
 
-function mostrarResultadosOLAP(datos) {
-    const tbody = document.querySelector('#tabla-olap-resultados tbody');
+function mostrarResultadosOLAP(datos, nivel) {
+    const tabla = document.querySelector('#tabla-olap-resultados');
+    const thead = tabla.querySelector('thead tr');
+    const tbody = tabla.querySelector('tbody');
+    
     tbody.innerHTML = '';
     
+    if (!datos || datos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No hay datos disponibles</td></tr>';
+        return;
+    }
+    
+    // Actualizar encabezados según nivel
+    if (nivel === 'total') {
+        thead.innerHTML = `
+            <th colspan="3" class="text-center">Nivel</th>
+            <th>Total Proyectos</th>
+            <th>Completados</th>
+            <th>Presupuesto Total</th>
+            <th>Costo Real</th>
+            <th>Rentabilidad %</th>
+            <th>% En Presupuesto</th>
+        `;
+    } else if (nivel === 'por_cliente') {
+        thead.innerHTML = `
+            <th>Cliente</th>
+            <th>Sector</th>
+            <th>-</th>
+            <th>Total Proyectos</th>
+            <th>Completados</th>
+            <th>Presupuesto Total</th>
+            <th>Costo Real</th>
+            <th>Rentabilidad %</th>
+            <th>% En Presupuesto</th>
+        `;
+    } else if (nivel === 'por_equipo') {
+        thead.innerHTML = `
+            <th>-</th>
+            <th>Equipo</th>
+            <th>-</th>
+            <th>Total Proyectos</th>
+            <th>Completados</th>
+            <th>Presupuesto Total</th>
+            <th>Costo Real</th>
+            <th>Rentabilidad %</th>
+            <th>% En Presupuesto</th>
+        `;
+    } else if (nivel === 'por_tiempo') {
+        thead.innerHTML = `
+            <th>-</th>
+            <th>-</th>
+            <th>Año</th>
+            <th>Total Proyectos</th>
+            <th>Completados</th>
+            <th>Presupuesto Total</th>
+            <th>Costo Real</th>
+            <th>Rentabilidad %</th>
+            <th>% En Presupuesto</th>
+        `;
+    } else { // detallado
+        thead.innerHTML = `
+            <th>Cliente</th>
+            <th>Equipo</th>
+            <th>Año</th>
+            <th>Proyecto</th>
+            <th>Estado</th>
+            <th>Presupuesto</th>
+            <th>Costo Real</th>
+            <th>Rentabilidad %</th>
+            <th>En Presupuesto</th>
+        `;
+    }
+    
+    // Llenar datos
     datos.forEach(fila => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${fila.cliente || 'N/A'}</td>
-            <td>${fila.equipo || 'N/A'}</td>
-            <td>${fila.anio || 'N/A'}</td>
-            <td>${fila.total_proyectos}</td>
-            <td>${fila.proyectos_completados}</td>
-            <td>$${(fila.presupuesto_total || 0).toLocaleString()}</td>
-            <td>$${(fila.costo_real_total || 0).toLocaleString()}</td>
-            <td>${(fila.progreso_promedio || 0).toFixed(1)}%</td>
-            <td>${fila.proyectos_a_tiempo}</td>
-        `;
+        
+        // Adaptar columnas según el nivel
+        if (nivel === 'total') {
+            tr.innerHTML = `
+                <td colspan="3" class="text-center fw-bold">TOTAL GENERAL</td>
+                <td class="fw-bold">${fila.total_proyectos || 0}</td>
+                <td>${fila.proyectos_completados || 0}</td>
+                <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
+                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
+                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+            `;
+        } else if (nivel === 'por_cliente') {
+            tr.innerHTML = `
+                <td><strong>${fila.nombre || 'N/A'}</strong></td>
+                <td><span class="badge bg-secondary">${fila.sector || 'N/A'}</span></td>
+                <td>-</td>
+                <td class="fw-bold">${fila.total_proyectos || 0}</td>
+                <td>${fila.proyectos_completados || 0}</td>
+                <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
+                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
+                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+            `;
+        } else if (nivel === 'por_equipo') {
+            tr.innerHTML = `
+                <td>-</td>
+                <td><strong>${fila.nombre_equipo || fila.nombre || 'N/A'}</strong></td>
+                <td>-</td>
+                <td class="fw-bold">${fila.total_proyectos || 0}</td>
+                <td>${fila.proyectos_completados || 0}</td>
+                <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
+                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
+                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+            `;
+        } else if (nivel === 'por_tiempo') {
+            tr.innerHTML = `
+                <td>-</td>
+                <td>-</td>
+                <td class="fw-bold">${fila.anio || 'N/A'}</td>
+                <td class="fw-bold">${fila.total_proyectos || 0}</td>
+                <td>${fila.proyectos_completados || 0}</td>
+                <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
+                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
+                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+            `;
+        } else { // detallado
+            tr.innerHTML = `
+                <td>${fila.cliente_nombre || fila.cliente || 'N/A'}</td>
+                <td>${fila.equipo_nombre || fila.equipo || 'N/A'}</td>
+                <td>${fila.anio || 'N/A'}</td>
+                <td>1</td>
+                <td><span class="badge bg-success">Completado</span></td>
+                <td>$${(fila.presupuesto || 0).toLocaleString('es-MX')}</td>
+                <td>$${(fila.costo_real || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_pct || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_pct || 0).toFixed(1)}%</td>
+                <td>${fila.cumplimiento_presupuesto ? '<span class="text-success">✓ Sí</span>' : '<span class="text-danger">✗ No</span>'}</td>
+            `;
+        }
         tbody.appendChild(tr);
     });
 }
@@ -1424,120 +1549,106 @@ function mostrarPerspectivasBSC(perspectivas) {
             
             let krsHtml = '';
             objetivo.krs.forEach(kr => {
+                // Verificar si hay mediciones registradas
+                const tieneMediciones = kr.valor_observado !== null && kr.valor_observado !== undefined;
+                
+                // Verificar si el valor observado es igual al valor inicial (sin cambios aún)
+                const sinCambios = tieneMediciones && 
+                                   kr.valor_observado === kr.valor_inicial && 
+                                   kr.progreso_hacia_meta === 0;
+                
                 const krColor = {
                     'Verde': 'success',
                     'Amarillo': 'warning', 
                     'Rojo': 'danger'
                 }[kr.estado_semaforo] || 'secondary';
                 
-                const progreso = kr.progreso_hacia_meta || 0;
-                const progresoWidth = Math.min(progreso, 100);
+                // Si no hay mediciones, mostrar progreso como null en lugar de 0
+                let progreso, progresoTexto;
+                if (!tieneMediciones) {
+                    progreso = null;
+                    progresoTexto = 'Sin datos';
+                } else if (sinCambios) {
+                    progreso = 0;
+                    progresoTexto = '0% (inicial)';
+                } else {
+                    progreso = kr.progreso_hacia_meta || 0;
+                    progresoTexto = `${progreso.toFixed(0)}%`;
+                }
                 
-                // Determinar si el valor es "undefined" y mostrarlo como N/A
-                const valorObservado = (kr.valor_observado !== null && kr.valor_observado !== undefined) 
-                    ? kr.valor_observado 
-                    : 'N/A';
+                const progresoWidth = progreso !== null ? Math.min(progreso, 100) : 0;
+                
+                // Determinar valores para mostrar
+                const valorObservado = tieneMediciones ? kr.valor_observado : 'Sin medición';
                 const metaObjetivo = kr.meta_objetivo || 'N/A';
                 
-                // Calcular porcentaje de la meta alcanzado
-                const porcentajeMeta = valorObservado !== 'N/A' && metaObjetivo !== 'N/A' 
-                    ? (valorObservado / metaObjetivo * 100).toFixed(1)
-                    : 0;
-                
-                // Generar mini gráfico de comparación
-                const valorWidth = Math.min((valorObservado / metaObjetivo * 100), 150);
-                const metaWidth = 100;
-                
                 krsHtml += `
-                    <li class="list-group-item kr-item">
-                        <div class="row">
-                            <div class="col-lg-8">
-                                <div class="d-flex align-items-center mb-3">
+                    <li class="list-group-item kr-item ${!tieneMediciones || sinCambios ? 'border-warning' : ''}">
+                        <div class="row align-items-center">
+                            <div class="col-lg-9">
+                                <div class="d-flex align-items-center mb-2">
                                     <div class="kr-icon-circle bg-${krColor} bg-opacity-10 me-3">
                                         <i class="fas fa-chart-line text-${krColor}"></i>
                                     </div>
                                     <div class="flex-grow-1">
-                                        <h6 class="mb-1 fw-bold">${kr.kr_nombre}</h6>
-                                        <small class="text-muted">${kr.kr_descripcion || 'Sin descripción'}</small>
+                                        <h6 class="mb-0 fw-bold">${kr.kr_nombre}</h6>
+                                        <small class="text-muted">${kr.kr_descripcion || ''}</small>
                                     </div>
-                                    <span class="badge bg-${krColor} fs-6 px-3 py-2">${progreso.toFixed(1)}%</span>
+                                    <span class="badge bg-${krColor} fs-6 px-3 py-2">${progresoTexto}</span>
                                 </div>
                                 
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <div class="metric-box">
-                                            <i class="fas fa-tachometer-alt text-primary me-1"></i>
-                                            <small class="text-muted d-block">Valor Actual</small>
-                                            <strong class="fs-5 text-primary">${valorObservado} ${kr.unidad_medida}</strong>
+                                ${!tieneMediciones ? `
+                                <div class="alert alert-warning mb-2 py-2">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <small>Este KR no tiene mediciones registradas. Los datos se cargan automáticamente desde el ETL.</small>
+                                </div>
+                                ` : sinCambios ? `
+                                <div class="alert alert-info mb-2 py-2">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <small>Valor inicial registrado. El progreso se actualizará cuando el ETL cargue nuevos datos.</small>
+                                </div>
+                                ` : ''}
+                                
+                                <div class="row g-2 mb-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <small class="text-muted d-block">Actual</small>
+                                            <strong class="${tieneMediciones ? 'text-primary' : 'text-muted'}">${valorObservado} ${kr.unidad_medida}</strong>
                                         </div>
-                                        <div class="metric-box text-center">
-                                            <i class="fas fa-arrow-right text-secondary me-1"></i>
-                                            <small class="text-muted d-block">Progreso</small>
-                                            <strong class="fs-5 text-${krColor}">${porcentajeMeta}%</strong>
-                                        </div>
-                                        <div class="metric-box text-end">
-                                            <i class="fas fa-bullseye text-success me-1"></i>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 bg-light rounded">
                                             <small class="text-muted d-block">Meta</small>
-                                            <strong class="fs-5 text-success">${metaObjetivo} ${kr.unidad_medida}</strong>
+                                            <strong class="text-success">${metaObjetivo} ${kr.unidad_medida}</strong>
                                         </div>
                                     </div>
-                                    
-                                    <!-- Mini gráfico de comparación -->
-                                    <div class="mini-chart-container mb-2">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <small class="text-muted me-2" style="width: 60px;">Actual:</small>
-                                            <div class="mini-bar bg-primary bg-opacity-75" style="width: ${valorWidth}%; height: 20px; border-radius: 4px;"></div>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <small class="text-muted me-2" style="width: 60px;">Meta:</small>
-                                            <div class="mini-bar bg-success bg-opacity-50" style="width: ${metaWidth}%; height: 20px; border-radius: 4px;"></div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <small class="text-muted d-block">Tipo</small>
+                                            <strong>${kr.tipo_metrica}</strong>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <div class="progress" style="height: 16px; background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);">
-                                    <div class="progress-bar bg-gradient bg-${krColor}" 
+                                <div class="progress" style="height: 12px;">
+                                    <div class="progress-bar bg-${krColor}" 
                                          role="progressbar" 
-                                         style="width: ${progresoWidth}%; background: linear-gradient(90deg, var(--bs-${krColor}) 0%, var(--bs-${krColor}) 100%);" 
-                                         aria-valuenow="${progreso}" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100"
-                                         title="${progreso.toFixed(1)}% de cumplimiento">
-                                        <small class="fw-bold px-2">${progreso.toFixed(0)}%</small>
+                                         style="width: ${progresoWidth}%;" 
+                                         title="${progresoTexto} de cumplimiento">
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="col-lg-4 border-start">
-                                <div class="d-flex flex-column h-100 justify-content-between">
-                                    <div>
-                                        <small class="text-muted d-block mb-2">
-                                            <i class="fas fa-info-circle me-1"></i> Detalles
-                                        </small>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Tipo:</small>
-                                            <span class="badge bg-secondary ms-1">${kr.tipo_metrica}</span>
-                                        </div>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Umbral Verde:</small>
-                                            <span class="text-success fw-bold">${kr.umbral_verde} ${kr.unidad_medida}</span>
-                                        </div>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Umbral Amarillo:</small>
-                                            <span class="text-warning fw-bold">${kr.umbral_amarillo} ${kr.unidad_medida}</span>
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm w-100" 
-                                            onclick="abrirModalMedicion('${kr.id_kr}', '${kr.kr_nombre}')"
-                                            title="Registrar nueva medición">
-                                        <i class="fas fa-plus-circle me-1"></i> Registrar Medición
-                                    </button>
+                            <div class="col-lg-3 border-start text-center">
+                                <small class="text-muted d-block mb-1">Umbrales</small>
+                                <div class="mb-1">
+                                    <span class="badge bg-success">${kr.umbral_verde} ${kr.unidad_medida}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning">${kr.umbral_amarillo} ${kr.unidad_medida}</span>
                                 </div>
                             </div>
                         </div>
-                        ${valorObservado === 'N/A' ? 
-                            '<div class="alert alert-warning mt-2 mb-0 py-2"><i class="fas fa-exclamation-triangle me-2"></i> <small>Sin mediciones registradas. Haz clic en "Registrar Medición" para comenzar.</small></div>' 
-                            : ''}
                     </li>
                 `;
             });
@@ -1627,54 +1738,6 @@ function mostrarPerspectivasBSC(perspectivas) {
             </div>
         `;
     });
-}
-
-function abrirModalMedicion(idKr, nombreKr) {
-    document.getElementById('kr-id-medicion').value = idKr;
-    document.getElementById('kr-nombre-medicion').value = nombreKr;
-    document.getElementById('fecha-medicion').value = new Date().toISOString().split('T')[0];
-    
-    const modal = new bootstrap.Modal(document.getElementById('modal-medicion-okr'));
-    modal.show();
-}
-
-async function registrarMedicionOKR() {
-    try {
-        const idKr = document.getElementById('kr-id-medicion').value;
-        const valorObservado = parseFloat(document.getElementById('valor-medicion').value);
-        const fechaMedicion = document.getElementById('fecha-medicion').value;
-        const comentario = document.getElementById('comentario-medicion').value;
-        
-        const response = await fetch(`${API_BASE}/bsc/medicion`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                id_kr: idKr,
-                valor_observado: valorObservado,
-                fecha_medicion: fechaMedicion,
-                comentario: comentario
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Medición registrada exitosamente', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modal-medicion-okr')).hide();
-            
-            // Recargar datos BSC
-            if (document.getElementById('section-bsc-okr').style.display !== 'none') {
-                await cargarBSC_OKR();
-            }
-        } else {
-            showToast('Error registrando medición: ' + data.message, 'error');
-        }
-    } catch (error) {
-        console.error('Error registrando medición:', error);
-        showToast('Error registrando medición', 'error');
-    }
 }
 
 // ========================================
@@ -1927,7 +1990,14 @@ function generarGraficaRayleigh(data) {
         const defectosAcumulados = predicciones.map(p => p.defectos_acumulados);
         const semanaPico = Math.round(data.metricas_proyecto.tiempo_pico_semanas);
         
-        console.log('Generando gráfica con:', { semanas, defectosPorSemana, semanaPico });
+        console.log('=== DEBUG CURVA RAYLEIGH ===');
+        console.log('Total semanas:', semanas.length);
+        console.log('Primera semana:', semanas[0], 'Defectos:', defectosPorSemana[0]);
+        console.log('Última semana:', semanas[semanas.length-1], 'Defectos:', defectosPorSemana[semanas.length-1]);
+        console.log('Semana pico calculada:', semanaPico);
+        console.log('Defecto máximo:', Math.max(...defectosPorSemana));
+        console.log('Índice defecto máximo:', defectosPorSemana.indexOf(Math.max(...defectosPorSemana)));
+        console.log('============================');
         
         chartRayleighInstance = new Chart(ctx, {
             type: 'line',
@@ -1935,31 +2005,35 @@ function generarGraficaRayleigh(data) {
                 labels: semanas.map(s => `S${s}`),
                 datasets: [
                     {
-                        label: 'Defectos por Semana',
+                        label: 'Defectos por Semana (Curva Rayleigh)',
                         data: defectosPorSemana,
                         borderColor: '#dc2626',
-                        backgroundColor: 'rgba(220, 38, 38, 0.3)',
-                        borderWidth: 3,
+                        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+                        borderWidth: 4,
                         fill: true,
-                        tension: 0.4,
-                        pointRadius: semanas.map(s => s === semanaPico ? 10 : 5),
+                        tension: 0.4,  // Curva más suave para ver forma de campana
+                        cubicInterpolationMode: 'monotone',  // Interpolación suave
+                        yAxisID: 'y',
+                        pointRadius: semanas.map(s => s === semanaPico ? 12 : 4),
                         pointBackgroundColor: semanas.map(s => s === semanaPico ? '#f59e0b' : '#dc2626'),
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
-                        pointHoverRadius: 10
+                        pointHoverRadius: 14
                     },
                     {
                         label: 'Defectos Acumulados',
                         data: defectosAcumulados,
                         borderColor: '#06b6d4',
-                        backgroundColor: 'rgba(6, 182, 212, 0.3)',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
                         borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 4,
+                        fill: false,
+                        tension: 0.3,
+                        yAxisID: 'y1',
+                        pointRadius: 3,
                         pointBackgroundColor: '#06b6d4',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 1
+                        pointBorderWidth: 1,
+                        borderDash: [5, 5]
                     }
                 ]
             },
@@ -1976,46 +2050,107 @@ function generarGraficaRayleigh(data) {
                     position: 'top',
                     labels: {
                         font: {
-                            size: 13,
+                            size: 14,
                             weight: '600'
                         },
-                        padding: 15,
-                        usePointStyle: true
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    padding: 15,
+                    titleFont: { size: 15, weight: 'bold' },
+                    bodyFont: { size: 14 },
+                    bodySpacing: 8,
                     callbacks: {
                         title: function(context) {
                             const semana = context[0].label;
-                            return semana === `S${semanaPico}` ? `${semana} 🏔️ (Pico)` : semana;
+                            const semanaNum = parseInt(semana.replace('S', ''));
+                            if (semanaNum === semanaPico) {
+                                return `${semana} 🏔️ PICO DE DEFECTOS`;
+                            }
+                            return semana;
                         },
                         label: function(context) {
                             const valor = Math.round(context.parsed.y * 100) / 100;
-                            return `${context.dataset.label}: ${valor}`;
+                            const label = context.dataset.label;
+                            if (label.includes('Rayleigh')) {
+                                return `📊 ${label}: ${valor} defectos`;
+                            }
+                            return `📈 ${label}: ${valor} defectos`;
+                        },
+                        afterBody: function(context) {
+                            const semanaNum = parseInt(context[0].label.replace('S', ''));
+                            if (semanaNum === semanaPico) {
+                                return ['\n💡 Este es el momento de mayor', 'intensidad de testing.'];
+                            }
+                            return [];
                         }
                     }
                 }
             },
             scales: {
                 y: {
+                    type: 'linear',
+                    position: 'left',
                     beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '📊 Defectos por Semana (Distribución de Rayleigh)',
+                        color: '#dc2626',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        padding: 10
+                    },
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(220, 38, 38, 0.15)',
+                        lineWidth: 1
                     },
                     ticks: {
-                        font: { size: 12 }
+                        color: '#dc2626',
+                        font: { size: 13, weight: '600' },
+                        callback: function(value) {
+                            return value.toFixed(1);
+                        }
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '📈 Defectos Acumulados',
+                        color: '#06b6d4',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        padding: 10
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        color: '#06b6d4',
+                        font: { size: 13, weight: '600' }
                     }
                 },
                 x: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.08)',
+                        lineWidth: 1
                     },
                     ticks: {
-                        font: { size: 12 }
+                        font: { size: 11, weight: '500' },
+                        maxRotation: 45,
+                        minRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 20  // Limitar etiquetas para mejor visualización
                     }
                 }
             }

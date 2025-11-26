@@ -1,8 +1,8 @@
-# 📊 Dashboard ETL - Sistema de Monitoreo
+#  Dashboard ETL - Sistema de Monitoreo
 
 Esta carpeta contiene el dashboard web para monitorear y controlar el proceso ETL.
 
-## 📁 Estructura
+##  Estructura
 
 ```
 03_Dashboard/
@@ -16,25 +16,25 @@ Esta carpeta contiene el dashboard web para monitorear y controlar el proceso ET
     └── styles.css          # Estilos CSS
 ```
 
-## 🎯 Propósito
+##  Propósito
 
 El dashboard proporciona:
 
-### 🖥️ Frontend (Web)
+###  Frontend (Web)
 - **Interfaz Visual**: Dashboard responsive con Bootstrap
 - **Monitoreo en Tiempo Real**: Estado de conexiones y procesos
 - **Control de Procesos**: Ejecutar ETL, insertar datos, limpiar tablas
 - **Visualización de Datos**: Tablas y métricas del sistema
 - **Logs en Vivo**: Seguimiento de la ejecución
 
-### 🔧 Backend (API Flask)
+###  Backend (API Flask)
 - **API REST**: Endpoints para todas las operaciones
 - **Conexión a BD**: Integración con origen y datawarehouse
 - **Control ETL**: Ejecución y monitoreo de procesos
 - **Validación**: Verificación de datos y estados
 - **CORS**: Soporte para requests desde el frontend
 
-## 🚀 Uso
+##  Uso
 
 ### 1. Configurar Backend
 ```bash
@@ -50,27 +50,27 @@ python app.py
 python -m http.server 8000
 ```
 
-## 📋 Funcionalidades
+##  Funcionalidades
 
-### 🔍 Monitoreo
+###  Monitoreo
 -  Estado de conexiones a BD
 -  Estadísticas de tablas origen y destino
 -  Métricas del datawarehouse
 -  Historial de ejecuciones
 
-### 🎛️ Control
+###  Control
 -  Generar datos de prueba
 -  Ejecutar proceso ETL
 -  Limpiar bases de datos
 -  Reiniciar sistema
 
-### 📊 Visualización
+###  Visualización
 -  Tablas de datos origen
 -  Métricas de proyectos
 -  Gráficos de rendimiento
 -  Logs detallados
 
-## 🌐 Endpoints API
+##  Endpoints API
 
 - `GET /` - Información de la API
 - `GET /status` - Estado de conexiones
@@ -80,7 +80,7 @@ python -m http.server 8000
 - `POST /ejecutar-etl` - Ejecutar proceso ETL
 - `DELETE /limpiar-datos` - Limpiar tablas
 
-## 🔧 Configuración
+##  Configuración
 
 ### Variables de Ambiente
 ```bash

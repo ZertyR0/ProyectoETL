@@ -65,11 +65,12 @@ class RayleighModel:
         }
         
         # Estimar total de defectos basado en tamaño
-        # Aproximación: 2-8 defectos por punto de función según complejidad
+        # Aproximación realista: 0.5-2 defectos por punto de función según complejidad
+        # Proyectos modernos con buenas prácticas tienen menos defectos
         defectos_base_por_unidad = {
-            'baja': 2.0,
-            'media': 4.0,
-            'alta': 6.5
+            'baja': 0.5,   # Proyectos simples, bien documentados
+            'media': 1.0,  # Proyectos estándar
+            'alta': 1.5    # Proyectos complejos
         }
         
         factor_comp = factores_complejidad.get(complejidad, 1.0)
@@ -82,8 +83,9 @@ class RayleighModel:
         )
         
         # Calcular σ (sigma) - parámetro de forma de Rayleigh
-        # El pico de defectos ocurre típicamente en el 60-70% del proyecto
-        tiempo_pico = duracion_semanas * 0.65
+        # El pico de defectos ocurre típicamente en el 40-45% del proyecto
+        # Esto deja suficiente tiempo para el descenso característico de Rayleigh
+        tiempo_pico = duracion_semanas * 0.40
         
         # Para Rayleigh: el pico ocurre en t = σ
         self.sigma = tiempo_pico
@@ -170,15 +172,20 @@ class RayleighModel:
         
         predicciones = []
         
+        # Calcular factor de normalización usando la PDF
+        # Integrar la PDF sobre toda la duración para normalizar
+        suma_densidades = sum(self.densidad_probabilidad(s) for s in range(1, fin_semana + 1))
+        
         for semana in range(inicio_semana, fin_semana + 1):
+            # Usar directamente la función de densidad (PDF) normalizada
+            # Esto da la forma correcta de campana de Rayleigh
+            densidad = self.densidad_probabilidad(semana)
+            
+            # Defectos esperados = densidad normalizada * total defectos
+            defectos_semana = (densidad / suma_densidades) * self.total_defectos
+            
             # Defectos acumulados hasta esta semana
             acum_actual = self.funcion_acumulativa(semana) * self.total_defectos
-            
-            # Defectos acumulados hasta semana anterior
-            acum_anterior = self.funcion_acumulativa(semana - 1) * self.total_defectos if semana > 1 else 0
-            
-            # Defectos esperados en esta semana
-            defectos_semana = acum_actual - acum_anterior
             
             # Tasa instantánea
             tasa_instantanea = self.tasa_defectos_instantanea(semana)
@@ -389,8 +396,8 @@ def generar_prediccion_completa(tamanio_proyecto: float,
     
     # Ajustar defectos estimados con datos reales si existen
     if datos_reales and datos_reales.get('tiene_datos') and datos_reales['defectos_estimados_promedio'] > 0:
-        # Promediar entre la estimación teórica y los datos reales
-        modelo.total_defectos = int((modelo.total_defectos + datos_reales['defectos_estimados_promedio'] * datos_reales['total_proyectos']) / 2)
+        # Promediar entre la estimación teórica y los datos reales (sin multiplicar por total_proyectos)
+        modelo.total_defectos = int((modelo.total_defectos + datos_reales['defectos_estimados_promedio']) / 2)
         parametros['total_defectos_estimado'] = modelo.total_defectos
         parametros['calibrado_con_datos_reales'] = True
         parametros['proyectos_historicos'] = datos_reales['total_proyectos']

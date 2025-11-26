@@ -277,4 +277,4 @@ DELIMITER ;
 SHOW PROCEDURE STATUS WHERE Db = 'dw_proyectos_hist' AND Name = 'sp_ejecutar_etl_completo';
 
 SELECT ' Procedimiento maestro ETL creado' AS resultado;
-SELECT '💡 Python solo necesita: CALL sp_ejecutar_etl_completo()' AS instruccion;
+SELECT ' Python solo necesita: CALL sp_ejecutar_etl_completo()' AS instruccion;

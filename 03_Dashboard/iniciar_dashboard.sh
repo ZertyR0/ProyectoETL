@@ -2,7 +2,7 @@
 
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║                                                              ║"
-echo "║              🚀 INICIANDO DASHBOARD 🚀                       ║"
+echo "║               INICIANDO DASHBOARD                        ║"
 echo "║                                                              ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
@@ -63,7 +63,7 @@ fi
 
 # Iniciar frontend
 echo ""
-echo "🌐 Iniciando Frontend..."
+echo " Iniciando Frontend..."
 cd frontend
 nohup python3 -m http.server 8080 > ../logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
@@ -85,17 +85,17 @@ echo "║              DASHBOARD INICIADO                            ║"
 echo "║                                                              ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🌐 Frontend:    http://localhost:8080/index.html"
+echo " Frontend:    http://localhost:8080/index.html"
 echo "📡 Backend API: http://localhost:5001"
 echo ""
-echo "📊 Ver logs:"
+echo " Ver logs:"
 echo "   Backend:  tail -f logs/backend.log"
 echo "   Frontend: tail -f logs/frontend.log"
 echo ""
 echo "🛑 Para detener:"
 echo "   ./detener_dashboard.sh"
 echo ""
-echo "🎉 ¡Dashboard listo para usar!"
+echo " ¡Dashboard listo para usar!"
 
 # Abrir en navegador (opcional)
 if command -v open &> /dev/null; then

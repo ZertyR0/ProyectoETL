@@ -29,8 +29,8 @@ for p in (SRC_ROOT, CONFIG_ROOT, ETL_ROOT):
         sys.path.append(p)
 
 try:
-    # Import desde nueva ubicación (src/config/config_conexion.py) usando paquete
-    from config.config_conexion import get_config
+    # Import desde ubicación centralizada (src/config/config_conexion.py)
+    from src.config.config_conexion import get_config
     # Obtener configuración según ambiente
     AMBIENTE = os.getenv('ETL_AMBIENTE', 'local')
     config = get_config(AMBIENTE)
@@ -53,15 +53,15 @@ try:
     if 'unix_socket' in config:
         DB_CONFIG['unix_socket'] = config['unix_socket']
     
-    print(f"🚀 Dashboard configurado para ambiente: {AMBIENTE}")
-    print(f"📊 BD Origen: {config['host_origen']}:{config['port_origen']}")
+    print(f" Dashboard configurado para ambiente: {AMBIENTE}")
+    print(f" BD Origen: {config['host_origen']}:{config['port_origen']}")
     if 'unix_socket' in config:
         print(f"   Socket: {config['unix_socket']}")
-    print(f"🏢 BD Destino: {config['host_destino']}:{config['port_destino']}")
+    print(f" BD Destino: {config['host_destino']}:{config['port_destino']}")
     
 except ImportError:
     # Fallback a configuración local si no se puede importar
-    print("⚠️ No se pudo importar configuración ETL, usando configuración local")
+    print(" No se pudo importar configuración ETL, usando configuración local")
     AMBIENTE = 'local'  # Set default environment
     DB_CONFIG = {
         'host_origen': 'localhost',
@@ -248,7 +248,7 @@ def datos_datawarehouse():
                 result = cursor.fetchone()
                 stats[tabla_keys[i]] = result[0] if result else 0
             except Exception as e:
-                print(f"⚠️ Error contando {tabla}: {str(e)}")
+                print(f" Error contando {tabla}: {str(e)}")
                 stats[tabla_keys[i]] = 0
         
         # Obtener métricas básicas del datawarehouse (sin proyectos_completados, se calculará después)
@@ -390,7 +390,7 @@ def datos_datawarehouse():
                         # Fallback: determinar por porcentaje
                         estado = "Completado" if porcentaje_completado >= 100 else "Cancelado"
                 except Exception as e:
-                    print(f"⚠️ Error obteniendo estado para proyecto '{nombre_proyecto}': {str(e)}")
+                    print(f" Error obteniendo estado para proyecto '{nombre_proyecto}': {str(e)}")
                     # Fallback: determinar por porcentaje
                     estado = "Completado" if porcentaje_completado >= 100 else "Cancelado"
                 
@@ -468,7 +468,7 @@ def insertar_datos():
         data = request.get_json() if request.is_json else {}
         num_proyectos = int(data.get('proyectos', 50))
         ambiente = os.getenv('ETL_AMBIENTE', 'local')
-        print(f"🛠 Generando {num_proyectos} proyectos (insertar-datos) ambiente={ambiente}...")
+        print(f" Generando {num_proyectos} proyectos (insertar-datos) ambiente={ambiente}...")
         from src.origen.generar_datos import generar_datos
         resumen = generar_datos(proyectos=num_proyectos, empleados_por_proyecto=5, tareas_por_proyecto=8, limpiar=False, ambiente=ambiente)
         return jsonify({
@@ -489,7 +489,7 @@ def ejecutar_etl():
       3. Cargar HechoProyecto con id_equipo desde TareaEquipoHist
     """
     try:
-        print("🚀 Iniciando proceso ETL manual...")
+        print(" Iniciando proceso ETL manual...")
         
         # Get project root
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -677,14 +677,14 @@ FROM HechoProyecto;
             )
             
             if result.returncode != 0:
-                print(f"❌ ETL SQL failed: {result.stderr}")
+                print(f" ETL SQL failed: {result.stderr}")
                 return jsonify({
                     'success': False,
                     'message': f'ETL failed: {result.stderr[-200:]}',
                     'returncode': result.returncode
                 }), 500
             
-            print("✅ ETL completado exitosamente")
+            print(" ETL completado exitosamente")
             
         finally:
             os.unlink(temp_sql)
@@ -707,7 +707,7 @@ FROM HechoProyecto;
             cursor.close(); conn.close()
         except Exception as db_error:
             stats = {}
-            print(f"⚠️ No se pudieron obtener estadísticas post-ETL: {db_error}")
+            print(f" No se pudieron obtener estadísticas post-ETL: {db_error}")
 
         return jsonify({
             'success': True,
@@ -872,7 +872,7 @@ def generar_datos_personalizados():
         tareas_pp = int(data.get('tareas_por_proyecto', 10))
         limpiar = bool(data.get('limpiar', False))
         
-        print(f"📊 Generación: {proyectos} proyectos × {empleados_pp} empleados × {tareas_pp} tareas (limpiar={limpiar})")
+        print(f" Generación: {proyectos} proyectos × {empleados_pp} empleados × {tareas_pp} tareas (limpiar={limpiar})")
         
         # Call fixed generator via subprocess (from project root)
         import subprocess
@@ -922,7 +922,7 @@ def generar_datos_personalizados():
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"❌ ERROR generando datos: {str(e)}")
+        print(f" ERROR generando datos: {str(e)}")
         print(error_trace)
         return jsonify({'success': False,'message': str(e),'traceback': error_trace}), 500
 
@@ -1193,7 +1193,7 @@ def buscar_trazabilidad():
                     id_estado_proyecto = tarea_origen.get('id_estado_proyecto')
                     # Mapeo habitual (local): 3=Completado, 4=Cancelado. En distribuido pueden variar.
                     if id_estado_proyecto not in (3, 4, 12, 13, 14):
-                        resultado['mensaje'] = '⚠️ Tarea encontrada en BD Origen pero NO en DataWarehouse (proyecto no finalizado)'
+                        resultado['mensaje'] = ' Tarea encontrada en BD Origen pero NO en DataWarehouse (proyecto no finalizado)'
                         resultado['motivo_no_dw'] = 'El ETL carga tareas solo de proyectos Completados/Cancelados.'
                     else:
                         # Intento adicional: buscar por id_proyecto e id_empleado como heurística
@@ -1220,11 +1220,11 @@ def buscar_trazabilidad():
                                     elif isinstance(val, Decimal):
                                         tarea_dw_alt[key] = float(val)
                                 resultado['datos_dw_sugerido'] = tarea_dw_alt
-                                resultado['mensaje'] = '⚠️ No se encontró por id_tarea, pero existe una tarea probable relacionada en DW'
+                                resultado['mensaje'] = ' No se encontró por id_tarea, pero existe una tarea probable relacionada en DW'
                             else:
-                                resultado['mensaje'] = '⚠️ Tarea encontrada en BD Origen pero NO en DataWarehouse'
+                                resultado['mensaje'] = ' Tarea encontrada en BD Origen pero NO en DataWarehouse'
                         except Exception:
-                            resultado['mensaje'] = '⚠️ Tarea encontrada en BD Origen pero NO en DataWarehouse'
+                            resultado['mensaje'] = ' Tarea encontrada en BD Origen pero NO en DataWarehouse'
             else:
                 resultado['mensaje'] = ' Tarea no encontrada en BD Origen'
         
@@ -1647,59 +1647,65 @@ def get_bsc_okr():
             'traceback': traceback.format_exc()
         }), 500
 
-@app.route('/bsc/medicion', methods=['POST'])
-def registrar_medicion_okr():
-    """
-    Endpoint para registrar nueva medición de un KR
-    """
-    try:
-        datos = request.get_json()
-        
-        # Validar campos requeridos
-        campos_requeridos = ['id_kr', 'valor_observado', 'fecha_medicion']
-        for campo in campos_requeridos:
-            if campo not in datos:
-                return jsonify({
-                    'success': False,
-                    'message': f'Campo requerido faltante: {campo}'
-                }), 400
-        
-        # Conectar a DataWarehouse
-        conn_destino = mysql.connector.connect(
-            host=DB_CONFIG['host_destino'],
-            port=DB_CONFIG['port_destino'],
-            user=DB_CONFIG['user_destino'],
-            password=DB_CONFIG['password_destino'],
-            database=DB_CONFIG['db_destino']
-        )
-        cursor_destino = conn_destino.cursor()
-        
-        # Llamar procedimiento para registrar medición
-        cursor_destino.callproc('sp_registrar_medicion_okr', [
-            datos['id_kr'],
-            datos['valor_observado'],
-            datos['fecha_medicion'],
-            datos.get('comentario', ''),
-            datos.get('fuente_medicion', 'Dashboard Manual'),
-            datos.get('usuario_registro', 'dashboard_user')
-        ])
-        
-        conn_destino.commit()
-        cursor_destino.close()
-        conn_destino.close()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Medición registrada exitosamente'
-        })
-        
-    except Exception as e:
-        import traceback
-        return jsonify({
-            'success': False,
-            'message': f'Error registrando medición: {str(e)}',
-            'traceback': traceback.format_exc()
-        }), 500
+
+# ================================================================
+# NOTA: Endpoint deshabilitado - El BSC debe mostrar solo datos del ETL
+# según los requisitos del proyecto (visualización, no captura manual)
+# ================================================================
+# @app.route('/bsc/medicion', methods=['POST'])
+# def registrar_medicion_okr():
+#     """
+#     Endpoint para registrar nueva medición de un KR
+#     DESHABILITADO: Los datos deben venir del sistema de gestión vía ETL
+#     """
+#     try:
+#         datos = request.get_json()
+#         
+#         # Validar campos requeridos
+#         campos_requeridos = ['id_kr', 'valor_observado', 'fecha_medicion']
+#         for campo in campos_requeridos:
+#             if campo not in datos:
+#                 return jsonify({
+#                     'success': False,
+#                     'message': f'Campo requerido faltante: {campo}'
+#                 }), 400
+#         
+#         # Conectar a DataWarehouse
+#         conn_destino = mysql.connector.connect(
+#             host=DB_CONFIG['host_destino'],
+#             port=DB_CONFIG['port_destino'],
+#             user=DB_CONFIG['user_destino'],
+#             password=DB_CONFIG['password_destino'],
+#             database=DB_CONFIG['db_destino']
+#         )
+#         cursor_destino = conn_destino.cursor()
+#         
+#         # Llamar procedimiento para registrar medición
+#         cursor_destino.callproc('sp_registrar_medicion_okr', [
+#             datos['id_kr'],
+#             datos['valor_observado'],
+#             datos['fecha_medicion'],
+#             datos.get('comentario', ''),
+#             datos.get('fuente_medicion', 'Dashboard Manual'),
+#             datos.get('usuario_registro', 'dashboard_user')
+#         ])
+#         
+#         conn_destino.commit()
+#         cursor_destino.close()
+#         conn_destino.close()
+#         
+#         return jsonify({
+#             'success': True,
+#             'message': 'Medición registrada exitosamente'
+#         })
+#         
+#     except Exception as e:
+#         import traceback
+#         return jsonify({
+#             'success': False,
+#             'message': f'Error registrando medición: {str(e)}',
+#             'traceback': traceback.format_exc()
+#         }), 500
 
 @app.route('/bsc/historico-kr/<int:id_kr>', methods=['GET'])
 def get_historico_kr(id_kr):
@@ -1843,7 +1849,7 @@ def get_vision_estrategica():
 try:
     from rayleigh import generar_prediccion_completa, validar_acceso_pm
 except ImportError:
-    print("⚠️ Advertencia: Módulo Rayleigh no disponible")
+    print(" Advertencia: Módulo Rayleigh no disponible")
     def generar_prediccion_completa(*args, **kwargs):
         return {'success': False, 'message': 'Módulo Rayleigh no disponible'}
     def validar_acceso_pm(headers):
@@ -2241,5 +2247,188 @@ def trazabilidad_tarea(id_tarea: int):
             'traceback': traceback.format_exc()
         }), 500
 
+# ========================================
+# ENDPOINTS OLAP MEJORADOS CON VISTAS
+# ========================================
+
+@app.route('/olap/kpis-v2', methods=['GET'])
+def get_olap_kpis_v2():
+    """
+    Endpoint mejorado para KPIs OLAP usando vistas optimizadas
+    Soporta todos los niveles: detallado, por_cliente, por_equipo, por_tiempo, total
+    """
+    try:
+        # Parámetros - normalizar nivel a minúsculas sin importar el formato
+        nivel_raw = request.args.get('nivel', 'detallado')
+        nivel = nivel_raw.lower().replace('_', '_')  # por_cliente, por_equipo, etc.
+        cliente_id = request.args.get('cliente_id', type=int)
+        equipo_id = request.args.get('equipo_id', type=int)
+        anio = request.args.get('anio', type=int)
+        
+        conn = get_connection('destino')
+        cursor = conn.cursor(dictionary=True)
+        
+        # Seleccionar vista según nivel
+        if nivel == 'total':
+            query = "SELECT * FROM vw_olap_total"
+            
+        elif nivel == 'por_cliente':
+            query = "SELECT * FROM vw_olap_por_cliente"
+            if cliente_id:
+                query += f" WHERE id_cliente = {cliente_id}"
+            query += " ORDER BY total_proyectos DESC"
+            
+        elif nivel == 'por_equipo':
+            query = "SELECT * FROM vw_olap_por_equipo"
+            if equipo_id:
+                query += f" WHERE id_equipo = {equipo_id}"
+            query += " ORDER BY total_proyectos DESC"
+            
+        elif nivel == 'por_tiempo':
+            query = "SELECT * FROM vw_olap_por_anio"
+            if anio:
+                query += f" WHERE anio = {anio}"
+            query += " ORDER BY anio DESC"
+            
+        else:  # detallado
+            query = "SELECT * FROM vw_olap_detallado"
+            conditions = []
+            if cliente_id:
+                # Necesitamos join para filtrar por cliente en detallado
+                query = """
+                SELECT d.*, dc.id_cliente 
+                FROM vw_olap_detallado d
+                JOIN HechoProyecto hp ON d.id_proyecto = hp.id_proyecto
+                JOIN DimCliente dc ON hp.id_cliente = dc.id_cliente
+                """
+                conditions.append(f"dc.id_cliente = {cliente_id}")
+            if equipo_id:
+                if not cliente_id:
+                    query = """
+                    SELECT d.*, de.id_equipo
+                    FROM vw_olap_detallado d
+                    JOIN HechoProyecto hp ON d.id_proyecto = hp.id_proyecto
+                    JOIN DimEquipo de ON hp.id_equipo = de.id_equipo
+                    """
+                conditions.append(f"de.id_equipo = {equipo_id}")
+            if anio:
+                conditions.append(f"anio = {anio}")
+                
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " ORDER BY fecha DESC LIMIT 100"
+        
+        cursor.execute(query)
+        resultados = cursor.fetchall()
+        
+        # Convertir Decimal a float
+        for row in resultados:
+            for key, value in row.items():
+                if isinstance(value, Decimal):
+                    row[key] = float(value)
+                elif isinstance(value, date):
+                    row[key] = value.isoformat()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'nivel': nivel,
+            'total_resultados': len(resultados),
+            'data': resultados,
+            'filtros': {
+                'cliente_id': cliente_id,
+                'equipo_id': equipo_id,
+                'anio': anio
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+@app.route('/olap/filtros-disponibles', methods=['GET'])
+def get_filtros_disponibles():
+    """
+    Obtiene los valores disponibles para los filtros (clientes, equipos, años)
+    de forma dinámica desde el DataWarehouse
+    """
+    try:
+        conn = get_connection('destino')
+        cursor = conn.cursor(dictionary=True)
+        
+        # Clientes con proyectos
+        cursor.execute("""
+            SELECT DISTINCT 
+                dc.id_cliente,
+                dc.nombre as nombre_cliente,
+                dc.sector,
+                COUNT(hp.id_proyecto) as total_proyectos
+            FROM DimCliente dc
+            INNER JOIN HechoProyecto hp ON dc.id_cliente = hp.id_cliente
+            GROUP BY dc.id_cliente, dc.nombre, dc.sector
+            HAVING total_proyectos > 0
+            ORDER BY dc.nombre
+        """)
+        clientes = cursor.fetchall()
+        
+        # Equipos con proyectos
+        cursor.execute("""
+            SELECT DISTINCT 
+                de.id_equipo,
+                de.nombre_equipo,
+                COUNT(hp.id_proyecto) as total_proyectos
+            FROM DimEquipo de
+            INNER JOIN HechoProyecto hp ON de.id_equipo = hp.id_equipo
+            GROUP BY de.id_equipo, de.nombre_equipo
+            HAVING total_proyectos > 0
+            ORDER BY de.nombre_equipo
+        """)
+        equipos = cursor.fetchall()
+        
+        # Años disponibles
+        cursor.execute("""
+            SELECT DISTINCT 
+                dt.anio,
+                COUNT(DISTINCT hp.id_proyecto) as total_proyectos
+            FROM DimTiempo dt
+            INNER JOIN HechoProyecto hp ON dt.id_tiempo = hp.id_tiempo_fin_real
+            GROUP BY dt.anio
+            ORDER BY dt.anio DESC
+        """)
+        anios = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'filtros': {
+                'clientes': clientes,
+                'equipos': equipos,
+                'anios': anios
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5001)
+    # Usar puerto de variable de entorno (Railway, Heroku, etc) o 5001 por defecto
+    port = int(os.getenv('PORT', 5001))
+    debug = os.getenv('FLASK_ENV', 'development') == 'development'
+    
+    print(f"🚀 Iniciando Dashboard en puerto {port}")
+    print(f"   Modo: {'Desarrollo' if debug else 'Producción'}")
+    
+    app.run(debug=debug, host='0.0.0.0', port=port)

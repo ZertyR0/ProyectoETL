@@ -131,7 +131,7 @@ class GeneradorDatosFinal:
     
     def inicializar_estados(self):
         """Inicializar/actualizar tabla Estado con los 5 estados requeridos"""
-        print("\n🔧 Verificando estados del sistema...")
+        print("\n Verificando estados del sistema...")
         
         try:
             # Estados requeridos: 1=Planificación, 2=En Progreso, 3=En Pausa, 4=Completado, 5=Cancelado
@@ -162,7 +162,7 @@ class GeneradorDatosFinal:
     
     def _cargar_nombres_existentes(self):
         """Cargar nombres existentes en la BD para evitar duplicados en modo incremental"""
-        print("📚 Cargando nombres existentes para evitar duplicados...")
+        print(" Cargando nombres existentes para evitar duplicados...")
         
         try:
             # Cargar clientes existentes
@@ -233,7 +233,7 @@ class GeneradorDatosFinal:
         if cantidad is None:
             cantidad = CANTIDAD_PROYECTOS
             
-        print(f"\n👥 Generando {cantidad} clientes (1 por proyecto)...")
+        print(f"\n Generando {cantidad} clientes (1 por proyecto)...")
         
         sectores = ['Tecnología', 'Finanzas', 'Salud', 'Educación', 'Retail', 
                    'Manufactura', 'Servicios', 'Telecomunicaciones', 'Gobierno', 'Energía']
@@ -446,8 +446,16 @@ class GeneradorDatosFinal:
         
         descripcion = f"{desc_base}, {random.choice(detalles)}."
         
-        # Fechas del proyecto
-        fecha_inicio = fake.date_between(start_date='-1y', end_date='+30d')
+        # Fechas del proyecto - RANGO AMPLIADO: 2020-2026 (6 años de historia)
+        # Distribución: 40% histórico (2020-2023), 35% reciente (2024-2025), 25% futuro (2025-2026)
+        rand_tiempo = random.random()
+        if rand_tiempo < 0.40:  # 40% proyectos históricos
+            fecha_inicio = fake.date_between(start_date=date(2020, 1, 1), end_date=date(2023, 12, 31))
+        elif rand_tiempo < 0.75:  # 35% proyectos recientes
+            fecha_inicio = fake.date_between(start_date=date(2024, 1, 1), end_date=date(2025, 10, 31))
+        else:  # 25% proyectos futuros/actuales
+            fecha_inicio = fake.date_between(start_date=date(2025, 11, 1), end_date=date(2026, 6, 30))
+        
         duracion_plan = random.randint(60, 180)
         fecha_fin_plan = fecha_inicio + timedelta(days=duracion_plan)
         
@@ -637,7 +645,7 @@ class GeneradorDatosFinal:
     
     def validar_integridad(self):
         """Validar integridad y unicidad de los datos"""
-        print("\n🔍 Validando integridad...")
+        print("\n Validando integridad...")
         
         validaciones = [
             ("Clientes únicos", "SELECT COUNT(*) as t, COUNT(DISTINCT nombre) as u FROM Cliente"),
@@ -664,7 +672,7 @@ class GeneradorDatosFinal:
     def mostrar_resumen(self):
         """Mostrar resumen detallado"""
         print("\n" + "="*70)
-        print("📊 RESUMEN FINAL DE GENERACIÓN")
+        print(" RESUMEN FINAL DE GENERACIÓN")
         print("="*70)
         
         tablas_info = [
@@ -683,7 +691,7 @@ class GeneradorDatosFinal:
             count = self.cursor.fetchone()['total']
             print(f"  • {tabla:20} {count:>6} registros")
         
-        print("\n📈 Estadísticas por proyecto:")
+        print("\n Estadísticas por proyecto:")
         print(f"  • Clientes:           {self.stats['clientes']}")
         print(f"  • Empleados totales:  {self.stats['empleados']}")
         print(f"  • Empleados/proyecto: {EMPLEADOS_POR_PROYECTO}")
@@ -693,7 +701,7 @@ class GeneradorDatosFinal:
         print(f"  • Tareas/proyecto:    ~{self.stats['tareas']//self.stats['proyectos']}")
         
         # Distribución por estado
-        print("\n📊 Proyectos por estado:")
+        print("\n Proyectos por estado:")
         self.cursor.execute("""
             SELECT e.nombre_estado, COUNT(*) as cantidad
             FROM Proyecto p
@@ -703,6 +711,151 @@ class GeneradorDatosFinal:
         """)
         for row in self.cursor.fetchall():
             print(f"  • {row['nombre_estado']:15} {row['cantidad']:>3} proyectos")
+    
+    def generar_metricas_calidad(self):
+        """Generar defectos para proyectos completados"""
+        print("\n5. Generando métricas de calidad (defectos)...")
+        
+        # Obtener proyectos completados
+        self.cursor.execute("""
+            SELECT id_proyecto, fecha_inicio, fecha_fin_real 
+            FROM proyecto 
+            WHERE id_estado IN (4, 5) AND fecha_fin_real IS NOT NULL
+        """)
+        proyectos = self.cursor.fetchall()
+        
+        total_defectos = 0
+        for row in proyectos:
+            id_proyecto = row['id_proyecto']
+            fecha_inicio = row['fecha_inicio']
+            fecha_fin = row['fecha_fin_real']
+            
+            # Generar entre 2 y 8 defectos por proyecto
+            num_defectos = random.randint(2, 8)
+            
+            for _ in range(num_defectos):
+                severidad = random.choices(
+                    ['Baja', 'Media', 'Alta', 'Crítica'],
+                    weights=[40, 35, 20, 5]
+                )[0]
+                
+                fecha_reporte = fecha_inicio + timedelta(days=random.randint(5, 60))
+                estado = random.choices(
+                    ['Resuelto', 'Cerrado', 'Abierto'],
+                    weights=[60, 30, 10]
+                )[0]
+                
+                fecha_resolucion = None
+                if estado in ['Resuelto', 'Cerrado']:
+                    fecha_resolucion = fecha_reporte + timedelta(days=random.randint(1, 15))
+                
+                self.cursor.execute("""
+                    INSERT INTO defecto (id_proyecto, descripcion, severidad, fecha_reporte, fecha_resolucion, estado)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (id_proyecto, f"Defecto {severidad} en proyecto", severidad, fecha_reporte, fecha_resolucion, estado))
+                total_defectos += 1
+        
+        self.conn.commit()
+        print(f"   {total_defectos} defectos generados")
+    
+    def generar_capacitaciones(self):
+        """Generar capacitaciones para empleados"""
+        print("\n6. Generando capacitaciones de empleados...")
+        
+        self.cursor.execute("SELECT id_empleado FROM empleado")
+        empleados = [row['id_empleado'] for row in self.cursor.fetchall()]
+        
+        cursos = [
+            'Metodologías Ágiles', 'Gestión de Proyectos', 'Liderazgo',
+            'Comunicación Efectiva', 'Excel Avanzado', 'Power BI',
+            'Python para Análisis', 'SQL Avanzado', 'Scrum Master'
+        ]
+        
+        total_capacitaciones = 0
+        for id_empleado in empleados:
+            # 70% de empleados tienen al menos una capacitación
+            if random.random() < 0.7:
+                num_cursos = random.randint(1, 3)
+                for _ in range(num_cursos):
+                    curso = random.choice(cursos)
+                    horas = random.choice([8, 16, 24, 40])
+                    fecha_inicio = date.today() - timedelta(days=random.randint(30, 365))
+                    fecha_fin = fecha_inicio + timedelta(days=horas//8)
+                    estado = random.choices(
+                        ['Completada', 'En Curso', 'Planificada'],
+                        weights=[70, 20, 10]
+                    )[0]
+                    
+                    self.cursor.execute("""
+                        INSERT INTO capacitacion (id_empleado, nombre_curso, horas_duracion, fecha_inicio, fecha_fin, estado)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (id_empleado, curso, horas, fecha_inicio, fecha_fin, estado))
+                    total_capacitaciones += 1
+        
+        self.conn.commit()
+        print(f"   {total_capacitaciones} capacitaciones generadas")
+    
+    def generar_satisfaccion_cliente(self):
+        """Generar evaluaciones de satisfacción por proyecto completado"""
+        print("\n7. Generando satisfacción de clientes...")
+        
+        self.cursor.execute("""
+            SELECT p.id_proyecto, p.id_cliente, p.fecha_fin_real
+            FROM proyecto p
+            WHERE p.id_estado IN (4, 5) AND p.fecha_fin_real IS NOT NULL
+        """)
+        proyectos = self.cursor.fetchall()
+        
+        total_evaluaciones = 0
+        for row in proyectos:
+            id_proyecto = row['id_proyecto']
+            id_cliente = row['id_cliente']
+            fecha_fin = row['fecha_fin_real']
+            
+            # 80% de proyectos tienen evaluación
+            if random.random() < 0.8:
+                # Distribución realista de calificaciones (sesgo positivo)
+                calificacion = round(random.uniform(3.5, 5.0), 2)
+                fecha_evaluacion = fecha_fin + timedelta(days=random.randint(1, 7))
+                
+                self.cursor.execute("""
+                    INSERT INTO satisfaccion_cliente (id_proyecto, id_cliente, calificacion, fecha_evaluacion)
+                    VALUES (%s, %s, %s, %s)
+                """, (id_proyecto, id_cliente, calificacion, fecha_evaluacion))
+                total_evaluaciones += 1
+        
+        self.conn.commit()
+        print(f"   {total_evaluaciones} evaluaciones generadas")
+    
+    def generar_movimientos_empleados(self):
+        """Generar movimientos de empleados (ingresos/egresos)"""
+        print("\n8. Generando movimientos de empleados...")
+        
+        self.cursor.execute("SELECT id_empleado FROM empleado")
+        empleados = [row['id_empleado'] for row in self.cursor.fetchall()]
+        
+        total_movimientos = 0
+        # Registrar ingresos de todos los empleados
+        for id_empleado in empleados:
+            fecha_ingreso = date.today() - timedelta(days=random.randint(180, 1095))
+            self.cursor.execute("""
+                INSERT INTO movimiento_empleado (id_empleado, tipo_movimiento, fecha_movimiento, motivo)
+                VALUES (%s, 'Ingreso', %s, 'Contratación')
+            """, (id_empleado, fecha_ingreso))
+            total_movimientos += 1
+            
+            # 12% de rotación - algunos empleados han egresado
+            if random.random() < 0.12:
+                fecha_egreso = fecha_ingreso + timedelta(days=random.randint(90, 365))
+                motivos = ['Renuncia voluntaria', 'Mejor oportunidad', 'Fin de contrato', 'Despido']
+                self.cursor.execute("""
+                    INSERT INTO movimiento_empleado (id_empleado, tipo_movimiento, fecha_movimiento, motivo)
+                    VALUES (%s, 'Egreso', %s, %s)
+                """, (id_empleado, fecha_egreso, random.choice(motivos)))
+                total_movimientos += 1
+        
+        self.conn.commit()
+        print(f"   {total_movimientos} movimientos registrados")
     
     def ejecutar(self, limpiar=True, num_proyectos=None, num_clientes=None, num_empleados=None, num_equipos=None):
         """Ejecutar el proceso completo de generación
@@ -728,9 +881,9 @@ class GeneradorDatosFinal:
             print(f"🎲 Modo incremental: nueva semilla aleatoria = {nueva_semilla}")
         
         print("="*70)
-        print("🚀 GENERADOR DE DATOS FINAL")
+        print(" GENERADOR DE DATOS FINAL")
         print("="*70)
-        print(f"📊 Configuración:")
+        print(f" Configuración:")
         print(f"   • {cantidad_proyectos} proyectos")
         print(f"   • {cantidad_clientes} clientes")
         print(f"   • {empleados_por_proyecto} empleados por proyecto")
@@ -769,13 +922,16 @@ class GeneradorDatosFinal:
                 cursor_count.execute("SELECT COUNT(*) FROM Proyecto")
                 offset = cursor_count.fetchone()[0]
                 cursor_count.close()
-                print(f"\n📊 Proyectos existentes: {offset}")
+                print(f"\n Proyectos existentes: {offset}")
             
-            # 2. Generar clientes (1 por proyecto)
-            clientes_ids = self.generar_clientes(cantidad_clientes)
+            # 2. Generar clientes (15-20 clientes para 50 proyectos = 2-4 proyectos por cliente)
+            # Esto hace más realista: un cliente grande tiene varios proyectos
+            num_clientes = max(12, cantidad_clientes // 3)  # ~17 clientes para 50 proyectos
+            clientes_ids = self.generar_clientes(num_clientes)
             
             # 3. Generar cada proyecto con su equipo exclusivo
-            print(f"\n🏗️  Generando {cantidad_proyectos} proyectos completos...")
+            print(f"\n Generando {cantidad_proyectos} proyectos completos...")
+            print(f"   Distribuidos entre {num_clientes} clientes (~{cantidad_proyectos//num_clientes} proyectos/cliente)")
             print(f"   Cada proyecto tendrá:")
             print(f"   • {empleados_por_proyecto} empleados exclusivos")
             print(f"   • {equipos_por_proyecto} equipo(s)")
@@ -785,7 +941,7 @@ class GeneradorDatosFinal:
                 # Usar índice con offset para evitar duplicados en nombres
                 indice = offset + i
                 
-                # Cliente para este proyecto (cíclico si hay menos clientes que proyectos)
+                # Cliente para este proyecto (cíclico con distribución uniforme)
                 id_cliente = clientes_ids[i % len(clientes_ids)]
                 
                 # Empleados exclusivos para este proyecto
@@ -813,7 +969,13 @@ class GeneradorDatosFinal:
             self.conn.commit()
             print(f"   {cantidad_proyectos} proyectos completados\n")
             
-            # 4. Validar
+            # 4. Generar métricas adicionales
+            self.generar_metricas_calidad()
+            self.generar_capacitaciones()
+            self.generar_satisfaccion_cliente()
+            self.generar_movimientos_empleados()
+            
+            # 5. Validar
             if self.validar_integridad():
                 print("\n Validación exitosa - Todos los datos son únicos")
             else:
@@ -823,7 +985,7 @@ class GeneradorDatosFinal:
             self.mostrar_resumen()
             
             print("\n" + "="*70)
-            print("🎉 ¡GENERACIÓN COMPLETADA EXITOSAMENTE!")
+            print(" ¡GENERACIÓN COMPLETADA EXITOSAMENTE!")
             print("="*70)
             print("✓ Cada proyecto tiene su propio equipo")
             print("✓ Sin duplicación de recursos")

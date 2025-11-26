@@ -1,6 +1,6 @@
-# 📊 Base de Datos Origen - Gestión de Proyectos
+#  Base de Datos Origen - Gestión de Proyectos
 
-## 🎯 Descripción
+##  Descripción
 
 Esta carpeta contiene la **base de datos transaccional (OLTP)** que sirve como origen de datos para el sistema ETL. Almacena información operativa de gestión de proyectos con **seguridad implementada mediante Stored Procedures y Triggers**.
 
@@ -8,7 +8,7 @@ Esta carpeta contiene la **base de datos transaccional (OLTP)** que sirve como o
 
 ---
 
-## 📁 Estructura de Archivos
+##  Estructura de Archivos
 
 ```
 01_GestionProyectos/
@@ -24,7 +24,7 @@ Esta carpeta contiene la **base de datos transaccional (OLTP)** que sirve como o
 
 ---
 
-## 🗄️ Esquema de Base de Datos
+##  Esquema de Base de Datos
 
 ### Tablas Principales
 
@@ -49,7 +49,7 @@ Esta carpeta contiene la **base de datos transaccional (OLTP)** que sirve como o
 
 ---
 
-## 🔐 Seguridad Implementada
+##  Seguridad Implementada
 
 ### Stored Procedures
 
@@ -96,7 +96,7 @@ INSERT INTO AuditoriaProyectos (...)
 
 ---
 
-## 🚀 Instalación y Configuración
+##  Instalación y Configuración
 
 ### Opción 1: Instalación Básica
 
@@ -132,7 +132,7 @@ python generar_datos_seguro.py
 
 ---
 
-## 📊 Generación de Datos
+##  Generación de Datos
 
 ### Script Básico: `generar_datos.py`
 
@@ -167,7 +167,7 @@ python generar_datos_seguro.py
 
 ---
 
-## 🔍 Consultas de Ejemplo
+##  Consultas de Ejemplo
 
 ### Consulta Directa (NO RECOMENDADA en producción)
 
@@ -198,7 +198,7 @@ GROUP BY Operacion;
 
 ---
 
-## 📋 Mantenimiento
+##  Mantenimiento
 
 ### Limpiar Datos
 
@@ -235,7 +235,7 @@ mysql -u root -p gestionproyectos_hist < backup_origen.sql
 
 ---
 
-## 📈 Métricas y Estadísticas
+##  Métricas y Estadísticas
 
 ### Consultas de Análisis
 
@@ -264,7 +264,7 @@ GROUP BY eq.Id, eq.Nombre;
 
 ---
 
-## 🔗 Relación con Otros Componentes
+##  Relación con Otros Componentes
 
 ### Consumidores de Datos
 
@@ -280,7 +280,7 @@ GROUP BY eq.Id, eq.Nombre;
 
 ---
 
-## 🐛 Solución de Problemas
+##  Solución de Problemas
 
 ### Error: Base de datos no existe
 
@@ -314,7 +314,7 @@ CALL InsertarProyecto(...);
 
 ---
 
-## 📚 Documentación Relacionada
+##  Documentación Relacionada
 
 - **Guía de Datos Origen**: [/docs/guias/GUIA_DATOS_ORIGEN.md](../docs/guias/GUIA_DATOS_ORIGEN.md)
 - **Análisis de Consistencia**: [/docs/analisis/ANALISIS_CONSISTENCIA_BD.md](../docs/analisis/ANALISIS_CONSISTENCIA_BD.md)
@@ -322,7 +322,7 @@ CALL InsertarProyecto(...);
 
 ---
 
-## ✨ Características Destacadas
+##  Características Destacadas
 
 -  **Seguridad por Diseño**: Stored procedures para todo acceso
 -  **Auditoría Completa**: Triggers automáticos de auditoría

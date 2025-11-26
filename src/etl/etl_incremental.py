@@ -18,7 +18,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 try:
-    from config.config_conexion import get_config  # type: ignore
+    from src.config.config_conexion import get_config  # type: ignore
     AMBIENTE = os.environ.get('ETL_AMBIENTE', 'local')
     cfg = get_config(AMBIENTE)
     def _make(prefix):
@@ -35,7 +35,7 @@ try:
         return base
     CONFIG_ORIGEN = _make('origen'); CONFIG_DESTINO = _make('destino')
 except Exception as e:
-    print(f"⚠️ Config por defecto ({e})")
+    print(f" Config por defecto ({e})")
     CONFIG_ORIGEN = {'user':'root','password':'','database':'gestionproyectos_hist','unix_socket':'/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock'}
     CONFIG_DESTINO = {'user':'root','password':'','database':'dw_proyectos_hist','unix_socket':'/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock'}
 

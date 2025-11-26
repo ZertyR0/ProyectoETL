@@ -300,17 +300,29 @@ BEGIN
     -- Calcular progreso hacia la meta
     IF v_meta_objetivo != v_valor_inicial THEN
         SET p_progreso_hacia_meta = ((p_valor_observado - v_valor_inicial) / (v_meta_objetivo - v_valor_inicial)) * 100;
+        
+        -- Limitar progreso entre 0 y 100% de forma estricta
+        -- Si se cumple o supera la meta, progreso = 100%
+        IF v_tipo_metrica IN ('Incrementar', 'Aumentar') THEN
+            IF p_valor_observado >= v_meta_objetivo THEN
+                SET p_progreso_hacia_meta = 100;
+            END IF;
+        ELSEIF v_tipo_metrica IN ('Decrementar', 'Disminuir') THEN
+            IF p_valor_observado <= v_meta_objetivo THEN
+                SET p_progreso_hacia_meta = 100;
+            END IF;
+        END IF;
+        
+        -- Asegurar que nunca sea menor a 0% ni mayor a 100%
+        SET p_progreso_hacia_meta = GREATEST(0, LEAST(100, p_progreso_hacia_meta));
     ELSE
         SET p_progreso_hacia_meta = 100;
     END IF;
     
-    -- Limitar progreso entre 0 y 100%
-    SET p_progreso_hacia_meta = GREATEST(0, LEAST(100, p_progreso_hacia_meta));
-    
     -- Determinar cumplimiento de meta
-    IF v_tipo_metrica = 'Incrementar' THEN
+    IF v_tipo_metrica IN ('Incrementar', 'Aumentar') THEN
         SET p_cumple_meta = (p_valor_observado >= v_meta_objetivo);
-    ELSEIF v_tipo_metrica = 'Decrementar' THEN
+    ELSEIF v_tipo_metrica IN ('Decrementar', 'Disminuir') THEN
         SET p_cumple_meta = (p_valor_observado <= v_meta_objetivo);
     ELSEIF v_tipo_metrica = 'Binario' THEN
         SET p_cumple_meta = (p_valor_observado = v_meta_objetivo);
@@ -319,7 +331,7 @@ BEGIN
     END IF;
     
     -- Determinar estado de semáforo
-    IF v_tipo_metrica = 'Incrementar' THEN
+    IF v_tipo_metrica IN ('Incrementar', 'Aumentar') THEN
         IF p_valor_observado >= v_umbral_verde THEN
             SET p_estado_semaforo = 'Verde';
         ELSEIF p_valor_observado >= v_umbral_amarillo THEN
@@ -327,7 +339,7 @@ BEGIN
         ELSE
             SET p_estado_semaforo = 'Rojo';
         END IF;
-    ELSEIF v_tipo_metrica = 'Decrementar' THEN
+    ELSEIF v_tipo_metrica IN ('Decrementar', 'Disminuir') THEN
         IF p_valor_observado <= v_umbral_verde THEN
             SET p_estado_semaforo = 'Verde';
         ELSEIF p_valor_observado <= v_umbral_amarillo THEN
