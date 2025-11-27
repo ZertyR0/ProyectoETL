@@ -6,6 +6,12 @@ echo "📍 Directorio actual: $(pwd)"
 echo "📂 Contenido:"
 ls -la
 
+# Activar entorno virtual si existe
+if [ -d "/opt/venv" ]; then
+    echo "🐍 Activando entorno virtual..."
+    source /opt/venv/bin/activate
+fi
+
 # Configurar variables de entorno
 export FLASK_ENV=${FLASK_ENV:-production}
 export PORT=${PORT:-5001}
@@ -14,6 +20,8 @@ echo "🔧 Variables de entorno:"
 echo "   FLASK_ENV: $FLASK_ENV"
 echo "   PORT: $PORT"
 echo "   DB_HOST_ORIGEN: ${DB_HOST_ORIGEN:-not_set}"
+echo "   Python: $(which python3)"
+echo "   Gunicorn: $(which gunicorn || echo 'not found')"
 
 # Verificar que estamos en el directorio correcto
 if [ ! -d "03_Dashboard" ]; then
@@ -31,7 +39,9 @@ echo "📍 Ahora en: $(pwd)"
 if [ "$FLASK_ENV" = "production" ]; then
     echo "🚀 Modo producción: usando Gunicorn"
     echo "🌐 Iniciando en 0.0.0.0:$PORT"
-    exec gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app
+    
+    # Usar python -m para asegurar que encuentra gunicorn
+    exec python3 -m gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app
 else
     echo "🔧 Modo desarrollo: usando Flask dev server"
     exec python3 app.py
