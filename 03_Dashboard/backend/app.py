@@ -329,15 +329,19 @@ def datos_datawarehouse():
                 proyectos_dw.append({
                     'id_proyecto': row[0],
                     'nombre_proyecto': row[1] if row[1] else f"Proyecto {row[0]}",
-                    'presupuesto': float(row[2]) if row[2] else 0,
-                    'costo_real': float(row[3]) if row[3] else 0,
-                    'progreso_porcentaje': row[4] if row[4] else 0,
-                    'cliente': row[5] if row[5] else 'Sin cliente',
-                    'gerente': row[6] if row[6] else 'Sin gerente',
-                    'estado': row[7] if row[7] else 'Sin estado',
-                    'prioridad': row[8] if row[8] else 'Media',
-                    'tareas_completadas': row[9],
-                    'tareas_canceladas': row[10]
+                    'duracion_planificada': int(row[2]) if row[2] else 0,
+                    'duracion_real': int(row[3]) if row[3] else 0,
+                    'cumplimiento_tiempo': row[4] if row[4] else 0,
+                    'presupuesto': float(row[5]) if row[5] else 0,
+                    'costo_real': float(row[6]) if row[6] else 0,
+                    'progreso_porcentaje': float(row[7]) if row[7] else 0,
+                    'cliente': row[8] if row[8] else 'Sin cliente',
+                    'gerente': row[9] if row[9] else 'Sin gerente',
+                    'cumplimiento_presupuesto': row[10] if row[10] else 0,
+                    'tareas_completadas': int(row[11]) if row[11] else 0,
+                    'tareas_canceladas': int(row[12]) if row[12] else 0,
+                    'estado': estado,
+                    'prioridad': 'Media'
                 })
             
             cursor_origen.close()
