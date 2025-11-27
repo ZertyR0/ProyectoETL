@@ -1,6 +1,6 @@
 # Configuración para Nixpacks (Railway)
 [phases.setup]
-nixPkgs = ["python311", "pip"]
+nixPkgs = ["python311"]
 
 [phases.install]
 cmds = ["pip install -r requirements-all.txt"]
