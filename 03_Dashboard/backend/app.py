@@ -58,6 +58,9 @@ print(f"📊 BD Origen: {DB_CONFIG['host_origen']}:{DB_CONFIG['port_origen']}")
 print(f"📊 BD Destino: {DB_CONFIG['host_destino']}:{DB_CONFIG['port_destino']}")
 print(f"🌐 Ambiente: {os.getenv('FLASK_ENV', 'development')}")
 
+# Variable global para ambiente ETL
+AMBIENTE = os.getenv('ETL_AMBIENTE', 'local')
+
 def get_connection(db_type='origen'):
     """Obtener conexión a la base de datos"""
     if db_type == 'origen':
