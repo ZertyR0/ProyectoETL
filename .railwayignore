@@ -1,0 +1,17 @@
+# Archivos a ignorar en Railway
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.env
+.env.local
+logs/
+*.log
+*.pid
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
