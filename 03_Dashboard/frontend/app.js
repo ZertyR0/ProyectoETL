@@ -1,5 +1,5 @@
 // Configuración de la API
-const API_BASE = 'http://localhost:5001';
+const API_BASE = 'https://proyectoetl-production.up.railway.app';
 
 // Variables globales
 let connectionStatus = false;
@@ -28,7 +28,7 @@ function showToast(message, type = 'info') {
 }
 
 // Configuración
-const API_URL = 'http://localhost:5001/api';
+const API_URL = 'https://proyectoetl-production.up.railway.app/api';
 
 // Funciones de utilidad
 function addLog(message, type = 'info') {

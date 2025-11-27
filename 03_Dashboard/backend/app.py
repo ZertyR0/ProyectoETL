@@ -270,7 +270,7 @@ def datos_datawarehouse():
                 hp.duracion_real,
                 hp.cumplimiento_tiempo,
                 hp.presupuesto,
-                hp.costo_real_proy,
+                hp.costo_real,
                 CASE 
                     WHEN hp.tareas_total > 0 THEN (hp.tareas_completadas * 100.0 / hp.tareas_total)
                     ELSE 0 
@@ -545,7 +545,7 @@ WHERE p.id_estado IN (4, 5);  -- Solo Completados y Cancelados
 -- Load HechoProyecto WITH id_equipo (SOLO proyectos Completados o Cancelados)
 INSERT INTO HechoProyecto (
     id_proyecto, id_cliente, id_empleado_gerente, id_equipo,
-    id_tiempo_fin_real, presupuesto, costo_real_proy,
+    id_tiempo_fin_real, presupuesto, costo_real,
     duracion_planificada, duracion_real, tareas_total,
     tareas_completadas, tareas_canceladas,
     horas_plan_total, horas_reales_total,
