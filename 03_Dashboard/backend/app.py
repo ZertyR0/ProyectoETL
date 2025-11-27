@@ -30,13 +30,23 @@ for p in (SRC_ROOT, CONFIG_ROOT, ETL_ROOT):
 
 # Configuración de base de datos desde variables de entorno
 # Prioridad: Variables de entorno > Fallback local
+
+def safe_int_env(key, default):
+    """Convertir variable de entorno a int de forma segura"""
+    try:
+        value = os.getenv(key, str(default))
+        return int(value)
+    except (ValueError, TypeError):
+        print(f"⚠️ Warning: {key}='{os.getenv(key)}' no es un número válido, usando {default}")
+        return default
+
 DB_CONFIG = {
     'host_origen': os.getenv('DB_HOST_ORIGEN', 'localhost'),
-    'port_origen': int(os.getenv('DB_PORT_ORIGEN', 3306)),
+    'port_origen': safe_int_env('DB_PORT_ORIGEN', 3306),
     'user_origen': os.getenv('DB_USER_ORIGEN', 'root'),
     'password_origen': os.getenv('DB_PASSWORD_ORIGEN', ''),
     'host_destino': os.getenv('DB_HOST_DESTINO', 'localhost'),
-    'port_destino': int(os.getenv('DB_PORT_DESTINO', 3306)),
+    'port_destino': safe_int_env('DB_PORT_DESTINO', 3306),
     'user_destino': os.getenv('DB_USER_DESTINO', 'root'),
     'password_destino': os.getenv('DB_PASSWORD_DESTINO', ''),
     'db_origen': os.getenv('DB_NAME_ORIGEN', 'gestionproyectos_hist'),
