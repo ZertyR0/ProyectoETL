@@ -14,24 +14,6 @@ import json
 app = Flask(__name__)
 CORS(app)  # Permitir requests desde Angular
 
-# Ruta raíz para healthcheck de Railway
-@app.route('/')
-def home():
-    """Endpoint raíz para healthcheck"""
-    return jsonify({
-        'status': 'ok',
-        'service': 'ETL Dashboard API',
-        'version': '1.0.0',
-        'endpoints': {
-            'status': '/status',
-            'origen': '/datos-origen',
-            'datawarehouse': '/datos-datawarehouse',
-            'olap': '/olap/kpis-v2',
-            'bsc': '/bsc/vision-estrategica',
-            'prediccion': '/prediccion/defectos-rayleigh'
-        }
-    }), 200
-
 # Paths unificados a nueva estructura src/
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 SRC_ROOT = os.path.join(PROJECT_ROOT, 'src')
