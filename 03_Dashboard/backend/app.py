@@ -28,53 +28,25 @@ for p in (SRC_ROOT, CONFIG_ROOT, ETL_ROOT):
     if p not in sys.path:
         sys.path.append(p)
 
-try:
-    # Import desde ubicación centralizada (src/config/config_conexion.py)
-    from src.config.config_conexion import get_config
-    # Obtener configuración según ambiente
-    AMBIENTE = os.getenv('ETL_AMBIENTE', 'local')
-    config = get_config(AMBIENTE)
-    
-    # Configuración unificada usando el sistema de configuración ETL
-    DB_CONFIG = {
-        'host_origen': config['host_origen'],
-        'port_origen': config['port_origen'],
-        'user_origen': config['user_origen'],
-        'password_origen': config['password_origen'],
-        'host_destino': config['host_destino'],
-        'port_destino': config['port_destino'],
-        'user_destino': config['user_destino'],
-        'password_destino': config['password_destino'],
-        'db_origen': config['database_origen'],
-        'db_destino': config['database_destino']
-    }
-    
-    # Agregar unix_socket si existe en la configuración
-    if 'unix_socket' in config:
-        DB_CONFIG['unix_socket'] = config['unix_socket']
-    
-    print(f" Dashboard configurado para ambiente: {AMBIENTE}")
-    print(f" BD Origen: {config['host_origen']}:{config['port_origen']}")
-    if 'unix_socket' in config:
-        print(f"   Socket: {config['unix_socket']}")
-    print(f" BD Destino: {config['host_destino']}:{config['port_destino']}")
-    
-except ImportError:
-    # Fallback a configuración local si no se puede importar
-    print(" No se pudo importar configuración ETL, usando configuración local")
-    AMBIENTE = 'local'  # Set default environment
-    DB_CONFIG = {
-        'host_origen': 'localhost',
-        'port_origen': 3306,
-        'user_origen': 'root',
-        'password_origen': '',
-        'host_destino': 'localhost',
-        'port_destino': 3306,
-        'user_destino': 'root',
-        'password_destino': '',
-        'db_origen': 'gestionproyectos_hist',
-        'db_destino': 'dw_proyectos_hist'
-    }
+# Configuración de base de datos desde variables de entorno
+# Prioridad: Variables de entorno > Fallback local
+DB_CONFIG = {
+    'host_origen': os.getenv('DB_HOST_ORIGEN', 'localhost'),
+    'port_origen': int(os.getenv('DB_PORT_ORIGEN', 3306)),
+    'user_origen': os.getenv('DB_USER_ORIGEN', 'root'),
+    'password_origen': os.getenv('DB_PASSWORD_ORIGEN', ''),
+    'host_destino': os.getenv('DB_HOST_DESTINO', 'localhost'),
+    'port_destino': int(os.getenv('DB_PORT_DESTINO', 3306)),
+    'user_destino': os.getenv('DB_USER_DESTINO', 'root'),
+    'password_destino': os.getenv('DB_PASSWORD_DESTINO', ''),
+    'db_origen': os.getenv('DB_NAME_ORIGEN', 'gestionproyectos_hist'),
+    'db_destino': os.getenv('DB_NAME_DESTINO', 'dw_proyectos_hist')
+}
+
+print(f"🔧 Dashboard configurando...")
+print(f"📊 BD Origen: {DB_CONFIG['host_origen']}:{DB_CONFIG['port_origen']}")
+print(f"📊 BD Destino: {DB_CONFIG['host_destino']}:{DB_CONFIG['port_destino']}")
+print(f"🌐 Ambiente: {os.getenv('FLASK_ENV', 'development')}")
 
 def get_connection(db_type='origen'):
     """Obtener conexión a la base de datos"""
