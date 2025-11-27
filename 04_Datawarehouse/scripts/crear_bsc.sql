@@ -7,7 +7,7 @@
 -- (Objectives and Key Results) para seguimiento estratégico
 --
 
-USE datawarehouse;
+USE dw_proyectos_hist;
 
 -- ========================================
 -- 1. DIMENSIÓN: OBJETIVOS ESTRATÉGICOS
