@@ -744,46 +744,297 @@ def limpiar_datos():
 
 @app.route('/generar-datos', methods=['POST'])
 def generar_datos_personalizados():
-    """Generar datos de prueba personalizados usando generar_datos_final.py (fixed schema).
+    """Generar datos de prueba directamente en Railway usando lógica del generador.
     Parámetros JSON: 
       - proyectos: número de proyectos (requerido)
-      - empleados: total empleados O empleados_por_proyecto (opcional)
+      - empleados_por_proyecto: empleados por proyecto (opcional, default 5)
       - tareas_por_proyecto: tareas por proyecto (opcional, default 10)
       - limpiar: bool (opcional, default False)
     """
     try:
         data = request.get_json() or {}
         
-        # Obtener proyectos (siempre requerido)
+        # Obtener parámetros
         proyectos = int(data.get('proyectos', 25))
-        
-        # Si viene 'empleados' (total), calcular empleados_por_proyecto
-        if 'empleados' in data:
-            empleados_total = int(data['empleados'])
-            empleados_pp = max(1, empleados_total // proyectos) if proyectos > 0 else 5
-        else:
-            empleados_pp = int(data.get('empleados_por_proyecto', 5))
-        
+        empleados_pp = int(data.get('empleados_por_proyecto', 5))
         tareas_pp = int(data.get('tareas_por_proyecto', 10))
         limpiar = bool(data.get('limpiar', False))
         
-        print(f" Generación: {proyectos} proyectos × {empleados_pp} empleados × {tareas_pp} tareas (limpiar={limpiar})")
+        print(f" Generando: {proyectos} proyectos × {empleados_pp} empleados × {tareas_pp} tareas (limpiar={limpiar})")
         
-        # En Railway no tenemos acceso al script de generación
-        # Retornar mensaje indicando que se debe generar localmente
+        # Usar conexión origen (Railway)
+        conn = get_connection('origen')
+        cursor = conn.cursor()
+        
+        # Importar faker para generar datos
+        from faker import Faker
+        import random
+        import hashlib
+        from datetime import date, timedelta
+        
+        fake = Faker('es_MX')
+        Faker.seed(42)
+        random.seed(42)
+        
+        # Sets para control de duplicados
+        nombres_unicos = {
+            'clientes': set(),
+            'empleados': set(), 
+            'equipos': set(),
+            'proyectos': set(),
+            'emails': set()
+        }
+        
+        def generar_email_unico(base):
+            base_limpia = base.lower().replace(' ', '').replace(',', '')[:20]
+            email = f\"{base_limpia}@{fake.free_email_domain()}\"
+            contador = 1
+            while email in nombres_unicos['emails']:
+                email = f\"{base_limpia}{contador}@{fake.free_email_domain()}\"
+                contador += 1
+            nombres_unicos['emails'].add(email)
+            return email
+        
+        def generar_nombre_unico(tipo, generador_func):
+            max_intentos = 50
+            for intento in range(max_intentos):
+                nombre = generador_func()
+                if nombre not in nombres_unicos[tipo]:
+                    nombres_unicos[tipo].add(nombre)
+                    return nombre
+            # Si no se encuentra único, agregar sufijo
+            nombre = f\"{generador_func()} #{random.randint(1000, 9999)}\"
+            nombres_unicos[tipo].add(nombre)
+            return nombre
+        
+        stats = {'clientes': 0, 'empleados': 0, 'equipos': 0, 'proyectos': 0, 'tareas': 0}
+        
+        # 1. Limpiar si se solicita
+        if limpiar:
+            print("   Limpiando datos...")
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+            
+            tablas = ['TareaEquipoHist', 'MiembroEquipo', 'Tarea', 'Proyecto', 'Equipo', 'Empleado', 'Cliente']
+            for tabla in tablas:
+                cursor.execute(f"DELETE FROM {tabla}")
+            
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+            conn.commit()
+            
+            # Limpiar sets
+            for key in nombres_unicos:
+                nombres_unicos[key].clear()
+        else:
+            # Cargar nombres existentes
+            cursor.execute("SELECT nombre FROM Cliente")
+            for (nombre,) in cursor.fetchall():
+                nombres_unicos['clientes'].add(nombre)
+        
+        # 2. Generar clientes (pocos para que tengan varios proyectos)
+        num_clientes = max(3, proyectos // 4)  # 1 cliente cada 4 proyectos aprox
+        print(f"   Generando {num_clientes} clientes...")
+        
+        sectores = ['Tecnología', 'Finanzas', 'Salud', 'Educación', 'Retail', 'Manufactura']
+        clientes_ids = []
+        
+        for i in range(num_clientes):
+            nombre = generar_nombre_unico('clientes', fake.company)
+            sector = random.choice(sectores)
+            contacto = fake.name()
+            telefono = fake.phone_number()[:20]
+            email = generar_email_unico(nombre)
+            
+            cursor.execute('''
+                INSERT INTO Cliente (nombre, sector, contacto, telefono, email)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (nombre, sector, contacto, telefono, email))
+            
+            clientes_ids.append(cursor.lastrowid)
+            stats['clientes'] += 1
+        
+        conn.commit()
+        
+        # 3. Generar proyectos con equipos y tareas
+        print(f"   Generando {proyectos} proyectos completos...")
+        
+        for i in range(proyectos):
+            # Cliente para este proyecto
+            id_cliente = clientes_ids[i % len(clientes_ids)]
+            
+            # Generar empleados para este proyecto
+            empleados_proyecto = []
+            puestos = ['Gerente de Proyecto', 'Desarrollador Senior', 'Desarrollador', 'Analista', 'QA Tester']
+            
+            for j in range(empleados_pp):
+                nombre_emp = generar_nombre_unico('empleados', fake.name)
+                puesto = puestos[j % len(puestos)]
+                email_emp = generar_email_unico(nombre_emp)
+                
+                cursor.execute('''
+                    INSERT INTO Empleado (nombre, puesto, email)
+                    VALUES (%s, %s, %s)
+                ''', (nombre_emp, puesto, email_emp))
+                
+                empleados_proyecto.append({
+                    'id': cursor.lastrowid,
+                    'nombre': nombre_emp,
+                    'puesto': puesto,
+                    'es_gerente': 'Gerente' in puesto
+                })
+                stats['empleados'] += 1
+            
+            # Generar proyecto
+            nombre_proy = generar_nombre_unico('proyectos', 
+                lambda: f"Proyecto {fake.catch_phrase()} #{i+1}")
+            descripcion = fake.text(max_nb_chars=200)
+            
+            fecha_inicio = fake.date_between(start_date=date(2023, 1, 1), end_date=date(2024, 12, 31))
+            duracion_plan = random.randint(60, 180)
+            fecha_fin_plan = fecha_inicio + timedelta(days=duracion_plan)
+            
+            # Estados: 35% Completado, 15% Cancelado, 25% En Progreso, 15% Planificación, 10% En Pausa
+            rand = random.random()
+            if rand < 0.35:
+                estado = 4  # Completado
+                variacion = random.randint(-15, 30)
+                fecha_fin_real = fecha_fin_plan + timedelta(days=variacion)
+            elif rand < 0.50:
+                estado = 5  # Cancelado  
+                dias_transcurridos = random.randint(30, duracion_plan - 10)
+                fecha_fin_real = fecha_inicio + timedelta(days=dias_transcurridos)
+            elif rand < 0.75:
+                estado = 2  # En Progreso
+                fecha_fin_real = None
+            elif rand < 0.90:
+                estado = 1  # Planificación
+                fecha_fin_real = None
+            else:
+                estado = 3  # En Pausa
+                fecha_fin_real = None
+            
+            presupuesto = random.randint(100000, 500000)
+            if estado == 4:  # Completado
+                costo_real = int(presupuesto * random.uniform(0.80, 1.20))
+            elif estado == 5:  # Cancelado
+                costo_real = int(presupuesto * random.uniform(0.30, 0.70))
+            else:  # Otros
+                costo_real = int(presupuesto * random.uniform(0.20, 0.80))
+            
+            gerente = next((e for e in empleados_proyecto if e['es_gerente']), empleados_proyecto[0])
+            
+            cursor.execute('''
+                INSERT INTO Proyecto (nombre, descripcion, fecha_inicio, fecha_fin_plan, 
+                                    fecha_fin_real, presupuesto, costo_real, id_cliente, 
+                                    id_estado, id_empleado_gerente)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (nombre_proy, descripcion, fecha_inicio, fecha_fin_plan, fecha_fin_real,
+                  presupuesto, costo_real, id_cliente, estado, gerente['id']))
+            
+            id_proyecto = cursor.lastrowid
+            stats['proyectos'] += 1
+            
+            # Generar equipo
+            nombre_equipo = generar_nombre_unico('equipos', 
+                lambda: f"Equipo Proyecto {i+1}")
+            
+            cursor.execute('''
+                INSERT INTO Equipo (nombre_equipo, descripcion)
+                VALUES (%s, %s)
+            ''', (nombre_equipo, fake.catch_phrase()))
+            
+            id_equipo = cursor.lastrowid
+            stats['equipos'] += 1
+            
+            # Asignar empleados al equipo
+            for emp in empleados_proyecto:
+                rol = 'Team Lead' if emp['es_gerente'] else 'Developer'
+                fecha_inicio_equipo = fecha_inicio
+                fecha_fin_equipo = fecha_fin_real if estado in [4, 5] else None
+                
+                cursor.execute('''
+                    INSERT INTO MiembroEquipo (id_equipo, id_empleado, fecha_inicio, fecha_fin, rol_miembro)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', (id_equipo, emp['id'], fecha_inicio_equipo, fecha_fin_equipo, rol))
+            
+            # Generar tareas
+            nombres_tareas = ['Análisis de Requerimientos', 'Diseño de Arquitectura', 'Implementación Backend',
+                             'Desarrollo Frontend', 'Testing', 'Documentación', 'Deploy']
+            
+            tareas_seleccionadas = random.sample(nombres_tareas, min(tareas_pp, len(nombres_tareas)))
+            
+            for nombre_tarea in tareas_seleccionadas:
+                nombre_completo = f"{nombre_tarea} - P{id_proyecto}"
+                
+                inicio_offset = random.randint(0, max(1, duracion_plan - 20))
+                fecha_inicio_tarea = fecha_inicio + timedelta(days=inicio_offset)
+                duracion_tarea = random.randint(5, 21)
+                fecha_fin_tarea = fecha_inicio_tarea + timedelta(days=duracion_tarea)
+                
+                # Estado coherente con proyecto
+                if estado == 4:  # Proyecto completado
+                    estado_tarea = random.choices([4, 5], weights=[85, 15])[0]
+                    fecha_fin_real_tarea = fecha_fin_tarea + timedelta(days=random.randint(-3, 7)) if estado_tarea == 4 else None
+                elif estado == 5:  # Proyecto cancelado
+                    estado_tarea = random.choices([4, 5, 2], weights=[30, 40, 30])[0]
+                    fecha_fin_real_tarea = fecha_fin_tarea if estado_tarea == 4 else None
+                else:  # Otros estados
+                    estado_tarea = random.choices([4, 2, 1], weights=[40, 40, 20])[0]
+                    fecha_fin_real_tarea = fecha_fin_tarea if estado_tarea == 4 else None
+                
+                horas_plan = random.randint(16, 80)
+                horas_reales = horas_plan + random.randint(-10, 20) if estado_tarea == 4 else int(horas_plan * random.uniform(0.2, 0.8))
+                
+                cursor.execute('''
+                    INSERT INTO Tarea (nombre_tarea, fecha_inicio_plan, fecha_fin_plan,
+                                     fecha_fin_real, horas_plan, horas_reales,
+                                     id_proyecto, id_estado)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (nombre_completo, fecha_inicio_tarea, fecha_fin_tarea,
+                      fecha_fin_real_tarea, horas_plan, horas_reales, id_proyecto, estado_tarea))
+                
+                id_tarea = cursor.lastrowid
+                stats['tareas'] += 1
+                
+                # Asignar tarea al equipo
+                cursor.execute('''
+                    INSERT INTO TareaEquipoHist (id_tarea, id_equipo, fecha_asignacion, fecha_liberacion)
+                    VALUES (%s, %s, %s, %s)
+                ''', (id_tarea, id_equipo, fecha_inicio_tarea, fecha_fin_real_tarea))
+            
+            # Commit cada 10 proyectos
+            if (i + 1) % 10 == 0:
+                conn.commit()
+                print(f"     {i + 1}/{proyectos} proyectos generados...")
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"   ✅ Generación completada")
+        
         return jsonify({
-            'success': False,
-            'message': 'La generación de datos debe ejecutarse localmente. Use el script 01_GestionProyectos/datos/generar_datos_final.py',
-            'info': 'Este endpoint requiere acceso al sistema de archivos local y no está disponible en Railway.',
-            'alternativa': 'Genere los datos localmente y use el proceso ETL para cargarlos al DataWarehouse.'
-        }), 501  # 501 Not Implemented
+            'success': True,
+            'message': f'Datos generados exitosamente en Railway',
+            'stats': {
+                'clientes': stats['clientes'],
+                'empleados': stats['empleados'], 
+                'equipos': stats['equipos'],
+                'proyectos': stats['proyectos'],
+                'tareas': stats['tareas']
+            },
+            'info': f"{proyectos} proyectos con {empleados_pp} empleados cada uno"
+        })
         
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
         print(f" ERROR generando datos: {str(e)}")
         print(error_trace)
-        return jsonify({'success': False,'message': str(e),'traceback': error_trace}), 500
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'traceback': error_trace
+        }), 500
 
 @app.route('/buscar-trazabilidad', methods=['POST'])
 def buscar_trazabilidad():
