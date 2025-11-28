@@ -2470,16 +2470,74 @@ def get_olap_kpis_v2():
             query = "SELECT * FROM vw_olap_total"
             
         elif nivel == 'por_cliente':
-            query = "SELECT * FROM vw_olap_por_cliente"
+            # Usar vista detallada y agregar por cliente
+            query = """
+                SELECT 
+                    cliente,
+                    MAX(sector) as sector,
+                    COUNT(DISTINCT id_proyecto) as total_proyectos,
+                    SUM(CASE WHEN estado = 'Completado' THEN 1 ELSE 0 END) as proyectos_completados,
+                    SUM(presupuesto) as presupuesto_total,
+                    SUM(costo_real) as costo_total,
+                    SUM(margen) as margen_total,
+                    ROUND(AVG(rentabilidad_porcentaje), 2) as rentabilidad_promedio_porcentaje,
+                    ROUND(AVG(CASE 
+                        WHEN en_presupuesto = 'Sí' THEN 100
+                        WHEN en_presupuesto = 'No' THEN 0
+                        ELSE NULL
+                    END), 2) as porcentaje_en_presupuesto
+                FROM vw_olap_detallado
+            """
+            conditions = []
             if cliente_id:
-                query += f" WHERE id_cliente = {cliente_id}"
-            query += " ORDER BY total_proyectos DESC"
+                # Necesitamos obtener el nombre del cliente
+                conn_temp = get_connection('destino')
+                cur_temp = conn_temp.cursor(dictionary=True)
+                cur_temp.execute(f"SELECT nombre FROM DimCliente WHERE id_cliente = {cliente_id}")
+                cliente_row = cur_temp.fetchone()
+                cur_temp.close()
+                conn_temp.close()
+                if cliente_row:
+                    conditions.append(f"cliente = '{cliente_row['nombre']}'")
+            if anio:
+                conditions.append(f"anio = {anio}")
+            
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " GROUP BY cliente ORDER BY total_proyectos DESC"
             
         elif nivel == 'por_equipo':
-            query = "SELECT * FROM vw_olap_por_equipo"
+            # Usar vista detallada y agregar por equipo
+            query = """
+                SELECT 
+                    equipo,
+                    COUNT(DISTINCT id_proyecto) as total_proyectos,
+                    SUM(CASE WHEN estado = 'Completado' THEN 1 ELSE 0 END) as proyectos_completados,
+                    SUM(presupuesto) as presupuesto_total,
+                    SUM(costo_real) as costo_total,
+                    SUM(margen) as margen_total,
+                    ROUND(AVG(rentabilidad_porcentaje), 2) as rentabilidad_promedio_porcentaje,
+                    SUM(horas_reales) as horas_reales_total,
+                    SUM(horas_estimadas) as horas_estimadas_total
+                FROM vw_olap_detallado
+            """
+            conditions = []
             if equipo_id:
-                query += f" WHERE id_equipo = {equipo_id}"
-            query += " ORDER BY total_proyectos DESC"
+                # Necesitamos obtener el nombre del equipo
+                conn_temp = get_connection('destino')
+                cur_temp = conn_temp.cursor(dictionary=True)
+                cur_temp.execute(f"SELECT nombre_equipo FROM DimEquipo WHERE id_equipo = {equipo_id}")
+                equipo_row = cur_temp.fetchone()
+                cur_temp.close()
+                conn_temp.close()
+                if equipo_row:
+                    conditions.append(f"equipo = '{equipo_row['nombre_equipo']}'")
+            if anio:
+                conditions.append(f"anio = {anio}")
+            
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " GROUP BY equipo ORDER BY total_proyectos DESC"
             
         elif nivel == 'por_tiempo':
             query = "SELECT * FROM vw_olap_por_anio"
