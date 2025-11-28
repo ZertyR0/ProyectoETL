@@ -838,7 +838,7 @@ def generar_datos_personalizados():
             for (email,) in cursor.fetchall():
                 nombres_unicos['emails'].add(email)
             
-            cursor.execute("SELECT nombre FROM Equipo")
+            cursor.execute("SELECT nombre_equipo FROM Equipo")
             for (nombre,) in cursor.fetchall():
                 nombres_unicos['equipos'].add(nombre)
             
