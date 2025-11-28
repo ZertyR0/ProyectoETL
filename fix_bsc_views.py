@@ -45,7 +45,7 @@ FROM (
         'F1' as codigo_objetivo,
         'Maximizar Rentabilidad' as objetivo_nombre,
         'Aumentar margen de ganancia y control de costos en proyectos' as objetivo_descripcion,
-        'Financiera' as perspectiva,
+    'Financiera' as perspectiva,
         'Crecimiento Rentable' as vision_componente,
         'CFO' as owner_responsable,
         30.0 as peso_ponderacion,
@@ -97,7 +97,7 @@ SELECT
     'C1' as codigo_objetivo,
     'Satisfacción del Cliente' as objetivo_nombre,
     'Mejorar entregas a tiempo y calidad del servicio' as objetivo_descripcion,
-    'Cliente' as perspectiva,
+    'Clientes' as perspectiva,
     'Propuesta de Valor' as vision_componente,
     'Director Comercial' as owner_responsable,
     25.0 as peso_ponderacion,
@@ -166,7 +166,7 @@ SELECT
     'P1' as codigo_objetivo,
     'Eficiencia Operativa' as objetivo_nombre,
     'Optimizar procesos de ejecución de proyectos' as objetivo_descripcion,
-    'Procesos' as perspectiva,
+    'Procesos Internos' as perspectiva,
     'Excelencia Operacional' as vision_componente,
     'Director de Operaciones' as owner_responsable,
     25.0 as peso_ponderacion,
@@ -235,35 +235,33 @@ SELECT
     'A1' as codigo_objetivo,
     'Desarrollo del Talento' as objetivo_nombre,
     'Mejorar capacidades y eficiencia del equipo' as objetivo_descripcion,
-    'Aprendizaje' as perspectiva,
+    'Aprendizaje y Innovación' as perspectiva,
     'Capital Humano' as vision_componente,
     'Director de RRHH' as owner_responsable,
     20.0 as peso_ponderacion,
     2 as total_krs,
     
-    -- KR1: Eficiencia en Horas
+    -- KR1: Horas Promedio por Tarea (fallback a horas_plan si horas_reales=0)
     'A1.1' as kr1_codigo,
     'Horas Promedio por Tarea' as kr1_nombre,
     'hrs' as kr1_unidad_medida,
     15.0 as kr1_meta,
-    ROUND(AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)), 1) as kr1_valor_observado,
+    ROUND(AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)), 1) as kr1_valor_observado,
     ROUND(LEAST(100, GREATEST(0,
         CASE 
-            WHEN AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)) <= 15 THEN 100
-            WHEN AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)) >= 25 THEN 0
-            ELSE ((25 - AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0))) / 10.0) * 100
+            WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100
+            WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) >= 25 THEN 0
+            ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100
         END
     )), 1) as kr1_progreso,
     
-    -- KR2: Participación de Empleados
+    -- KR2: % Empleados Activos
     'A1.2' as kr2_codigo,
     '% Empleados Activos' as kr2_nombre,
     '%' as kr2_unidad_medida,
     80.0 as kr2_meta,
-    ROUND((COUNT(DISTINCT h.id_empleado_gerente) * 100.0 / 
-           NULLIF((SELECT COUNT(*) FROM DimEmpleado), 0)), 1) as kr2_valor_observado,
-    ROUND(LEAST(100, (COUNT(DISTINCT h.id_empleado_gerente) * 100.0 / 
-                      NULLIF((SELECT COUNT(*) FROM DimEmpleado), 0)) / 80.0 * 100), 1) as kr2_progreso,
+    ROUND((SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado), 1) as kr2_valor_observado,
+    ROUND(LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100), 1) as kr2_progreso,
     
     -- KR3: NULL (para igualar columnas)
     NULL as kr3_codigo,
@@ -276,25 +274,25 @@ SELECT
     0 as krs_en_meta,
     
     ROUND((
-        LEAST(100, GREATEST(0, CASE WHEN AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
-        LEAST(100, (COUNT(DISTINCT h.id_empleado_gerente) * 100.0 / NULLIF((SELECT COUNT(*) FROM DimEmpleado), 0)) / 80.0 * 100) * 0.5
+        LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
+        LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100) * 0.5
     ), 1) as avance_objetivo_porcentaje,
     
     CASE 
         WHEN ROUND((
-            LEAST(100, GREATEST(0, CASE WHEN AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
-            LEAST(100, (COUNT(DISTINCT h.id_empleado_gerente) * 100.0 / NULLIF((SELECT COUNT(*) FROM DimEmpleado), 0)) / 80.0 * 100) * 0.5
+            LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
+            LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100) * 0.5
         ), 1) >= 70 THEN 'Verde'
         WHEN ROUND((
-            LEAST(100, GREATEST(0, CASE WHEN AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG(h.horas_reales_total / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
-            LEAST(100, (COUNT(DISTINCT h.id_empleado_gerente) * 100.0 / NULLIF((SELECT COUNT(*) FROM DimEmpleado), 0)) / 80.0 * 100) * 0.5
+            LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
+            LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100) * 0.5
         ), 1) >= 50 THEN 'Amarillo'
         ELSE 'Rojo'
     END as estado_objetivo,
     
     NOW() as ultima_actualizacion
 FROM HechoProyecto h
-WHERE h.tareas_total > 0 AND h.horas_reales_total > 0
+WHERE h.tareas_total > 0
 """)
 print("✓ vw_bsc_aprendizaje creada")
 
@@ -311,6 +309,63 @@ UNION ALL
 SELECT * FROM vw_bsc_aprendizaje
 """)
 print("✓ vw_bsc_tablero_consolidado creada")
+
+# Vista 6: BSC KRs Detalle (unpivot desde tablero consolidado)
+print("6. Creando vw_bsc_krs_detalle...")
+cursor.execute("""
+CREATE OR REPLACE VIEW vw_bsc_krs_detalle AS
+SELECT 
+    t.perspectiva,
+    t.codigo_objetivo,
+    t.objetivo_nombre,
+    t.objetivo_descripcion,
+    t.vision_componente,
+    t.owner_responsable,
+    kr.codigo_kr,
+    kr.kr_nombre,
+    kr.unidad_medida,
+    kr.meta_objetivo,
+    kr.valor_observado,
+    kr.progreso_hacia_meta,
+    CASE 
+        WHEN kr.progreso_hacia_meta >= 70 THEN 'Verde'
+        WHEN kr.progreso_hacia_meta >= 50 THEN 'Amarillo'
+        ELSE 'Rojo'
+    END AS estado_semaforo
+FROM vw_bsc_tablero_consolidado t
+JOIN (
+    SELECT 
+        codigo_objetivo,
+        kr1_codigo AS codigo_kr,
+        kr1_nombre AS kr_nombre,
+        kr1_unidad_medida AS unidad_medida,
+        kr1_meta AS meta_objetivo,
+        kr1_valor_observado AS valor_observado,
+        kr1_progreso AS progreso_hacia_meta
+    FROM vw_bsc_tablero_consolidado WHERE kr1_codigo IS NOT NULL
+    UNION ALL
+    SELECT 
+        codigo_objetivo,
+        kr2_codigo AS codigo_kr,
+        kr2_nombre AS kr_nombre,
+        kr2_unidad_medida AS unidad_medida,
+        kr2_meta AS meta_objetivo,
+        kr2_valor_observado AS valor_observado,
+        kr2_progreso AS progreso_hacia_meta
+    FROM vw_bsc_tablero_consolidado WHERE kr2_codigo IS NOT NULL
+    UNION ALL
+    SELECT 
+        codigo_objetivo,
+        kr3_codigo AS codigo_kr,
+        kr3_nombre AS kr_nombre,
+        kr3_unidad_medida AS unidad_medida,
+        kr3_meta AS meta_objetivo,
+        kr3_valor_observado AS valor_observado,
+        kr3_progreso AS progreso_hacia_meta
+    FROM vw_bsc_tablero_consolidado WHERE kr3_codigo IS NOT NULL
+) kr ON kr.codigo_objetivo = t.codigo_objetivo
+""")
+print("✓ vw_bsc_krs_detalle creada")
 
 conn.commit()
 cursor.close()

@@ -721,6 +721,8 @@ body {
 /* Compact BSC Styles */
 .objetivo-compact {
     transition: all 0.2s ease;
+    padding: 1rem;
+    border-width: 2px !important;
 }
 
 .objetivo-compact:hover {
@@ -729,14 +731,15 @@ body {
 }
 
 .kr-compact {
-    padding: 0.5rem;
+    padding: 0.75rem;
     background: #f8f9fa;
-    border-radius: 0.5rem;
-    transition: background 0.2s ease;
+    border-radius: 0.75rem;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .kr-compact:hover {
     background: #e9ecef;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .badge-sm {
@@ -763,6 +766,16 @@ body {
 .metric-box strong {
     display: block;
     margin-top: 0.25rem;
+}
+
+/* BSC: mejorar legibilidad en columnas (2 por fila en >= lg se maneja en el grid) */
+#perspectivas-bsc .card-body {
+    padding: 0.75rem 0.5rem;
+}
+
+/* Texto para valores nulos representados con raya (–) */
+.text-null {
+    color: #6c757d !important;
 }
 
 /* Mini Chart Container */

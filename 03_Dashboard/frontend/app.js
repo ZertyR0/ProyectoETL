@@ -633,7 +633,7 @@ async function cargarTodasTablasOrigen() {
                                                         
                                                         // Formatear valores según tipo
                                                         if (valor === null || valor === undefined) {
-                                                            return '<td class="text-muted"><em>null</em></td>';
+                                                            return '<td class="text-muted">&ndash;</td>';
                                                         } else if (typeof valor === 'number' && !Number.isInteger(valor)) {
                                                             return `<td class="text-end">${valor.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
                                                         } else if (typeof valor === 'number') {
@@ -868,7 +868,7 @@ function renderizarDatos(datos, tipo, esDW = false) {
             
             // Formatear según tipo de dato
             if (valor === null || valor === undefined) {
-                valorFormateado = '<span class="text-muted"><em>null</em></span>';
+                valorFormateado = '<span class="text-muted">&ndash;</span>';
             } else if (campo.toLowerCase().includes('presupuesto') || campo.toLowerCase().includes('costo') || campo.toLowerCase().includes('salario')) {
                 valorFormateado = formatCurrency(parseFloat(valor));
             } else if (campo.toLowerCase().includes('fecha') || campo.toLowerCase().includes('timestamp')) {
@@ -1258,8 +1258,8 @@ function mostrarResultadosOLAP(datos, nivel) {
             `;
         } else if (nivel === 'por_cliente') {
             tr.innerHTML = `
-                <td><strong>${fila.cliente || 'N/A'}</strong></td>
-                <td><span class="badge bg-secondary">${fila.sector || 'N/A'}</span></td>
+                <td><strong>${fila.cliente || '–'}</strong></td>
+                <td><span class="badge bg-secondary">${fila.sector || '–'}</span></td>
                 <td>-</td>
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
@@ -1271,7 +1271,7 @@ function mostrarResultadosOLAP(datos, nivel) {
         } else if (nivel === 'por_equipo') {
             tr.innerHTML = `
                 <td>-</td>
-                <td><strong>${fila.equipo || 'N/A'}</strong></td>
+                <td><strong>${fila.equipo || '–'}</strong></td>
                 <td>-</td>
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
@@ -1284,7 +1284,7 @@ function mostrarResultadosOLAP(datos, nivel) {
             tr.innerHTML = `
                 <td>-</td>
                 <td>-</td>
-                <td class="fw-bold">${fila.anio || 'N/A'}</td>
+                <td class="fw-bold">${fila.anio || '–'}</td>
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
                 <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
@@ -1307,10 +1307,10 @@ function mostrarResultadosOLAP(datos, nivel) {
                 '<span class="text-muted">N/A</span>';
             
             tr.innerHTML = `
-                <td><strong>${fila.cliente || 'N/A'}</strong></td>
-                <td>${fila.equipo || 'N/A'}</td>
-                <td>${fila.anio || 'N/A'}</td>
-                <td>${fila.proyecto || 'N/A'}</td>
+                <td><strong>${fila.cliente || '–'}</strong></td>
+                <td>${fila.equipo || '–'}</td>
+                <td>${fila.anio || '–'}</td>
+                <td>${fila.proyecto || '–'}</td>
                 <td>${estadoBadge}</td>
                 <td>$${(fila.presupuesto || 0).toLocaleString('es-MX')}</td>
                 <td>$${(fila.costo_real || 0).toLocaleString('es-MX')}</td>
@@ -1583,11 +1583,11 @@ function mostrarPerspectivasBSC(perspectivas) {
                 
                 const valorObservado = tieneMediciones ? 
                     `<span class="text-primary fw-bold">${kr.valor_observado.toFixed(1)}</span> <small class="text-muted">${kr.unidad_medida || ''}</small>` : 
-                    '<span class="text-muted">--</span>';
+                    '<span class="text-muted">&ndash;</span>';
                 
                 const metaObjetivo = kr.meta_objetivo ? 
                     `<span class="text-success fw-bold">${kr.meta_objetivo.toFixed(1)}</span> <small class="text-muted">${kr.unidad_medida || ''}</small>` : 
-                    '<span class="text-muted">--</span>';
+                    '<span class="text-muted">&ndash;</span>';
                 
                 // Iconos según el tipo de KR
                 let iconoKr = '📊';
@@ -1701,7 +1701,7 @@ function mostrarPerspectivasBSC(perspectivas) {
                                 ${avanceObjetivo.toFixed(0)}%
                             </div>
                             <div style="font-size: 0.65rem; color: #6c757d;">
-                                <i class="fas fa-user me-1"></i>${objetivo.owner_responsable || 'N/A'}
+                                <i class="fas fa-user me-1"></i>${objetivo.owner_responsable || '–'}
                             </div>
                         </div>
                     </div>
@@ -1741,7 +1741,7 @@ function mostrarPerspectivasBSC(perspectivas) {
         const avancePromedioPerspectiva = perspectiva.resumen.avance_promedio || 0;
         
         container.innerHTML += `
-            <div class="col-lg-6 col-xl-3 mb-3">
+            <div class="col-12 col-lg-6 mb-3">
                 <div class="card h-100 shadow-sm">
                     <div class="card-header bg-${color} text-white py-2">
                         <div class="d-flex justify-content-between align-items-center">
