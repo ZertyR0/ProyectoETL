@@ -481,14 +481,126 @@ def insertar_datos():
 
 @app.route('/ejecutar-etl', methods=['POST'])
 def ejecutar_etl():
-    """Ejecutar proceso ETL usando script SQL manual (fixed schema).
-    Flujo:
-      1. Limpiar HechoProyecto y dimensiones
-      2. Cargar dimensiones desde origen
-      3. Cargar HechoProyecto con id_equipo desde TareaEquipoHist
-    """
+    """Ejecutar proceso ETL usando Python mysql-connector (sin subprocess)"""
     try:
-        print(" Iniciando proceso ETL manual...")
+        print(" Iniciando proceso ETL...")
+        
+        conn = get_connection('destino')
+        cursor = conn.cursor()
+        
+        # 1. Limpiar tablas
+        print(" Limpiando tablas...")
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+        cursor.execute("TRUNCATE TABLE HechoTarea")
+        cursor.execute("TRUNCATE TABLE HechoProyecto")
+        cursor.execute("DELETE FROM DimCliente")
+        cursor.execute("DELETE FROM DimEmpleado")
+        cursor.execute("DELETE FROM DimEquipo")
+        cursor.execute("DELETE FROM DimProyecto")
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        conn.commit()
+        
+        # 2. Cargar dimensiones desde origen
+        print(" Cargando dimensiones...")
+        
+        # DimCliente
+        cursor.execute("""
+            INSERT INTO DimCliente (id_cliente, nombre, sector)
+            SELECT id_cliente, nombre, sector FROM gestionproyectos_hist.Cliente
+        """)
+        
+        # DimEmpleado  
+        cursor.execute("""
+            INSERT INTO DimEmpleado (id_empleado, nombre, puesto)
+            SELECT id_empleado, nombre, puesto FROM gestionproyectos_hist.Empleado
+        """)
+        
+        # DimEquipo
+        cursor.execute("""
+            INSERT INTO DimEquipo (id_equipo, nombre_equipo, descripcion)
+            SELECT id_equipo, nombre_equipo, descripcion FROM gestionproyectos_hist.Equipo
+        """)
+        
+        # DimProyecto (solo Completados/Cancelados)
+        cursor.execute("""
+            INSERT INTO DimProyecto (id_proyecto, nombre_proyecto, fecha_inicio, presupuesto_plan)
+            SELECT id_proyecto, nombre, fecha_inicio, presupuesto
+            FROM gestionproyectos_hist.Proyecto
+            WHERE id_estado IN (4, 5)
+        """)
+        
+        # DimTiempo
+        cursor.execute("""
+            INSERT IGNORE INTO DimTiempo (id_tiempo, fecha, anio, mes, trimestre)
+            SELECT DISTINCT
+                CAST(DATE_FORMAT(fecha_fin_real, '%Y%m%d') AS UNSIGNED),
+                fecha_fin_real,
+                YEAR(fecha_fin_real),
+                MONTH(fecha_fin_real),
+                QUARTER(fecha_fin_real)
+            FROM gestionproyectos_hist.Proyecto
+            WHERE fecha_fin_real IS NOT NULL AND id_estado IN (4, 5)
+        """)
+        
+        conn.commit()
+        
+        # 3. Cargar HechoProyecto
+        print(" Cargando HechoProyecto...")
+        cursor.execute("""
+            INSERT INTO HechoProyecto (
+                id_proyecto, id_cliente, id_empleado_gerente, id_tiempo_fin_real,
+                presupuesto, costo_real, duracion_planificada, duracion_real,
+                cumplimiento_tiempo, cumplimiento_presupuesto,
+                tareas_total, tareas_completadas, tareas_canceladas
+            )
+            SELECT 
+                p.id_proyecto,
+                p.id_cliente,
+                p.id_empleado_gerente,
+                CAST(DATE_FORMAT(p.fecha_fin_real, '%Y%m%d') AS UNSIGNED),
+                p.presupuesto,
+                COALESCE(p.costo_real, p.presupuesto * 1.1),
+                DATEDIFF(p.fecha_fin_plan, p.fecha_inicio),
+                DATEDIFF(p.fecha_fin_real, p.fecha_inicio),
+                CASE WHEN p.fecha_fin_real <= p.fecha_fin_plan THEN 1 ELSE 0 END,
+                CASE WHEN COALESCE(p.costo_real, p.presupuesto * 1.1) <= p.presupuesto THEN 1 ELSE 0 END,
+                (SELECT COUNT(*) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto),
+                (SELECT COUNT(*) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto AND t.id_estado = 4),
+                (SELECT COUNT(*) FROM gestionproyectos_hist.Tarea t WHERE t.id_proyecto = p.id_proyecto AND t.id_estado = 5)
+            FROM gestionproyectos_hist.Proyecto p
+            WHERE p.id_estado IN (4, 5) AND p.fecha_fin_real IS NOT NULL
+        """)
+        
+        conn.commit()
+        
+        # Obtener estadísticas
+        cursor.execute("SELECT COUNT(*) FROM HechoProyecto")
+        hechos = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM DimCliente")
+        clientes = cursor.fetchone()[0]
+        
+        cursor.close()
+        conn.close()
+        
+        print(f" ETL completado: {hechos} proyectos, {clientes} clientes")
+        
+        return jsonify({
+            'success': True,
+            'message': f'ETL ejecutado exitosamente: {hechos} proyectos cargados',
+            'stats': {
+                'HechoProyecto': hechos,
+                'DimCliente': clientes
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
         
         # Get project root
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -645,80 +757,6 @@ WHERE t.id_proyecto IN (
 
 SELECT 
     COUNT(*) as total_proyectos,
-    COUNT(id_equipo) as con_equipo
-FROM HechoProyecto;
-"""
-        
-        # Write script to temp file
-        import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as f:
-            f.write(etl_script)
-            temp_sql = f.name
-        
-        try:
-            # Execute via mysql command
-            env = os.environ.copy()
-            env['MYSQL_PWD'] = DB_CONFIG.get('password_destino', '')
-            
-            result = subprocess.run(
-                [
-                    'mysql',
-                    '-u', DB_CONFIG.get('user_destino', 'root'),
-                    '-h', DB_CONFIG.get('host_destino', 'localhost'),
-                    '-P', str(DB_CONFIG.get('port_destino', 3306)),
-                    DB_CONFIG.get('db_destino', 'dw_proyectos_hist')
-                ],
-                stdin=open(temp_sql, 'r'),
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=120
-            )
-            
-            if result.returncode != 0:
-                print(f" ETL SQL failed: {result.stderr}")
-                return jsonify({
-                    'success': False,
-                    'message': f'ETL failed: {result.stderr[-200:]}',
-                    'returncode': result.returncode
-                }), 500
-            
-            print(" ETL completado exitosamente")
-            
-        finally:
-            os.unlink(temp_sql)
-        
-        # Estadísticas post-carga
-        try:
-            conn = get_connection('destino'); cursor = conn.cursor()
-            def _count(sql):
-                try:
-                    cursor.execute(sql); return int(cursor.fetchone()[0])
-                except Exception:
-                    return 0
-            stats = {
-                'HechoProyecto': _count('SELECT COUNT(*) FROM HechoProyecto'),
-                'HechoTarea': _count('SELECT COUNT(*) FROM HechoTarea'),
-                'DimCliente': _count('SELECT COUNT(*) FROM DimCliente'),
-                'DimEquipo': _count('SELECT COUNT(*) FROM DimEquipo'),
-                'proyectos_con_equipo': _count('SELECT COUNT(*) FROM HechoProyecto WHERE id_equipo IS NOT NULL')
-            }
-            cursor.close(); conn.close()
-        except Exception as db_error:
-            stats = {}
-            print(f" No se pudieron obtener estadísticas post-ETL: {db_error}")
-
-        return jsonify({
-            'success': True,
-            'message': 'ETL completado exitosamente',
-            'registros_procesados': stats,
-            'total': sum(stats.values()) if stats else 0
-        })
-
-    except Exception as e:
-        import traceback
-        return jsonify({'success': False,'message': f'Error ejecutando ETL: {e}','traceback': traceback.format_exc()}), 500
-
 @app.route('/datos-origen/todas-tablas', methods=['GET'])
 def obtener_todas_tablas_origen():
     """Obtiene datos de todas las tablas de la base de datos origen"""
