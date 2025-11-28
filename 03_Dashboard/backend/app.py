@@ -1791,9 +1791,9 @@ def get_bsc_okr():
                     objetivo[key] = value.isoformat()
             
             # Mapear campos a los nombres esperados por el frontend
-            objetivo['nombre'] = objetivo.get('objetivo', '')
-            objetivo['descripcion'] = objetivo.get('descripcion', '')
-            objetivo['avance_objetivo_porcentaje'] = float(objetivo.get('avance', 0))
+            objetivo['nombre'] = objetivo.get('objetivo_nombre', '')
+            objetivo['descripcion'] = objetivo.get('objetivo_descripcion', '')
+            # avance_objetivo_porcentaje ya viene de la vista, no necesita mapeo
             
             # Agregar KRs al objetivo
             objetivo['krs'] = []
@@ -1812,15 +1812,17 @@ def get_bsc_okr():
             # Actualizar resumen de perspectiva
             resumen = perspectivas[perspectiva]['resumen']
             resumen['total_objetivos'] += 1
-            if objetivo.get('estado') == 'Verde':
+            estado = objetivo.get('estado_objetivo', '')
+            if estado == 'Verde':
                 resumen['objetivos_verde'] += 1
-            elif objetivo.get('estado') == 'Amarillo':
+            elif estado == 'Amarillo':
                 resumen['objetivos_amarillo'] += 1
             else:
                 resumen['objetivos_rojo'] += 1
             
-            if objetivo['avance_objetivo_porcentaje']:
-                resumen['avance_promedio'] += objetivo['avance_objetivo_porcentaje']
+            avance = objetivo.get('avance_objetivo_porcentaje', 0)
+            if avance:
+                resumen['avance_promedio'] += float(avance)
         
         # Calcular promedios y avance global
         for perspectiva in perspectivas.values():

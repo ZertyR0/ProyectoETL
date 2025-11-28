@@ -56,11 +56,11 @@ def generar_clientes(conn, cantidad: int):
     cur.execute("SELECT id_cliente FROM Cliente ORDER BY id_cliente")
     existentes = [r[0] for r in cur.fetchall()]
     if len(existentes) >= cantidad:
-        print(f" Reutilizando {cantidad} clientes existentes")
+        print(f"👥 Reutilizando {cantidad} clientes existentes")
         return existentes[:cantidad]
     sectores = ['Tecnología','Manufactura','Retail','Salud','Educación','Finanzas']
     nuevos = cantidad - len(existentes)
-    print(f" Insertando {nuevos} clientes nuevos...")
+    print(f"👥 Insertando {nuevos} clientes nuevos...")
     ids = existentes.copy()
     for _ in range(nuevos):
         cur.execute("""
@@ -76,7 +76,7 @@ def generar_empleados(conn, cantidad: int):
     cur = conn.cursor()
     puestos = ['Desarrollador','Analista','Gerente','Diseñador','QA','DevOps']
     ids = []
-    print(f"‍💼 Generando {cantidad} empleados...")
+    print(f" Generando {cantidad} empleados...")
     for _ in range(cantidad):
         cur.execute("""
             INSERT INTO Empleado (nombre, puesto)
@@ -228,7 +228,7 @@ def generar_datos(proyectos: int = 10, empleados_por_proyecto: int = 5, tareas_p
             return 0
     resumen = GeneracionResumen(clientes=_count('Cliente'), empleados=_count('Empleado'), equipos=_count('Equipo'),
                                 proyectos=_count('Proyecto'), tareas=_count('Tarea'))
-    print("\n Generación completada:", resumen)
+    print("\n✅ Generación completada:", resumen)
     cur.close(); conn.close()
     return resumen
 

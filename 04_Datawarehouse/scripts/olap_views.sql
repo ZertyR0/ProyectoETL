@@ -144,8 +144,8 @@ SELECT
     
     -- KPIs de Proyectos
     COUNT(DISTINCT hp.id_proyecto) as total_proyectos_periodo,
-    COUNT(DISTINCT CASE WHEN hp.estado = 'Completado' THEN hp.id_proyecto END) as proyectos_completados,
-    COUNT(DISTINCT CASE WHEN hp.estado = 'En Progreso' THEN hp.id_proyecto END) as proyectos_activos,
+    SUM(hp.tareas_completadas) as proyectos_completados,
+    COUNT(DISTINCT CASE WHEN hp.porcentaje_completado < 100 THEN hp.id_proyecto END) as proyectos_activos,
     
     -- KPIs Financieros
     SUM(hp.presupuesto) as presupuesto_total_periodo,
@@ -155,29 +155,27 @@ SELECT
         ELSE NULL END) as variacion_presupuesto_promedio,
     
     -- KPIs de Calidad y Tiempo
-    AVG(hp.progreso_porcentaje) as progreso_promedio_proyectos,
-    COUNT(CASE WHEN hp.fecha_fin_real <= hp.fecha_fin_plan AND hp.estado = 'Completado' 
-         THEN 1 END) as proyectos_entregados_a_tiempo,
+    AVG(hp.porcentaje_completado) as progreso_promedio_proyectos,
+    SUM(hp.cumplimiento_tiempo) as proyectos_entregados_a_tiempo,
     
     -- KPIs de Recursos Humanos
-    COUNT(DISTINCT ht.id_empleado) as empleados_activos_periodo,
-    SUM(ht.horas_trabajadas) as horas_trabajadas_total_periodo,
-    AVG(ht.horas_trabajadas) as horas_promedio_por_tarea,
+    COUNT(DISTINCT hp.id_empleado_gerente) as empleados_activos_periodo,
+    SUM(hp.horas_reales_total) as horas_trabajadas_total_periodo,
+    AVG(hp.horas_reales_total) as horas_promedio_por_proyecto,
     
     -- KPIs de Productividad
     CASE 
-        WHEN SUM(ht.horas_estimadas) > 0 THEN 
-            (SUM(ht.horas_trabajadas) / SUM(ht.horas_estimadas)) * 100
+        WHEN SUM(hp.horas_estimadas_total) > 0 THEN 
+            (SUM(hp.horas_reales_total) / SUM(hp.horas_estimadas_total)) * 100
         ELSE NULL
     END as eficiencia_estimacion_porcentaje,
     
     -- Velocidad de cierre de tareas
-    COUNT(CASE WHEN ht.estado = 'Completado' THEN 1 END) as tareas_cerradas_periodo,
-    COUNT(ht.id_tarea) as tareas_total_periodo
+    SUM(hp.tareas_completadas) as tareas_cerradas_periodo,
+    SUM(hp.tareas_total) as tareas_total_periodo
 
 FROM DimTiempo dt
-LEFT JOIN HechoProyecto hp ON dt.id_tiempo = hp.id_tiempo
-LEFT JOIN HechoTarea ht ON dt.id_tiempo = ht.id_tiempo
+LEFT JOIN HechoProyecto hp ON dt.id_tiempo = hp.id_tiempo_fin_real
 
 WHERE dt.fecha >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH) -- Últimos 2 años
 GROUP BY dt.id_tiempo, dt.anio, dt.trimestre, dt.mes, dt.fecha
@@ -196,7 +194,7 @@ SELECT
     COUNT(hp.id_proyecto) as proyectos_sector,
     SUM(hp.presupuesto) as facturacion_sector,
     SUM(hp.costo_real) as costo_sector,
-    AVG(hp.progreso_porcentaje) as progreso_promedio_sector,
+    AVG(hp.porcentaje_completado) as progreso_promedio_sector,
     
     -- Rentabilidad por sector
     CASE 
@@ -208,14 +206,13 @@ SELECT
     -- Satisfacción del cliente (proxy: proyectos completados a tiempo)
     CASE 
         WHEN COUNT(hp.id_proyecto) > 0 THEN
-            (COUNT(CASE WHEN hp.fecha_fin_real <= hp.fecha_fin_plan AND hp.estado = 'Completado' 
-                   THEN 1 END) / COUNT(hp.id_proyecto)) * 100
+            (SUM(hp.cumplimiento_tiempo) / COUNT(hp.id_proyecto)) * 100
         ELSE NULL
     END as indice_cumplimiento_porcentaje
 
 FROM DimCliente dc
 JOIN HechoProyecto hp ON dc.id_cliente = hp.id_cliente
-JOIN DimTiempo dt ON hp.id_tiempo = dt.id_tiempo
+JOIN DimTiempo dt ON hp.id_tiempo_fin_real = dt.id_tiempo
 WHERE dt.anio >= YEAR(CURDATE()) - 2
 GROUP BY dc.sector, dt.anio
 ORDER BY dc.sector, dt.anio;
@@ -225,16 +222,15 @@ ORDER BY dc.sector, dt.anio;
 -- ========================================
 
 -- Índices compuestos para mejorar performance de drill-down
-CREATE INDEX idx_olap_proyecto_cliente_tiempo ON HechoProyecto(id_cliente, id_tiempo, estado);
-CREATE INDEX idx_olap_proyecto_equipo_tiempo ON HechoProyecto(id_equipo, id_tiempo, estado);
-CREATE INDEX idx_olap_tarea_equipo_proyecto ON HechoTarea(id_equipo, id_proyecto, estado);
-CREATE INDEX idx_olap_tarea_tiempo_estado ON HechoTarea(id_tiempo, estado);
+CREATE INDEX IF NOT EXISTS idx_olap_proyecto_cliente_tiempo ON HechoProyecto(id_cliente, id_tiempo_fin_real);
+CREATE INDEX IF NOT EXISTS idx_olap_proyecto_equipo ON HechoProyecto(id_equipo);
+CREATE INDEX IF NOT EXISTS idx_olap_proyecto_gerente ON HechoProyecto(id_empleado_gerente);
 
 -- Índices para dimensiones frecuentemente consultadas
-CREATE INDEX idx_dim_cliente_sector ON DimCliente(sector);
-CREATE INDEX idx_dim_equipo_tipo ON DimEquipo(tipo);
-CREATE INDEX idx_dim_tiempo_anio_mes ON DimTiempo(anio, mes);
-CREATE INDEX idx_dim_proyecto_estado ON DimProyecto(estado);
+CREATE INDEX IF NOT EXISTS idx_dim_cliente_sector ON DimCliente(sector);
+CREATE INDEX IF NOT EXISTS idx_dim_equipo_nombre ON DimEquipo(nombre_equipo);
+CREATE INDEX IF NOT EXISTS idx_dim_tiempo_anio_mes ON DimTiempo(anio, mes);
+CREATE INDEX IF NOT EXISTS idx_dim_proyecto_nombre ON DimProyecto(nombre_proyecto);
 
 -- ========================================
 -- 6. PROCEDIMIENTOS PARA ANÁLISIS OLAP
