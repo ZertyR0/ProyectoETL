@@ -26,20 +26,26 @@ print("1. Creando vw_olap_detallado...")
 cursor.execute("""
 CREATE OR REPLACE VIEW vw_olap_detallado AS
 SELECT 
-    hp.id_proyecto,
+    hp.id_proyecto as proyecto,
     dp.nombre_proyecto,
-    dc.nombre as cliente,
-    dc.sector,
-    dt.fecha,
-    dt.anio,
-    dt.mes,
-    dt.trimestre,
-    hp.presupuesto as presupuesto_total,
+    COALESCE(dc.nombre, 'Sin Cliente') as cliente,
+    COALESCE(dc.sector, '-') as sector,
+    'N/A' as equipo,
+    COALESCE(dt.anio, YEAR(CURDATE())) as anio,
+    CASE 
+        WHEN hp.porcentaje_completado = 100 THEN 'Completado'
+        WHEN hp.porcentaje_completado > 0 THEN 'En Progreso'
+        ELSE 'Pendiente'
+    END as estado,
+    hp.presupuesto as presupuesto,
     hp.costo_real as costo_real,
     hp.tareas_total as total_proyectos,
     hp.tareas_completadas as completados,
-    (hp.costo_real / NULLIF(hp.presupuesto, 0)) * 100 as rentabilidad_porcentaje,
-    (hp.tareas_completadas * 100.0 / NULLIF(hp.tareas_total, 0)) as porcentaje_presupuesto
+    ROUND((hp.costo_real / NULLIF(hp.presupuesto, 0)) * 100, 1) as rentabilidad_porcentaje,
+    CASE 
+        WHEN hp.presupuesto > 0 AND hp.costo_real <= hp.presupuesto THEN 'Sí'
+        ELSE 'No'
+    END as en_presupuesto
 FROM HechoProyecto hp
 LEFT JOIN DimProyecto dp ON hp.id_proyecto = dp.id_proyecto
 LEFT JOIN DimCliente dc ON hp.id_cliente = dc.id_cliente
@@ -53,19 +59,20 @@ print("2. Creando vw_olap_por_cliente...")
 cursor.execute("""
 CREATE OR REPLACE VIEW vw_olap_por_cliente AS
 SELECT 
-    dc.id_cliente,
-    dc.nombre as cliente,
-    dc.sector,
+    COALESCE(dc.nombre, 'Sin Cliente') as cliente,
+    COALESCE(dc.sector, '-') as sector,
+    '-' as equipo_placeholder,
     COUNT(hp.id_proyecto) as total_proyectos,
     SUM(CASE WHEN hp.porcentaje_completado = 100 THEN 1 ELSE 0 END) as completados,
     SUM(hp.presupuesto) as presupuesto_total,
     SUM(hp.costo_real) as costo_real,
-    (SUM(hp.costo_real) / NULLIF(SUM(hp.presupuesto), 0)) * 100 as rentabilidad_porcentaje,
-    (SUM(CASE WHEN hp.porcentaje_completado >= 100 THEN hp.presupuesto ELSE 0 END) / 
-     NULLIF(SUM(hp.presupuesto), 0)) * 100 as porcentaje_presupuesto
-FROM DimCliente dc
-JOIN HechoProyecto hp ON dc.id_cliente = hp.id_cliente
-GROUP BY dc.id_cliente, dc.nombre, dc.sector
+    ROUND((SUM(hp.costo_real) / NULLIF(SUM(hp.presupuesto), 0)) * 100, 1) as rentabilidad_porcentaje,
+    ROUND((SUM(CASE WHEN hp.costo_real <= hp.presupuesto THEN hp.presupuesto ELSE 0 END) / 
+     NULLIF(SUM(hp.presupuesto), 0)) * 100, 1) as porcentaje_presupuesto
+FROM HechoProyecto hp
+LEFT JOIN DimCliente dc ON hp.id_cliente = dc.id_cliente
+GROUP BY dc.nombre, dc.sector
+ORDER BY total_proyectos DESC
 """)
 print("✓ vw_olap_por_cliente")
 
@@ -94,18 +101,20 @@ print("4. Creando vw_olap_por_anio...")
 cursor.execute("""
 CREATE OR REPLACE VIEW vw_olap_por_anio AS
 SELECT 
-    dt.anio,
+    '-' as cliente_placeholder,
+    '-' as sector_placeholder,
+    COALESCE(dt.anio, YEAR(CURDATE())) as anio,
     COUNT(hp.id_proyecto) as total_proyectos,
     SUM(CASE WHEN hp.porcentaje_completado = 100 THEN 1 ELSE 0 END) as completados,
     SUM(hp.presupuesto) as presupuesto_total,
     SUM(hp.costo_real) as costo_real,
-    (SUM(hp.costo_real) / NULLIF(SUM(hp.presupuesto), 0)) * 100 as rentabilidad_porcentaje,
-    (SUM(CASE WHEN hp.porcentaje_completado >= 100 THEN hp.presupuesto ELSE 0 END) / 
-     NULLIF(SUM(hp.presupuesto), 0)) * 100 as porcentaje_presupuesto
+    ROUND((SUM(hp.costo_real) / NULLIF(SUM(hp.presupuesto), 0)) * 100, 1) as rentabilidad_porcentaje,
+    ROUND((SUM(CASE WHEN hp.costo_real <= hp.presupuesto THEN hp.presupuesto ELSE 0 END) / 
+     NULLIF(SUM(hp.presupuesto), 0)) * 100, 1) as porcentaje_presupuesto
 FROM HechoProyecto hp
 LEFT JOIN DimTiempo dt ON hp.id_tiempo_inicio = dt.id_tiempo
 GROUP BY dt.anio
-ORDER BY dt.anio DESC
+ORDER BY anio DESC
 """)
 print("✓ vw_olap_por_anio")
 

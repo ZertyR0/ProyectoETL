@@ -2491,29 +2491,14 @@ def get_olap_kpis_v2():
             query = "SELECT * FROM vw_olap_detallado"
             conditions = []
             if cliente_id:
-                # Necesitamos join para filtrar por cliente en detallado
-                query = """
-                SELECT d.*, dc.id_cliente 
-                FROM vw_olap_detallado d
-                JOIN HechoProyecto hp ON d.id_proyecto = hp.id_proyecto
-                JOIN DimCliente dc ON hp.id_cliente = dc.id_cliente
-                """
-                conditions.append(f"dc.id_cliente = {cliente_id}")
-            if equipo_id:
-                if not cliente_id:
-                    query = """
-                    SELECT d.*, de.id_equipo
-                    FROM vw_olap_detallado d
-                    JOIN HechoProyecto hp ON d.id_proyecto = hp.id_proyecto
-                    JOIN DimEquipo de ON hp.id_equipo = de.id_equipo
-                    """
-                conditions.append(f"de.id_equipo = {equipo_id}")
+                # La vista ya tiene el cliente, solo filtrar
+                conditions.append(f"cliente = (SELECT nombre FROM DimCliente WHERE id_cliente = {cliente_id})")
             if anio:
                 conditions.append(f"anio = {anio}")
                 
             if conditions:
                 query += " WHERE " + " AND ".join(conditions)
-            query += " ORDER BY fecha DESC LIMIT 100"
+            query += " ORDER BY anio DESC, proyecto DESC LIMIT 100"
         
         cursor.execute(query)
         resultados = cursor.fetchall()
