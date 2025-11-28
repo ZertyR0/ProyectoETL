@@ -787,10 +787,10 @@ def generar_datos_personalizados():
         
         def generar_email_unico(base):
             base_limpia = base.lower().replace(' ', '').replace(',', '')[:20]
-            email = f\"{base_limpia}@{fake.free_email_domain()}\"
+            email = f"{base_limpia}@{fake.free_email_domain()}"
             contador = 1
             while email in nombres_unicos['emails']:
-                email = f\"{base_limpia}{contador}@{fake.free_email_domain()}\"
+                email = f"{base_limpia}{contador}@{fake.free_email_domain()}"
                 contador += 1
             nombres_unicos['emails'].add(email)
             return email
@@ -803,7 +803,7 @@ def generar_datos_personalizados():
                     nombres_unicos[tipo].add(nombre)
                     return nombre
             # Si no se encuentra único, agregar sufijo
-            nombre = f\"{generador_func()} #{random.randint(1000, 9999)}\"
+            nombre = f"{generador_func()} #{random.randint(1000, 9999)}"
             nombres_unicos[tipo].add(nombre)
             return nombre
         
