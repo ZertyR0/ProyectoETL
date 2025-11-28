@@ -488,6 +488,14 @@ def ejecutar_etl():
         conn = get_connection('destino')
         cursor = conn.cursor()
         
+        # 0. Verificar y agregar columna id_equipo ANTES del truncate
+        print(" Verificando estructura HechoProyecto...")
+        cursor.execute("SHOW COLUMNS FROM HechoProyecto LIKE 'id_equipo'")
+        if not cursor.fetchone():
+            print(" - Agregando columna id_equipo...")
+            cursor.execute("ALTER TABLE HechoProyecto ADD COLUMN id_equipo INT AFTER id_empleado_gerente")
+            cursor.execute("ALTER TABLE HechoProyecto ADD KEY idx_id_equipo (id_equipo)")
+        
         # 1. Limpiar tablas
         print(" Limpiando tablas...")
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
@@ -559,15 +567,7 @@ def ejecutar_etl():
         conn.commit()
         print(f" - DimTiempo: {cursor.rowcount} registros")
         
-        # 3. Agregar columna id_equipo si no existe
-        print(" Verificando estructura HechoProyecto...")
-        cursor.execute("SHOW COLUMNS FROM HechoProyecto LIKE 'id_equipo'")
-        if not cursor.fetchone():
-            print(" - Agregando columna id_equipo...")
-            cursor.execute("ALTER TABLE HechoProyecto ADD COLUMN id_equipo INT AFTER id_empleado_gerente")
-            cursor.execute("ALTER TABLE HechoProyecto ADD KEY idx_id_equipo (id_equipo)")
-        
-        # 4. Cargar HechoProyecto
+        # 3. Cargar HechoProyecto
         print(" Cargando HechoProyecto...")
         cursor.execute("""
             INSERT INTO HechoProyecto (
@@ -610,6 +610,54 @@ def ejecutar_etl():
         conn.close()
         
         print(f" ETL completado exitosamente")
+        
+        # 4. Actualizar vistas OLAP
+        print(" Actualizando vistas OLAP...")
+        cursor.execute("""
+            CREATE OR REPLACE VIEW vw_olap_detallado AS
+            SELECT 
+                hp.id_proyecto,
+                dp.nombre as nombre_proyecto,
+                de_estado.nombre_estado as estado,
+                hp.id_cliente,
+                dc.nombre as cliente,
+                dc.sector,
+                COALESCE(de.nombre_equipo, 'Sin Equipo') as equipo,
+                hp.id_empleado_gerente as id_gerente,
+                dem.nombre as gerente,
+                dt.fecha,
+                dt.anio,
+                dt.mes,
+                dt.trimestre,
+                hp.presupuesto,
+                hp.costo_real,
+                hp.duracion_planificada,
+                hp.duracion_real,
+                hp.cumplimiento_tiempo,
+                hp.cumplimiento_presupuesto,
+                hp.tareas_total,
+                hp.tareas_completadas,
+                hp.tareas_canceladas,
+                CASE 
+                    WHEN hp.tareas_total > 0 
+                    THEN ROUND((hp.tareas_completadas / hp.tareas_total) * 100, 2)
+                    ELSE 0 
+                END as porcentaje_completado,
+                (hp.presupuesto - hp.costo_real) as margen,
+                CASE 
+                    WHEN hp.presupuesto > 0 
+                    THEN ROUND(((hp.presupuesto - hp.costo_real) / hp.presupuesto) * 100, 2)
+                    ELSE 0 
+                END as rentabilidad_porcentaje
+            FROM HechoProyecto hp
+            INNER JOIN DimCliente dc ON hp.id_cliente = dc.id_cliente
+            INNER JOIN DimProyecto dp ON hp.id_proyecto = dp.id_proyecto
+            INNER JOIN DimTiempo dt ON hp.id_tiempo_fin_real = dt.id_tiempo
+            LEFT JOIN DimEquipo de ON hp.id_equipo = de.id_equipo
+            LEFT JOIN DimEmpleado dem ON hp.id_empleado_gerente = dem.id_empleado
+            LEFT JOIN gestionproyectos_hist.Estado de_estado ON dp.id_estado = de_estado.id_estado
+            ORDER BY dt.fecha DESC
+        """)
         
         return jsonify({
             'success': True,
