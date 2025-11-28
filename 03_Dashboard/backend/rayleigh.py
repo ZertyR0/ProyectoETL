@@ -292,11 +292,13 @@ def obtener_datos_proyectos_reales():
         Dict con estadísticas de proyectos reales
     """
     try:
+        # Usar configuración de Railway desde variables de entorno
         conn = mysql.connector.connect(
-            host=os.getenv('DB_HOST', 'localhost'),
-            user=os.getenv('DB_USER', 'root'),
-            password=os.getenv('DB_PASSWORD', ''),
-            database=os.getenv('DB_DESTINO', 'dw_proyectos_hist')
+            host=os.getenv('DB_HOST_DESTINO', 'localhost'),
+            port=int(os.getenv('DB_PORT_DESTINO', 3306)),
+            user=os.getenv('DB_USER_DESTINO', 'root'),
+            password=os.getenv('DB_PASSWORD_DESTINO', ''),
+            database=os.getenv('DB_NAME_DESTINO', 'dw_proyectos_hist')
         )
         cursor = conn.cursor(dictionary=True)
         

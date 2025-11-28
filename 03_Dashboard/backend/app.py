@@ -769,51 +769,15 @@ def generar_datos_personalizados():
         
         print(f" Generación: {proyectos} proyectos × {empleados_pp} empleados × {tareas_pp} tareas (limpiar={limpiar})")
         
-        # Call fixed generator via subprocess (from project root)
-        import subprocess
-        import json
+        # En Railway no tenemos acceso al script de generación
+        # Retornar mensaje indicando que se debe generar localmente
+        return jsonify({
+            'success': False,
+            'message': 'La generación de datos debe ejecutarse localmente. Use el script 01_GestionProyectos/datos/generar_datos_final.py',
+            'info': 'Este endpoint requiere acceso al sistema de archivos local y no está disponible en Railway.',
+            'alternativa': 'Genere los datos localmente y use el proceso ETL para cargarlos al DataWarehouse.'
+        }), 501  # 501 Not Implemented
         
-        # Get project root (2 levels up from backend/)
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-        generator_path = os.path.join(project_root, '01_GestionProyectos', 'datos', 'generar_datos_final.py')
-        
-        # Set environment variables for generator
-        env = os.environ.copy()
-        env['CANTIDAD_PROYECTOS'] = str(proyectos)
-        env['EMPLEADOS_POR_PROYECTO'] = str(empleados_pp)
-        env['TAREAS_POR_PROYECTO'] = str(tareas_pp)
-        env['LIMPIAR_TABLAS'] = 'true' if limpiar else 'false'
-        
-        result = subprocess.run(
-            ['python3', generator_path],
-            capture_output=True,
-            text=True,
-            env=env,
-            timeout=600,  # Aumentado timeout para 650 proyectos
-            cwd=project_root
-        )
-        
-        if result.returncode == 0:
-            # Parse output for stats
-            output = result.stdout
-            stats = {
-                'proyectos': proyectos,
-                'empleados': proyectos * empleados_pp,
-                'tareas': proyectos * tareas_pp,
-                'equipos': proyectos
-            }
-            return jsonify({
-                'success': True,
-                'message': 'Generación completada',
-                'stats': stats,
-                'output': output[-500:] if len(output) > 500 else output
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': f'Generator failed: {result.stderr[-500:]}',
-                'returncode': result.returncode
-            }), 500
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
