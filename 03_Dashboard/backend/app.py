@@ -2467,7 +2467,57 @@ def get_olap_kpis_v2():
         
         # Seleccionar vista según nivel
         if nivel == 'total':
-            query = "SELECT * FROM vw_olap_total"
+            # Usar vista detallada para poder filtrar por año
+            query = """
+                SELECT 
+                    COUNT(DISTINCT id_proyecto) as total_proyectos,
+                    SUM(CASE WHEN estado = 'Completado' THEN 1 ELSE 0 END) as proyectos_completados,
+                    SUM(CASE WHEN estado = 'Cancelado' THEN 1 ELSE 0 END) as proyectos_cancelados,
+                    0 as proyectos_activos,
+                    COUNT(DISTINCT cliente) as total_clientes,
+                    COUNT(DISTINCT equipo) as total_equipos,
+                    SUM(presupuesto) as presupuesto_total,
+                    SUM(costo_real) as costo_total,
+                    SUM(margen) as margen_total,
+                    ROUND(AVG(rentabilidad_porcentaje), 2) as rentabilidad_promedio_porcentaje,
+                    ROUND(AVG(CASE 
+                        WHEN en_presupuesto = 'Sí' THEN 100
+                        WHEN en_presupuesto = 'No' THEN 0
+                        ELSE NULL
+                    END), 2) as porcentaje_cumplimiento_presupuesto,
+                    SUM(horas_reales) as horas_reales_total,
+                    SUM(horas_estimadas) as horas_estimadas_total,
+                    CASE 
+                        WHEN SUM(horas_estimadas) > 0 
+                        THEN ROUND((SUM(horas_reales) / SUM(horas_estimadas) * 100), 2)
+                        ELSE 0 
+                    END as eficiencia_estimacion_porcentaje
+                FROM vw_olap_detallado
+            """
+            conditions = []
+            if cliente_id:
+                conn_temp = get_connection('destino')
+                cur_temp = conn_temp.cursor(dictionary=True)
+                cur_temp.execute(f"SELECT nombre FROM DimCliente WHERE id_cliente = {cliente_id}")
+                cliente_row = cur_temp.fetchone()
+                cur_temp.close()
+                conn_temp.close()
+                if cliente_row:
+                    conditions.append(f"cliente = '{cliente_row['nombre']}'")
+            if equipo_id:
+                conn_temp = get_connection('destino')
+                cur_temp = conn_temp.cursor(dictionary=True)
+                cur_temp.execute(f"SELECT nombre_equipo FROM DimEquipo WHERE id_equipo = {equipo_id}")
+                equipo_row = cur_temp.fetchone()
+                cur_temp.close()
+                conn_temp.close()
+                if equipo_row:
+                    conditions.append(f"equipo = '{equipo_row['nombre_equipo']}'")
+            if anio:
+                conditions.append(f"anio = {anio}")
+            
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
             
         elif nivel == 'por_cliente':
             # Usar vista detallada y agregar por cliente
