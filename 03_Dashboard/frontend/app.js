@@ -1252,33 +1252,33 @@ function mostrarResultadosOLAP(datos, nivel) {
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
                 <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
-                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
-                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
-                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+                <td>$${(fila.costo_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio_porcentaje || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio_porcentaje || 0).toFixed(1)}%</td>
+                <td>${(fila.porcentaje_en_presupuesto || 0).toFixed(1)}%</td>
             `;
         } else if (nivel === 'por_cliente') {
             tr.innerHTML = `
-                <td><strong>${fila.nombre || 'N/A'}</strong></td>
+                <td><strong>${fila.cliente || 'N/A'}</strong></td>
                 <td><span class="badge bg-secondary">${fila.sector || 'N/A'}</span></td>
                 <td>-</td>
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
                 <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
-                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
-                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
-                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+                <td>$${(fila.costo_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio_porcentaje || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio_porcentaje || 0).toFixed(1)}%</td>
+                <td>${(fila.porcentaje_en_presupuesto || 0).toFixed(1)}%</td>
             `;
         } else if (nivel === 'por_equipo') {
             tr.innerHTML = `
                 <td>-</td>
-                <td><strong>${fila.nombre_equipo || fila.nombre || 'N/A'}</strong></td>
+                <td><strong>${fila.equipo || 'N/A'}</strong></td>
                 <td>-</td>
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
                 <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
-                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
-                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
-                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+                <td>$${(fila.costo_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio_porcentaje || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio_porcentaje || 0).toFixed(1)}%</td>
+                <td>${(fila.porcentaje_en_presupuesto || 0).toFixed(1)}%</td>
             `;
         } else if (nivel === 'por_tiempo') {
             tr.innerHTML = `
@@ -1288,21 +1288,34 @@ function mostrarResultadosOLAP(datos, nivel) {
                 <td class="fw-bold">${fila.total_proyectos || 0}</td>
                 <td>${fila.proyectos_completados || 0}</td>
                 <td>$${(fila.presupuesto_total || 0).toLocaleString('es-MX')}</td>
-                <td>$${(fila.costo_real_total || 0).toLocaleString('es-MX')}</td>
-                <td class="text-${(fila.rentabilidad_promedio || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio || 0).toFixed(1)}%</td>
-                <td>${(fila.pct_en_presupuesto || 0).toFixed(1)}%</td>
+                <td>$${(fila.costo_total || 0).toLocaleString('es-MX')}</td>
+                <td class="text-${(fila.rentabilidad_promedio_porcentaje || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_promedio_porcentaje || 0).toFixed(1)}%</td>
+                <td>${(fila.porcentaje_en_presupuesto || 0).toFixed(1)}%</td>
             `;
         } else { // detallado
+            const esCompletado = fila.estado === 'Completado';
+            const estadoBadge = esCompletado ? 
+                '<span class="badge bg-success">Completado</span>' : 
+                fila.estado === 'Cancelado' ?
+                '<span class="badge bg-danger">Cancelado</span>' :
+                '<span class="badge bg-warning">En Progreso</span>';
+            
+            const enPresupuestoBadge = fila.en_presupuesto === 'Sí' ?
+                '<span class="text-success">✓ Sí</span>' :
+                fila.en_presupuesto === 'No' ?
+                '<span class="text-danger">✗ No</span>' :
+                '<span class="text-muted">N/A</span>';
+            
             tr.innerHTML = `
-                <td>${fila.cliente_nombre || fila.cliente || 'N/A'}</td>
-                <td>${fila.equipo_nombre || fila.equipo || 'N/A'}</td>
+                <td><strong>${fila.cliente || 'N/A'}</strong></td>
+                <td>${fila.equipo || 'N/A'}</td>
                 <td>${fila.anio || 'N/A'}</td>
-                <td>1</td>
-                <td><span class="badge bg-success">Completado</span></td>
+                <td>${fila.proyecto || 'N/A'}</td>
+                <td>${estadoBadge}</td>
                 <td>$${(fila.presupuesto || 0).toLocaleString('es-MX')}</td>
                 <td>$${(fila.costo_real || 0).toLocaleString('es-MX')}</td>
-                <td class="text-${(fila.rentabilidad_pct || 0) >= 10 ? 'success' : 'warning'}">${(fila.rentabilidad_pct || 0).toFixed(1)}%</td>
-                <td>${fila.cumplimiento_presupuesto ? '<span class="text-success">✓ Sí</span>' : '<span class="text-danger">✗ No</span>'}</td>
+                <td class="text-${(fila.rentabilidad_porcentaje || 0) >= 10 ? 'success' : (fila.rentabilidad_porcentaje || 0) >= 0 ? 'warning' : 'danger'}">${(fila.rentabilidad_porcentaje || 0).toFixed(1)}%</td>
+                <td>${enPresupuestoBadge}</td>
             `;
         }
         tbody.appendChild(tr);
