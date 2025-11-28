@@ -491,12 +491,18 @@ def ejecutar_etl():
         # 1. Limpiar tablas
         print(" Limpiando tablas...")
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+        conn.commit()
+        
         cursor.execute("TRUNCATE TABLE HechoTarea")
         cursor.execute("TRUNCATE TABLE HechoProyecto")
+        conn.commit()
+        
         cursor.execute("DELETE FROM DimCliente")
         cursor.execute("DELETE FROM DimEmpleado")
         cursor.execute("DELETE FROM DimEquipo")
         cursor.execute("DELETE FROM DimProyecto")
+        conn.commit()
+        
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
         conn.commit()
         
@@ -508,18 +514,24 @@ def ejecutar_etl():
             INSERT INTO DimCliente (id_cliente, nombre, sector)
             SELECT id_cliente, nombre, sector FROM gestionproyectos_hist.Cliente
         """)
+        conn.commit()
+        print(f" - DimCliente: {cursor.rowcount} registros")
         
         # DimEmpleado  
         cursor.execute("""
             INSERT INTO DimEmpleado (id_empleado, nombre, puesto)
             SELECT id_empleado, nombre, puesto FROM gestionproyectos_hist.Empleado
         """)
+        conn.commit()
+        print(f" - DimEmpleado: {cursor.rowcount} registros")
         
         # DimEquipo
         cursor.execute("""
             INSERT INTO DimEquipo (id_equipo, nombre_equipo, descripcion)
             SELECT id_equipo, nombre_equipo, descripcion FROM gestionproyectos_hist.Equipo
         """)
+        conn.commit()
+        print(f" - DimEquipo: {cursor.rowcount} registros")
         
         # DimProyecto (solo Completados/Cancelados)
         cursor.execute("""
@@ -528,6 +540,9 @@ def ejecutar_etl():
             FROM gestionproyectos_hist.Proyecto
             WHERE id_estado IN (4, 5)
         """)
+        conn.commit()
+        proyectos_dim = cursor.rowcount
+        print(f" - DimProyecto: {proyectos_dim} registros")
         
         # DimTiempo
         cursor.execute("""
@@ -541,8 +556,8 @@ def ejecutar_etl():
             FROM gestionproyectos_hist.Proyecto
             WHERE fecha_fin_real IS NOT NULL AND id_estado IN (4, 5)
         """)
-        
         conn.commit()
+        print(f" - DimTiempo: {cursor.rowcount} registros")
         
         # 3. Cargar HechoProyecto
         print(" Cargando HechoProyecto...")
@@ -571,31 +586,28 @@ def ejecutar_etl():
             WHERE p.id_estado IN (4, 5) AND p.fecha_fin_real IS NOT NULL
         """)
         
+        hechos = cursor.rowcount
         conn.commit()
-        
-        # Obtener estadísticas
-        cursor.execute("SELECT COUNT(*) FROM HechoProyecto")
-        hechos = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM DimCliente")
-        clientes = cursor.fetchone()[0]
+        print(f" - HechoProyecto: {hechos} registros")
         
         cursor.close()
         conn.close()
         
-        print(f" ETL completado: {hechos} proyectos, {clientes} clientes")
+        print(f" ETL completado exitosamente")
         
         return jsonify({
             'success': True,
             'message': f'ETL ejecutado exitosamente: {hechos} proyectos cargados',
             'stats': {
                 'HechoProyecto': hechos,
-                'DimCliente': clientes
+                'DimProyecto': proyectos_dim
             }
         })
         
     except Exception as e:
         import traceback
+        print(f" Error en ETL: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
             'message': str(e),
@@ -2412,19 +2424,8 @@ def get_filtros_disponibles():
         """)
         clientes = cursor.fetchall()
         
-        # Equipos con proyectos
-        cursor.execute("""
-            SELECT DISTINCT 
-                de.id_equipo,
-                de.nombre_equipo,
-                COUNT(hp.id_proyecto) as total_proyectos
-            FROM DimEquipo de
-            INNER JOIN HechoProyecto hp ON de.id_equipo = hp.id_equipo
-            GROUP BY de.id_equipo, de.nombre_equipo
-            HAVING total_proyectos > 0
-            ORDER BY de.nombre_equipo
-        """)
-        equipos = cursor.fetchall()
+        # Equipos con proyectos (nota: HechoProyecto no tiene id_equipo, retornar lista vacía)
+        equipos = []
         
         # Años disponibles
         cursor.execute("""
