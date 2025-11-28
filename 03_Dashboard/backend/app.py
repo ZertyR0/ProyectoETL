@@ -297,30 +297,40 @@ def datos_datawarehouse():
         
         # Obtener estados desde base origen (solo en modo distribuido)
         proyectos_dw = []
+        
+        # Mapeo de id_estado a nombre_estado
+        mapeo_estados = {
+            1: 'Planificación',
+            2: 'En Progreso',
+            3: 'En Pausa',
+            4: 'Completado',
+            5: 'Cancelado'
+        }
+        
         if AMBIENTE == 'distribuido':
             conn_origen = get_connection('origen')
-            cursor_origen = conn_origen.cursor(buffered=True)  # buffered para evitar errores
+            cursor_origen = conn_origen.cursor(buffered=True)
             
             for row in proyectos_dw_rows:
                 id_proy = row[0]
                 nombre_proy = row[1]
-                # Consultar estado desde origen por NOMBRE (más confiable que por ID)
+                # Consultar id_estado desde origen por NOMBRE
                 try:
                     cursor_origen.execute("""
-                        SELECT estado, id_estado FROM Proyecto WHERE nombre = %s
+                        SELECT id_estado FROM Proyecto WHERE nombre = %s
                     """, (nombre_proy,))
                     estado_row = cursor_origen.fetchone()
                     if estado_row:
-                        estado = estado_row[0]
-                        id_estado = estado_row[1]
+                        id_estado = estado_row[0]
+                        estado = mapeo_estados.get(id_estado, 'Desconocido')
                     else:
                         # Si no encuentra por nombre, intentar por ID
                         cursor_origen.execute("""
-                            SELECT estado, id_estado FROM Proyecto WHERE id_proyecto = %s
+                            SELECT id_estado FROM Proyecto WHERE id_proyecto = %s
                         """, (id_proy,))
                         estado_row = cursor_origen.fetchone()
-                        estado = estado_row[0] if estado_row else 'Desconocido'
-                        id_estado = estado_row[1] if estado_row else None
+                        id_estado = estado_row[0] if estado_row else None
+                        estado = mapeo_estados.get(id_estado, 'Desconocido') if estado_row else 'Desconocido'
                 except Exception as e:
                     print(f" Error obteniendo estado para proyecto {nombre_proy}: {str(e)}")
                     estado = 'Desconocido'
@@ -411,22 +421,24 @@ def datos_datawarehouse():
         total_proyectos = len(proyectos_dw)
         if total_proyectos > 0:
             # Calcular días promedio considerando solo proyectos con datos válidos
-            duraciones_validas = [p['duracion_planificada'] for p in proyectos_dw if p.get('duracion_planificada', 0) > 0]
+            duraciones_validas = [p['duracion_real'] for p in proyectos_dw if p.get('duracion_real', 0) > 0]
             if duraciones_validas:
-                metricas['dias_promedio'] = sum(duraciones_validas) / len(duraciones_validas)
+                metricas['dias_promedio'] = int(sum(duraciones_validas) / len(duraciones_validas))
             else:
                 metricas['dias_promedio'] = 0
             
-            # Calcular proyectos a tiempo (cumplimiento_tiempo == 'Sí')
-            proyectos_a_tiempo = sum(1 for p in proyectos_dw if p.get('cumplimiento_tiempo') == 'Sí')
+            # Calcular proyectos a tiempo (cumplimiento_tiempo == 1 o 'Sí')
+            proyectos_a_tiempo = sum(1 for p in proyectos_dw if p.get('cumplimiento_tiempo') in [1, 'Sí', True])
             metricas['proyectos_a_tiempo'] = proyectos_a_tiempo
             
-            # Total de tareas desde HechoTarea (valor real)
-            metricas['total_tareas'] = stats['hechotarea']
+            # Total de tareas (sumar de todos los proyectos)
+            total_tareas_completadas = sum(p.get('tareas_completadas', 0) for p in proyectos_dw)
+            total_tareas_canceladas = sum(p.get('tareas_canceladas', 0) for p in proyectos_dw)
+            metricas['total_tareas'] = total_tareas_completadas + total_tareas_canceladas
         else:
             metricas['dias_promedio'] = 0
             metricas['proyectos_a_tiempo'] = 0
-            metricas['total_tareas'] = stats.get('hechotarea', 0)
+            metricas['total_tareas'] = 0
         
         return jsonify({
             'status': 'success',
@@ -1581,9 +1593,9 @@ def get_bsc_okr():
                     objetivo[key] = value.isoformat()
             
             # Mapear campos a los nombres esperados por el frontend
-            objetivo['nombre'] = objetivo.get('objetivo_nombre', '')
-            objetivo['descripcion'] = objetivo.get('objetivo_descripcion', '')
-            objetivo['avance'] = objetivo.get('avance_objetivo_porcentaje', 0)
+            objetivo['nombre'] = objetivo.get('objetivo', '')
+            objetivo['descripcion'] = objetivo.get('descripcion', '')
+            objetivo['avance_objetivo_porcentaje'] = float(objetivo.get('avance', 0))
             
             # Agregar KRs al objetivo
             objetivo['krs'] = []
