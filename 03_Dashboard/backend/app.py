@@ -1608,7 +1608,7 @@ def get_kpis_ejecutivos():
         # Obtener KPIs ejecutivos
         cursor_destino.execute("""
             SELECT * FROM vw_olap_kpis_ejecutivos 
-            ORDER BY fecha DESC 
+            ORDER BY anio DESC, trimestre DESC 
             LIMIT 12
         """)
         
