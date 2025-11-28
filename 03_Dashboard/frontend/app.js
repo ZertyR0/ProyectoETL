@@ -1543,51 +1543,119 @@ function mostrarPerspectivasBSC(perspectivas) {
         let objetivosHtml = '';
         perspectiva.objetivos.forEach(objetivo => {
             let krsHtml = '';
-            objetivo.krs.forEach(kr => {
+            
+            // Construir KRs desde los campos kr1_, kr2_, kr3_ que vienen en el objetivo
+            const krs = [];
+            for (let i = 1; i <= 3; i++) {
+                const kr_codigo = objetivo[`kr${i}_codigo`];
+                if (kr_codigo) {
+                    const progreso = objetivo[`kr${i}_progreso`];
+                    const valorObs = objetivo[`kr${i}_valor_observado`];
+                    const meta = objetivo[`kr${i}_meta`];
+                    
+                    krs.push({
+                        codigo_kr: kr_codigo,
+                        kr_nombre: objetivo[`kr${i}_nombre`],
+                        unidad_medida: objetivo[`kr${i}_unidad_medida`],
+                        meta_objetivo: meta,
+                        valor_observado: valorObs,
+                        progreso_hacia_meta: progreso,
+                        estado_semaforo: progreso === null ? 'Sin datos' : 
+                                        progreso >= 70 ? 'Verde' : 
+                                        progreso >= 50 ? 'Amarillo' : 'Rojo'
+                    });
+                }
+            }
+            
+            krs.forEach(kr => {
                 const tieneMediciones = kr.valor_observado !== null && kr.valor_observado !== undefined;
                 
                 const krColor = {
                     'Verde': 'success',
                     'Amarillo': 'warning', 
-                    'Rojo': 'danger'
+                    'Rojo': 'danger',
+                    'Sin datos': 'secondary'
                 }[kr.estado_semaforo] || 'secondary';
                 
                 const progreso = tieneMediciones ? (kr.progreso_hacia_meta || 0) : 0;
-                const progresoTexto = tieneMediciones ? `${progreso.toFixed(0)}%` : 'Sin datos';
+                const progresoTexto = tieneMediciones ? `${progreso.toFixed(0)}%` : '📊 Pendiente';
                 const progresoWidth = Math.min(progreso, 100);
                 
-                const valorObservado = tieneMediciones ? kr.valor_observado : '--';
-                const metaObjetivo = kr.meta_objetivo || '--';
+                const valorObservado = tieneMediciones ? 
+                    `<span class="text-primary fw-bold">${kr.valor_observado.toFixed(1)}</span> <small class="text-muted">${kr.unidad_medida || ''}</small>` : 
+                    '<span class="text-muted">--</span>';
+                
+                const metaObjetivo = kr.meta_objetivo ? 
+                    `<span class="text-success fw-bold">${kr.meta_objetivo.toFixed(1)}</span> <small class="text-muted">${kr.unidad_medida || ''}</small>` : 
+                    '<span class="text-muted">--</span>';
+                
+                // Iconos según el tipo de KR
+                let iconoKr = '📊';
+                const nombreLower = kr.kr_nombre.toLowerCase();
+                if (nombreLower.includes('presupuesto') || nombreLower.includes('costo') || nombreLower.includes('rentabilidad') || nombreLower.includes('margen')) {
+                    iconoKr = '💰';
+                } else if (nombreLower.includes('tiempo') || nombreLower.includes('días') || nombreLower.includes('duración') || nombreLower.includes('retraso')) {
+                    iconoKr = '⏱️';
+                } else if (nombreLower.includes('satisfacción') || nombreLower.includes('cliente') || nombreLower.includes('cumplimiento')) {
+                    iconoKr = '😊';
+                } else if (nombreLower.includes('empleado') || nombreLower.includes('talento') || nombreLower.includes('capacitación')) {
+                    iconoKr = '👥';
+                } else if (nombreLower.includes('proyecto') || nombreLower.includes('tarea')) {
+                    iconoKr = '📋';
+                }
                 
                 krsHtml += `
-                    <div class="kr-compact mb-2">
-                        <div class="d-flex align-items-center justify-content-between mb-1">
-                            <small class="fw-bold text-truncate me-2" style="max-width: 50%;">${kr.kr_nombre}</small>
-                            <span class="badge bg-${krColor} badge-sm">${progresoTexto}</span>
+                    <div class="kr-compact mb-3 p-2 rounded" style="background: linear-gradient(to right, rgba(${
+                        krColor === 'success' ? '40, 167, 69' : 
+                        krColor === 'warning' ? '255, 193, 7' : 
+                        krColor === 'danger' ? '220, 53, 69' : '108, 117, 125'
+                    }, 0.05), white);">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <small class="fw-bold" style="font-size: 0.85rem;">
+                                ${iconoKr} ${kr.kr_nombre}
+                            </small>
+                            <span class="badge bg-${krColor}" style="font-size: 0.75rem;">${progresoTexto}</span>
                         </div>
-                        <div class="row g-1 mb-1">
-                            <div class="col-4 text-center">
-                                <div class="p-1 bg-light rounded-2">
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">Actual</small>
-                                    <strong style="font-size: 0.85rem;">${valorObservado}</strong>
+                        
+                        <div class="row g-2 mb-2">
+                            <div class="col-4">
+                                <div class="text-center p-2 bg-white border rounded shadow-sm">
+                                    <div class="text-muted mb-1" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">📍 Actual</div>
+                                    <div style="font-size: 0.9rem;">${valorObservado}</div>
                                 </div>
                             </div>
-                            <div class="col-4 text-center">
-                                <div class="p-1 bg-light rounded-2">
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">Progreso</small>
-                                    <strong style="font-size: 0.85rem;" class="text-${krColor}">${progresoTexto}</strong>
+                            <div class="col-4">
+                                <div class="text-center p-2 bg-white border rounded shadow-sm">
+                                    <div class="text-muted mb-1" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">📈 Progreso</div>
+                                    <div style="font-size: 0.9rem;" class="text-${krColor}">
+                                        <strong>${progresoTexto}</strong>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-4 text-center">
-                                <div class="p-1 bg-light rounded-2">
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">Meta</small>
-                                    <strong style="font-size: 0.85rem;">${metaObjetivo}</strong>
+                            <div class="col-4">
+                                <div class="text-center p-2 bg-white border rounded shadow-sm">
+                                    <div class="text-muted mb-1" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">🎯 Meta</div>
+                                    <div style="font-size: 0.9rem;">${metaObjetivo}</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-${krColor}" style="width: ${progresoWidth}%;"></div>
+                        
+                        <div class="progress" style="height: 8px; background-color: #e9ecef;">
+                            <div class="progress-bar bg-${krColor}" 
+                                 style="width: ${progresoWidth}%;" 
+                                 role="progressbar"
+                                 aria-valuenow="${progresoWidth}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                            </div>
                         </div>
+                        
+                        ${!tieneMediciones ? `
+                            <div class="alert alert-warning mt-2 mb-0 py-1 px-2" style="font-size: 0.75rem;">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>Sin datos:</strong> Este indicador aún no tiene mediciones registradas
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -1599,15 +1667,72 @@ function mostrarPerspectivasBSC(perspectivas) {
                 'Rojo': 'danger'
             }[objetivo.estado_objetivo] || 'secondary';
             
+            // Descripción contextual según el objetivo
+            let descripcionObjetivo = objetivo.descripcion || objetivo.objetivo_descripcion || '';
+            if (!descripcionObjetivo) {
+                descripcionObjetivo = `Monitoreo de indicadores clave para ${objetivo.objetivo_nombre}`;
+            }
+            
             objetivosHtml += `
-                <div class="objetivo-compact mb-2 p-2 border border-${estadoColor} rounded-3 bg-white">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0 fw-bold" style="font-size: 0.9rem;">
-                            <i class="fas fa-bullseye me-1 text-${estadoColor}"></i>
-                            ${objetivo.objetivo_nombre}
-                        </h6>
-                        <span class="badge bg-${estadoColor}" style="font-size: 0.75rem;">${avanceObjetivo.toFixed(0)}%</span>
+                <div class="objetivo-compact mb-3 p-3 border-2 border-${estadoColor} rounded-3 shadow-sm" 
+                     style="background: linear-gradient(135deg, rgba(${
+                         estadoColor === 'success' ? '40, 167, 69' : 
+                         estadoColor === 'warning' ? '255, 193, 7' : 
+                         estadoColor === 'danger' ? '220, 53, 69' : '108, 117, 125'
+                     }, 0.05), white);">
+                    
+                    <!-- Encabezado del Objetivo -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
+                                <span class="badge bg-${estadoColor} me-2" style="font-size: 0.7rem;">
+                                    ${objetivo.codigo_objetivo}
+                                </span>
+                                <i class="fas fa-bullseye me-1 text-${estadoColor}"></i>
+                                ${objetivo.objetivo_nombre}
+                            </h6>
+                            <p class="text-muted mb-2" style="font-size: 0.75rem; line-height: 1.4;">
+                                <i class="fas fa-info-circle me-1"></i>
+                                ${descripcionObjetivo}
+                            </p>
+                        </div>
+                        <div class="text-end ms-2">
+                            <div class="badge bg-${estadoColor} mb-1" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                                ${avanceObjetivo.toFixed(0)}%
+                            </div>
+                            <div style="font-size: 0.65rem; color: #6c757d;">
+                                <i class="fas fa-user me-1"></i>${objetivo.owner_responsable || 'N/A'}
+                            </div>
+                        </div>
                     </div>
+                    
+                    <!-- Progress Bar del Objetivo -->
+                    <div class="progress mb-3" style="height: 12px;">
+                        <div class="progress-bar bg-${estadoColor}" 
+                             style="width: ${avanceObjetivo}%;"
+                             role="progressbar"
+                             aria-valuenow="${avanceObjetivo}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            <small class="fw-bold">${avanceObjetivo.toFixed(0)}%</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Contador de KRs -->
+                    <div class="alert alert-light mb-2 py-1 px-2 d-flex align-items-center justify-content-between" 
+                         style="font-size: 0.75rem; border-left: 3px solid var(--bs-${estadoColor});">
+                        <span>
+                            <i class="fas fa-chart-line me-1"></i>
+                            <strong>${krs.length} Indicadores Clave</strong> monitoreando este objetivo
+                        </span>
+                        <span class="text-${estadoColor}">
+                            ${objetivo.estado_objetivo === 'Verde' ? '✅ En Meta' : 
+                              objetivo.estado_objetivo === 'Amarillo' ? '⚠️ Requiere Atención' : 
+                              '🚨 Crítico'}
+                        </span>
+                    </div>
+                    
+                    <!-- KRs -->
                     ${krsHtml}
                 </div>
             `;
