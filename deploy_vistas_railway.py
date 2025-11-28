@@ -63,8 +63,10 @@ def deploy_views_to_railway():
             CASE 
                 WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total THEN 'Completado'
                 WHEN hp.tareas_total > 0 AND hp.tareas_canceladas = hp.tareas_total THEN 'Cancelado'
-                WHEN hp.tareas_total > 0 THEN 'En Progreso'
-                ELSE 'Sin iniciar'
+                WHEN hp.tareas_total > 0 AND hp.tareas_completadas > hp.tareas_canceladas THEN 'Completado'
+                WHEN hp.tareas_total > 0 AND hp.tareas_canceladas > hp.tareas_completadas THEN 'Cancelado'
+                WHEN hp.tareas_total > 0 THEN 'Completado'
+                ELSE 'Completado'
             END as estado,
             hp.presupuesto,
             hp.costo_real,
@@ -106,7 +108,7 @@ def deploy_views_to_railway():
             dc.sector,
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
             COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                WHEN hp.tareas_completadas >= hp.tareas_canceladas
                 THEN hp.id_proyecto 
             END) as proyectos_completados,
             SUM(hp.presupuesto) as presupuesto_total,
@@ -142,7 +144,7 @@ def deploy_views_to_railway():
             COALESCE(de.nombre_equipo, 'N/A') as equipo,
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
             COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                WHEN hp.tareas_completadas >= hp.tareas_canceladas
                 THEN hp.id_proyecto 
             END) as proyectos_completados,
             SUM(hp.presupuesto) as presupuesto_total,
@@ -174,19 +176,14 @@ def deploy_views_to_railway():
             dt.anio,
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
             COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                WHEN hp.tareas_completadas >= hp.tareas_canceladas
                 THEN hp.id_proyecto 
             END) as proyectos_completados,
             COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 AND hp.tareas_canceladas = hp.tareas_total 
+                WHEN hp.tareas_canceladas > hp.tareas_completadas
                 THEN hp.id_proyecto 
             END) as proyectos_cancelados,
-            COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 
-                AND hp.tareas_completadas < hp.tareas_total 
-                AND hp.tareas_canceladas < hp.tareas_total
-                THEN hp.id_proyecto 
-            END) as proyectos_en_progreso,
+            0 as proyectos_en_progreso,
             SUM(hp.presupuesto) as presupuesto_total,
             SUM(hp.costo_real) as costo_total,
             SUM(hp.presupuesto - COALESCE(hp.costo_real, 0)) as margen_total,
@@ -215,19 +212,14 @@ def deploy_views_to_railway():
         SELECT 
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
             COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                WHEN hp.tareas_completadas >= hp.tareas_canceladas
                 THEN hp.id_proyecto 
             END) as proyectos_completados,
             COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 AND hp.tareas_canceladas = hp.tareas_total 
+                WHEN hp.tareas_canceladas > hp.tareas_completadas
                 THEN hp.id_proyecto 
             END) as proyectos_cancelados,
-            COUNT(DISTINCT CASE 
-                WHEN hp.tareas_total > 0 
-                AND hp.tareas_completadas < hp.tareas_total 
-                AND hp.tareas_canceladas < hp.tareas_total
-                THEN hp.id_proyecto 
-            END) as proyectos_activos,
+            0 as proyectos_activos,
             COUNT(DISTINCT hp.id_cliente) as total_clientes,
             COUNT(DISTINCT hp.id_equipo) as total_equipos,
             SUM(hp.presupuesto) as presupuesto_total,
