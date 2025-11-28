@@ -33,10 +33,14 @@ SELECT
     kr2_codigo, kr2_nombre, kr2_unidad_medida, kr2_meta, kr2_valor_observado, kr2_progreso,
     kr3_codigo, kr3_nombre, kr3_unidad_medida, kr3_meta, kr3_valor_observado, kr3_progreso,
     krs_en_meta,
-    ROUND((kr1_progreso * 1.0 + kr2_progreso * 0.8 + kr3_progreso * 1.2) / 3.0, 1) as avance_objetivo_porcentaje,
+    ROUND((
+        COALESCE(kr1_progreso, 0) * 1.0 +
+        COALESCE(kr2_progreso, 0) * 0.8 +
+        COALESCE(kr3_progreso, 0) * 1.2
+    ) / 3.0, 1) as avance_objetivo_porcentaje,
     CASE 
-        WHEN ROUND((kr1_progreso * 1.0 + kr2_progreso * 0.8 + kr3_progreso * 1.2) / 3.0, 1) >= 70 THEN 'Verde'
-        WHEN ROUND((kr1_progreso * 1.0 + kr2_progreso * 0.8 + kr3_progreso * 1.2) / 3.0, 1) >= 50 THEN 'Amarillo'
+        WHEN ROUND((COALESCE(kr1_progreso, 0) * 1.0 + COALESCE(kr2_progreso, 0) * 0.8 + COALESCE(kr3_progreso, 0) * 1.2) / 3.0, 1) >= 70 THEN 'Verde'
+        WHEN ROUND((COALESCE(kr1_progreso, 0) * 1.0 + COALESCE(kr2_progreso, 0) * 0.8 + COALESCE(kr3_progreso, 0) * 1.2) / 3.0, 1) >= 50 THEN 'Amarillo'
         ELSE 'Rojo'
     END as estado_objetivo,
     ultima_actualizacion
@@ -59,21 +63,22 @@ FROM (
         ROUND(SUM(h.cumplimiento_presupuesto) * 100.0 / NULLIF(COUNT(*), 0), 1) as kr1_valor_observado,
         ROUND(LEAST(100, (SUM(h.cumplimiento_presupuesto) * 100.0 / NULLIF(COUNT(*), 0)) / 80.0 * 100), 1) as kr1_progreso,
         
-        -- KR2: Variación Presupuesto (en miles)
-        'F1.2' as kr2_codigo,
-        'Variación Presupuesto' as kr2_nombre,
-        'K$' as kr2_unidad_medida,
-        10.0 as kr2_meta,
-        ROUND(AVG(ABS(h.variacion_costos)) / 1000, 1) as kr2_valor_observado,
-        ROUND(LEAST(100, GREATEST(0,
+    -- KR2: Variación Presupuesto (en miles) - Menor es mejor
+    'F1.2' as kr2_codigo,
+    'Variación Presupuesto' as kr2_nombre,
+    'K$' as kr2_unidad_medida,
+    10.0 as kr2_meta,
+    ROUND(AVG(ABS(h.variacion_costos)) / 1000, 1) as kr2_valor_observado,
+    CASE 
+        WHEN AVG(ABS(h.variacion_costos)) = 0 THEN NULL  -- Sin datos reales de variación
+        ELSE ROUND(LEAST(100, GREATEST(0,
             CASE 
                 WHEN AVG(ABS(h.variacion_costos)) / 1000 <= 10 THEN 100
                 WHEN AVG(ABS(h.variacion_costos)) / 1000 >= 50 THEN 0
                 ELSE ((50 - AVG(ABS(h.variacion_costos)) / 1000) / 40.0) * 100
             END
-        )), 1) as kr2_progreso,
-        
-        -- KR3: Margen de Rentabilidad
+        )), 1)
+    END as kr2_progreso,        -- KR3: Margen de Rentabilidad
         'F1.3' as kr3_codigo,
         'Margen de Rentabilidad' as kr3_nombre,
         '%' as kr3_unidad_medida,
@@ -111,19 +116,22 @@ SELECT
     ROUND(AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)), 1) as kr1_valor_observado,
     ROUND(LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100), 1) as kr1_progreso,
     
-    -- KR2: Días de Retraso
+    -- KR2: Días de Retraso - Menor es mejor
     'C1.2' as kr2_codigo,
     'Días Retraso Promedio' as kr2_nombre,
     'días' as kr2_unidad_medida,
     5.0 as kr2_meta,
     ROUND(AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END), 1) as kr2_valor_observado,
-    ROUND(LEAST(100, GREATEST(0,
-        CASE 
-            WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100
-            WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) >= 15 THEN 0
-            ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100
-        END
-    )), 1) as kr2_progreso,
+    CASE 
+        WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) = 0 THEN NULL  -- Sin datos reales de retraso
+        ELSE ROUND(LEAST(100, GREATEST(0,
+            CASE 
+                WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100
+                WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) >= 15 THEN 0
+                ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100
+            END
+        )), 1)
+    END as kr2_progreso,
     
     -- KR3: NULL (para igualar columnas)
     NULL as kr3_codigo,
@@ -137,17 +145,32 @@ SELECT
     
     ROUND((
         LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 0.6 +
-        LEAST(100, GREATEST(0, CASE WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100 ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100 END)) * 0.4
+        COALESCE(
+            CASE 
+                WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) = 0 THEN NULL
+                ELSE LEAST(100, GREATEST(0, CASE WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100 ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100 END))
+            END, 0
+        ) * 0.4
     ), 1) as avance_objetivo_porcentaje,
     
     CASE 
         WHEN ROUND((
             LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 0.6 +
-            LEAST(100, GREATEST(0, CASE WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100 ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100 END)) * 0.4
+            COALESCE(
+                CASE 
+                    WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) = 0 THEN NULL
+                    ELSE LEAST(100, GREATEST(0, CASE WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100 ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100 END))
+                END, 0
+            ) * 0.4
         ), 1) >= 70 THEN 'Verde'
         WHEN ROUND((
             LEAST(100, AVG(h.tareas_completadas * 100.0 / NULLIF(h.tareas_total, 0)) / 90.0 * 100) * 0.6 +
-            LEAST(100, GREATEST(0, CASE WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100 ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100 END)) * 0.4
+            COALESCE(
+                CASE 
+                    WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) = 0 THEN NULL
+                    ELSE LEAST(100, GREATEST(0, CASE WHEN AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END) <= 5 THEN 100 ELSE ((15 - AVG(CASE WHEN h.variacion_cronograma > 0 THEN h.variacion_cronograma ELSE 0 END)) / 10.0) * 100 END))
+                END, 0
+            ) * 0.4
         ), 1) >= 50 THEN 'Amarillo'
         ELSE 'Rojo'
     END as estado_objetivo,
@@ -189,8 +212,8 @@ SELECT
     ROUND(LEAST(100, GREATEST(0,
         CASE 
             WHEN AVG(h.duracion_real) <= 60 THEN 100
-            WHEN AVG(h.duracion_real) >= 90 THEN 0
-            ELSE ((90 - AVG(h.duracion_real)) / 30.0) * 100
+            WHEN AVG(h.duracion_real) >= 120 THEN 0
+            ELSE ((120 - AVG(h.duracion_real)) / 60.0) * 100
         END
     )), 1) as kr2_progreso,
     
@@ -206,7 +229,7 @@ SELECT
     
     ROUND((
         LEAST(100, (SUM(h.cumplimiento_tiempo) * 100.0 / NULLIF(COUNT(*), 0)) / 85.0 * 100) * 0.6 +
-        LEAST(100, GREATEST(0, CASE WHEN AVG(h.duracion_real) <= 60 THEN 100 ELSE ((90 - AVG(h.duracion_real)) / 30.0) * 100 END)) * 0.4
+        LEAST(100, GREATEST(0, CASE WHEN AVG(h.duracion_real) <= 60 THEN 100 WHEN AVG(h.duracion_real) >= 120 THEN 0 ELSE ((120 - AVG(h.duracion_real)) / 60.0) * 100 END)) * 0.4
     ), 1) as avance_objetivo_porcentaje,
     
     CASE 
@@ -241,21 +264,27 @@ SELECT
     20.0 as peso_ponderacion,
     2 as total_krs,
     
-    -- KR1: Horas Promedio por Tarea (fallback a horas_plan si horas_reales=0)
+        -- KR1: Horas Promedio por Tarea (NULL si no hay datos reales)
     'A1.1' as kr1_codigo,
     'Horas Promedio por Tarea' as kr1_nombre,
     'hrs' as kr1_unidad_medida,
     15.0 as kr1_meta,
-    ROUND(AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)), 1) as kr1_valor_observado,
-    ROUND(LEAST(100, GREATEST(0,
-        CASE 
-            WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100
-            WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) >= 25 THEN 0
-            ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100
-        END
-    )), 1) as kr1_progreso,
-    
-    -- KR2: % Empleados Activos
+    CASE 
+        WHEN SUM(h.horas_reales_total) > 0 OR SUM(h.horas_estimadas_total) > 0 
+        THEN ROUND(AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)), 1)
+        ELSE NULL
+    END as kr1_valor_observado,
+    CASE 
+        WHEN SUM(h.horas_reales_total) > 0 OR SUM(h.horas_estimadas_total) > 0 
+        THEN ROUND(LEAST(100, GREATEST(0,
+            CASE 
+                WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100
+                WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) >= 25 THEN 0
+                ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100
+            END
+        )), 1)
+        ELSE NULL
+    END as kr1_progreso,    -- KR2: % Empleados Activos
     'A1.2' as kr2_codigo,
     '% Empleados Activos' as kr2_nombre,
     '%' as kr2_unidad_medida,
@@ -274,17 +303,35 @@ SELECT
     0 as krs_en_meta,
     
     ROUND((
-        LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
+        COALESCE(
+            CASE 
+                WHEN SUM(h.horas_reales_total) > 0 OR SUM(h.horas_estimadas_total) > 0 
+                THEN LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END))
+                ELSE 0
+            END, 0
+        ) * 0.5 +
         LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100) * 0.5
     ), 1) as avance_objetivo_porcentaje,
     
     CASE 
         WHEN ROUND((
-            LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
+            COALESCE(
+                CASE 
+                    WHEN SUM(h.horas_reales_total) > 0 OR SUM(h.horas_estimadas_total) > 0 
+                    THEN LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END))
+                    ELSE 0
+                END, 0
+            ) * 0.5 +
             LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100) * 0.5
         ), 1) >= 70 THEN 'Verde'
         WHEN ROUND((
-            LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END)) * 0.5 +
+            COALESCE(
+                CASE 
+                    WHEN SUM(h.horas_reales_total) > 0 OR SUM(h.horas_estimadas_total) > 0 
+                    THEN LEAST(100, GREATEST(0, CASE WHEN AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0)) <= 15 THEN 100 ELSE ((25 - AVG((CASE WHEN h.horas_reales_total > 0 THEN h.horas_reales_total ELSE h.horas_estimadas_total END) / NULLIF(h.tareas_total, 0))) / 10.0) * 100 END))
+                    ELSE 0
+                END, 0
+            ) * 0.5 +
             LEAST(100, (SELECT SUM(activo) * 100.0 / NULLIF(COUNT(*), 0) FROM DimEmpleado) / 80.0 * 100) * 0.5
         ), 1) >= 50 THEN 'Amarillo'
         ELSE 'Rojo'

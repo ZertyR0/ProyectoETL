@@ -1568,7 +1568,10 @@ function mostrarPerspectivasBSC(perspectivas) {
             }
             
             krs.forEach(kr => {
-                const tieneMediciones = kr.valor_observado !== null && kr.valor_observado !== undefined;
+                // Un KR tiene mediciones válidas si tiene valor observado Y progreso no es NULL
+                const tieneMediciones = kr.valor_observado !== null && 
+                                       kr.valor_observado !== undefined && 
+                                       kr.progreso_hacia_meta !== null;
                 
                 const krColor = {
                     'Verde': 'success',
@@ -1578,10 +1581,12 @@ function mostrarPerspectivasBSC(perspectivas) {
                 }[kr.estado_semaforo] || 'secondary';
                 
                 const progreso = tieneMediciones ? (kr.progreso_hacia_meta || 0) : 0;
-                const progresoTexto = tieneMediciones ? `${progreso.toFixed(0)}%` : '📊 Pendiente';
+                const progresoTexto = kr.progreso_hacia_meta === null ? '📊 Sin datos' : 
+                                     tieneMediciones ? `${progreso.toFixed(0)}%` : '📊 Sin datos';
                 const progresoWidth = Math.min(progreso, 100);
                 
-                const valorObservado = tieneMediciones ? 
+                // Mostrar valor observado si existe, aunque progreso sea NULL
+                const valorObservado = (kr.valor_observado !== null && kr.valor_observado !== undefined) ? 
                     `<span class="text-primary fw-bold">${kr.valor_observado.toFixed(1)}</span> <small class="text-muted">${kr.unidad_medida || ''}</small>` : 
                     '<span class="text-muted">&ndash;</span>';
                 
