@@ -825,10 +825,26 @@ def generar_datos_personalizados():
             for key in nombres_unicos:
                 nombres_unicos[key].clear()
         else:
-            # Cargar nombres existentes
+            # Cargar nombres existentes para evitar duplicados
             cursor.execute("SELECT nombre FROM Cliente")
             for (nombre,) in cursor.fetchall():
                 nombres_unicos['clientes'].add(nombre)
+            
+            cursor.execute("SELECT nombre FROM Empleado")
+            for (nombre,) in cursor.fetchall():
+                nombres_unicos['empleados'].add(nombre)
+            
+            cursor.execute("SELECT email FROM Empleado WHERE email IS NOT NULL")
+            for (email,) in cursor.fetchall():
+                nombres_unicos['emails'].add(email)
+            
+            cursor.execute("SELECT nombre FROM Equipo")
+            for (nombre,) in cursor.fetchall():
+                nombres_unicos['equipos'].add(nombre)
+            
+            cursor.execute("SELECT nombre FROM Proyecto")
+            for (nombre,) in cursor.fetchall():
+                nombres_unicos['proyectos'].add(nombre)
         
         # 2. Generar clientes (pocos para que tengan varios proyectos)
         num_clientes = max(3, proyectos // 4)  # 1 cliente cada 4 proyectos aprox
@@ -854,7 +870,14 @@ def generar_datos_personalizados():
         
         conn.commit()
         
-        # 3. Generar proyectos con equipos y tareas
+        # 3. Obtener conteos actuales para generar nombres únicos
+        cursor.execute("SELECT COUNT(*) FROM Proyecto")
+        contador_proyectos = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM Equipo")
+        contador_equipos = cursor.fetchone()[0]
+        
+        # 4. Generar proyectos con equipos y tareas
         print(f"   Generando {proyectos} proyectos completos...")
         
         for i in range(proyectos):
@@ -885,7 +908,7 @@ def generar_datos_personalizados():
             
             # Generar proyecto
             nombre_proy = generar_nombre_unico('proyectos', 
-                lambda: f"Proyecto {fake.catch_phrase()} #{i+1}")
+                lambda: f"Proyecto {fake.catch_phrase()} #{contador_proyectos + i + 1}")
             descripcion = fake.text(max_nb_chars=200)
             
             fecha_inicio = fake.date_between(start_date=date(2023, 1, 1), end_date=date(2024, 12, 31))
@@ -935,7 +958,7 @@ def generar_datos_personalizados():
             
             # Generar equipo
             nombre_equipo = generar_nombre_unico('equipos', 
-                lambda: f"Equipo Proyecto {i+1}")
+                lambda: f"Equipo Proyecto {contador_equipos + i + 1}")
             
             cursor.execute('''
                 INSERT INTO Equipo (nombre_equipo, descripcion)
