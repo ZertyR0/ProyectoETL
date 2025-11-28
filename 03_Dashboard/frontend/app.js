@@ -1066,8 +1066,8 @@ async function cargarDimensionesOLAP() {
                 anioSelect.innerHTML += `<option value="${anio.anio}">${anio.anio} (${anio.total_proyectos} proy.)</option>`;
             });
             
-            // Cargar KPIs ejecutivos
-            await cargarKPIsEjecutivos();
+            // Cargar KPIs ejecutivos - DESHABILITADO
+            // await cargarKPIsEjecutivos();
             
             showToast(`Filtros cargados: ${data.filtros.clientes.length} clientes, ${data.filtros.equipos.length} equipos, ${data.filtros.anios.length} años`, 'success');
         }
@@ -1077,6 +1077,8 @@ async function cargarDimensionesOLAP() {
     }
 }
 
+// FUNCIÓN DESHABILITADA - KPIs Ejecutivos removidos del dashboard
+/*
 async function cargarKPIsEjecutivos() {
     try {
         const response = await fetch(`${API_BASE}/olap/kpis-ejecutivos`);
@@ -1134,6 +1136,8 @@ async function cargarKPIsEjecutivos() {
         console.error('Error cargando KPIs ejecutivos:', error);
     }
 }
+*/
+
 
 async function aplicarFiltrosOLAP() {
     try {

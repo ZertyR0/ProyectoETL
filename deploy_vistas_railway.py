@@ -61,23 +61,25 @@ def deploy_views_to_railway():
             dt.trimestre,
             dt.mes,
             CASE 
-                WHEN hp.porcentaje_completado >= 100 THEN 'Completado'
-                WHEN hp.porcentaje_completado = 0 THEN 'Cancelado'
-                ELSE 'En Progreso'
+                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total THEN 'Completado'
+                WHEN hp.tareas_total > 0 AND hp.tareas_canceladas = hp.tareas_total THEN 'Cancelado'
+                WHEN hp.tareas_total > 0 THEN 'En Progreso'
+                ELSE 'Sin iniciar'
             END as estado,
             hp.presupuesto,
             hp.costo_real,
             (hp.presupuesto - hp.costo_real) as margen,
             CASE 
-                WHEN hp.presupuesto > 0 
+                WHEN hp.presupuesto > 0 AND hp.costo_real IS NOT NULL
                 THEN ROUND(((hp.presupuesto - hp.costo_real) / hp.presupuesto * 100), 2)
                 ELSE 0 
             END as rentabilidad_porcentaje,
             hp.horas_reales_total as horas_reales,
             hp.horas_estimadas_total as horas_estimadas,
             CASE 
-                WHEN hp.costo_real <= hp.presupuesto THEN 'Sí'
-                ELSE 'No'
+                WHEN hp.costo_real IS NOT NULL AND hp.costo_real <= hp.presupuesto THEN 'Sí'
+                WHEN hp.costo_real IS NOT NULL THEN 'No'
+                ELSE 'N/A'
             END as en_presupuesto,
             dp.fecha_inicio as fecha_inicio,
             dt.fecha as fecha_fin
@@ -103,18 +105,22 @@ def deploy_views_to_railway():
             COALESCE(dc.nombre, 'Sin Cliente') as cliente,
             dc.sector,
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado >= 100 THEN hp.id_proyecto END) as proyectos_completados,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                THEN hp.id_proyecto 
+            END) as proyectos_completados,
             SUM(hp.presupuesto) as presupuesto_total,
             SUM(hp.costo_real) as costo_total,
-            SUM(hp.presupuesto - hp.costo_real) as margen_total,
+            SUM(hp.presupuesto - COALESCE(hp.costo_real, 0)) as margen_total,
             CASE 
                 WHEN SUM(hp.presupuesto) > 0 
-                THEN ROUND(((SUM(hp.presupuesto) - SUM(hp.costo_real)) / SUM(hp.presupuesto) * 100), 2)
+                THEN ROUND(((SUM(hp.presupuesto) - SUM(COALESCE(hp.costo_real, 0))) / SUM(hp.presupuesto) * 100), 2)
                 ELSE 0 
             END as rentabilidad_promedio_porcentaje,
             ROUND(AVG(CASE 
-                WHEN hp.costo_real <= hp.presupuesto THEN 100
-                ELSE 0
+                WHEN hp.costo_real IS NOT NULL AND hp.costo_real <= hp.presupuesto THEN 100
+                WHEN hp.costo_real IS NOT NULL THEN 0
+                ELSE NULL
             END), 2) as porcentaje_en_presupuesto
         FROM HechoProyecto hp
         LEFT JOIN DimCliente dc ON hp.id_cliente = dc.id_cliente
@@ -135,13 +141,16 @@ def deploy_views_to_railway():
             hp.id_equipo,
             COALESCE(de.nombre_equipo, 'N/A') as equipo,
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado >= 100 THEN hp.id_proyecto END) as proyectos_completados,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                THEN hp.id_proyecto 
+            END) as proyectos_completados,
             SUM(hp.presupuesto) as presupuesto_total,
             SUM(hp.costo_real) as costo_total,
-            SUM(hp.presupuesto - hp.costo_real) as margen_total,
+            SUM(hp.presupuesto - COALESCE(hp.costo_real, 0)) as margen_total,
             CASE 
                 WHEN SUM(hp.presupuesto) > 0 
-                THEN ROUND(((SUM(hp.presupuesto) - SUM(hp.costo_real)) / SUM(hp.presupuesto) * 100), 2)
+                THEN ROUND(((SUM(hp.presupuesto) - SUM(COALESCE(hp.costo_real, 0))) / SUM(hp.presupuesto) * 100), 2)
                 ELSE 0 
             END as rentabilidad_promedio_porcentaje,
             SUM(hp.horas_reales_total) as horas_reales_total,
@@ -164,15 +173,26 @@ def deploy_views_to_railway():
         SELECT 
             dt.anio,
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado >= 100 THEN hp.id_proyecto END) as proyectos_completados,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado = 0 THEN hp.id_proyecto END) as proyectos_cancelados,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado > 0 AND hp.porcentaje_completado < 100 THEN hp.id_proyecto END) as proyectos_en_progreso,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                THEN hp.id_proyecto 
+            END) as proyectos_completados,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 AND hp.tareas_canceladas = hp.tareas_total 
+                THEN hp.id_proyecto 
+            END) as proyectos_cancelados,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 
+                AND hp.tareas_completadas < hp.tareas_total 
+                AND hp.tareas_canceladas < hp.tareas_total
+                THEN hp.id_proyecto 
+            END) as proyectos_en_progreso,
             SUM(hp.presupuesto) as presupuesto_total,
             SUM(hp.costo_real) as costo_total,
-            SUM(hp.presupuesto - hp.costo_real) as margen_total,
+            SUM(hp.presupuesto - COALESCE(hp.costo_real, 0)) as margen_total,
             CASE 
                 WHEN SUM(hp.presupuesto) > 0 
-                THEN ROUND(((SUM(hp.presupuesto) - SUM(hp.costo_real)) / SUM(hp.presupuesto) * 100), 2)
+                THEN ROUND(((SUM(hp.presupuesto) - SUM(COALESCE(hp.costo_real, 0))) / SUM(hp.presupuesto) * 100), 2)
                 ELSE 0 
             END as rentabilidad_promedio_porcentaje,
             SUM(hp.horas_reales_total) as horas_reales_total,
@@ -194,22 +214,34 @@ def deploy_views_to_railway():
         CREATE VIEW vw_olap_total AS
         SELECT 
             COUNT(DISTINCT hp.id_proyecto) as total_proyectos,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado >= 100 THEN hp.id_proyecto END) as proyectos_completados,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado = 0 THEN hp.id_proyecto END) as proyectos_cancelados,
-            COUNT(DISTINCT CASE WHEN hp.porcentaje_completado > 0 AND hp.porcentaje_completado < 100 THEN hp.id_proyecto END) as proyectos_activos,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 AND hp.tareas_completadas = hp.tareas_total 
+                THEN hp.id_proyecto 
+            END) as proyectos_completados,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 AND hp.tareas_canceladas = hp.tareas_total 
+                THEN hp.id_proyecto 
+            END) as proyectos_cancelados,
+            COUNT(DISTINCT CASE 
+                WHEN hp.tareas_total > 0 
+                AND hp.tareas_completadas < hp.tareas_total 
+                AND hp.tareas_canceladas < hp.tareas_total
+                THEN hp.id_proyecto 
+            END) as proyectos_activos,
             COUNT(DISTINCT hp.id_cliente) as total_clientes,
             COUNT(DISTINCT hp.id_equipo) as total_equipos,
             SUM(hp.presupuesto) as presupuesto_total,
             SUM(hp.costo_real) as costo_total,
-            SUM(hp.presupuesto - hp.costo_real) as margen_total,
+            SUM(hp.presupuesto - COALESCE(hp.costo_real, 0)) as margen_total,
             CASE 
                 WHEN SUM(hp.presupuesto) > 0 
-                THEN ROUND(((SUM(hp.presupuesto) - SUM(hp.costo_real)) / SUM(hp.presupuesto) * 100), 2)
+                THEN ROUND(((SUM(hp.presupuesto) - SUM(COALESCE(hp.costo_real, 0))) / SUM(hp.presupuesto) * 100), 2)
                 ELSE 0 
             END as rentabilidad_promedio_porcentaje,
             ROUND(AVG(CASE 
-                WHEN hp.costo_real <= hp.presupuesto THEN 100
-                ELSE 0
+                WHEN hp.costo_real IS NOT NULL AND hp.costo_real <= hp.presupuesto THEN 100
+                WHEN hp.costo_real IS NOT NULL THEN 0
+                ELSE NULL
             END), 2) as porcentaje_cumplimiento_presupuesto,
             SUM(hp.horas_reales_total) as horas_reales_total,
             SUM(hp.horas_estimadas_total) as horas_estimadas_total,
