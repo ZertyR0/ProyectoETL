@@ -456,15 +456,13 @@ def insertar_datos():
     try:
         data = request.get_json() if request.is_json else {}
         num_proyectos = int(data.get('proyectos', 50))
-        ambiente = os.getenv('ETL_AMBIENTE', 'local')
-        print(f" Generando {num_proyectos} proyectos (insertar-datos) ambiente={ambiente}...")
-        from src.origen.generar_datos import generar_datos
-        resumen = generar_datos(proyectos=num_proyectos, empleados_por_proyecto=5, tareas_por_proyecto=8, limpiar=False, ambiente=ambiente)
+        
+        # TODO: Implementar generador de datos para ambiente distribuido
         return jsonify({
-            'status': 'success',
-            'message': f'{num_proyectos} proyectos generados',
-            'resumen': resumen
-        })
+            'status': 'error',
+            'message': 'Generación de datos no disponible en Railway. Use el script local 01_GestionProyectos/datos/generar_datos_final.py'
+        }), 501
+        
     except Exception as e:
         import traceback
         return jsonify({'status': 'error','message': str(e),'traceback': traceback.format_exc()}), 500
@@ -1604,9 +1602,9 @@ def get_bsc_okr():
             # Actualizar resumen de perspectiva
             resumen = perspectivas[perspectiva]['resumen']
             resumen['total_objetivos'] += 1
-            if objetivo['estado_objetivo'] == 'Verde':
+            if objetivo.get('estado') == 'Verde':
                 resumen['objetivos_verde'] += 1
-            elif objetivo['estado_objetivo'] == 'Amarillo':
+            elif objetivo.get('estado') == 'Amarillo':
                 resumen['objetivos_amarillo'] += 1
             else:
                 resumen['objetivos_rojo'] += 1
@@ -1782,16 +1780,14 @@ def get_vision_estrategica():
         # Obtener resumen por componente de visión
         cursor_destino.execute("""
             SELECT 
-                obj.vision_componente,
-                COUNT(obj.id_objetivo) as total_objetivos,
-                AVG(bsc.avance_objetivo_porcentaje) as avance_promedio,
-                COUNT(CASE WHEN bsc.estado_objetivo = 'Verde' THEN 1 END) as objetivos_verde,
-                COUNT(CASE WHEN bsc.estado_objetivo = 'Amarillo' THEN 1 END) as objetivos_amarillo,
-                COUNT(CASE WHEN bsc.estado_objetivo = 'Rojo' THEN 1 END) as objetivos_rojo
-            FROM DimObjetivo obj
-            LEFT JOIN vw_bsc_tablero_consolidado bsc ON obj.id_objetivo = bsc.id_objetivo
-            WHERE obj.activo = TRUE
-            GROUP BY obj.vision_componente
+                bsc.perspectiva as vision_componente,
+                COUNT(*) as total_objetivos,
+                AVG(bsc.avance) as avance_promedio,
+                COUNT(CASE WHEN bsc.estado = 'Verde' THEN 1 END) as objetivos_verde,
+                COUNT(CASE WHEN bsc.estado = 'Amarillo' THEN 1 END) as objetivos_amarillo,
+                COUNT(CASE WHEN bsc.estado = 'Rojo' THEN 1 END) as objetivos_rojo
+            FROM vw_bsc_tablero_consolidado bsc
+            GROUP BY bsc.perspectiva
             ORDER BY avance_promedio DESC
         """)
         
