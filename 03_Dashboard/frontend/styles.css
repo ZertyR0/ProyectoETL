@@ -718,6 +718,32 @@ body {
     flex-shrink: 0;
 }
 
+/* Compact BSC Styles */
+.objetivo-compact {
+    transition: all 0.2s ease;
+}
+
+.objetivo-compact:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.kr-compact {
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    transition: background 0.2s ease;
+}
+
+.kr-compact:hover {
+    background: #e9ecef;
+}
+
+.badge-sm {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
 /* Metric Boxes */
 .metric-box {
     flex: 1;
