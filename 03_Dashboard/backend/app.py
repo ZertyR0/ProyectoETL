@@ -559,11 +559,19 @@ def ejecutar_etl():
         conn.commit()
         print(f" - DimTiempo: {cursor.rowcount} registros")
         
-        # 3. Cargar HechoProyecto
+        # 3. Agregar columna id_equipo si no existe
+        print(" Verificando estructura HechoProyecto...")
+        cursor.execute("SHOW COLUMNS FROM HechoProyecto LIKE 'id_equipo'")
+        if not cursor.fetchone():
+            print(" - Agregando columna id_equipo...")
+            cursor.execute("ALTER TABLE HechoProyecto ADD COLUMN id_equipo INT AFTER id_empleado_gerente")
+            cursor.execute("ALTER TABLE HechoProyecto ADD KEY idx_id_equipo (id_equipo)")
+        
+        # 4. Cargar HechoProyecto
         print(" Cargando HechoProyecto...")
         cursor.execute("""
             INSERT INTO HechoProyecto (
-                id_proyecto, id_cliente, id_empleado_gerente, id_tiempo_fin_real,
+                id_proyecto, id_cliente, id_empleado_gerente, id_equipo, id_tiempo_fin_real,
                 presupuesto, costo_real, duracion_planificada, duracion_real,
                 cumplimiento_tiempo, cumplimiento_presupuesto,
                 tareas_total, tareas_completadas, tareas_canceladas
@@ -572,6 +580,14 @@ def ejecutar_etl():
                 p.id_proyecto,
                 p.id_cliente,
                 p.id_empleado_gerente,
+                -- Obtener equipo principal del proyecto
+                (SELECT te.id_equipo 
+                 FROM gestionproyectos_hist.Tarea t 
+                 JOIN gestionproyectos_hist.TareaEquipoHist te ON t.id_tarea = te.id_tarea 
+                 WHERE t.id_proyecto = p.id_proyecto 
+                 GROUP BY te.id_equipo 
+                 ORDER BY COUNT(*) DESC 
+                 LIMIT 1) as id_equipo,
                 CAST(DATE_FORMAT(p.fecha_fin_real, '%Y%m%d') AS UNSIGNED),
                 p.presupuesto,
                 COALESCE(p.costo_real, p.presupuesto * 1.1),
